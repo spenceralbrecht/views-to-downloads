@@ -13,16 +13,14 @@ export async function GET(request: Request) {
     
     try {
       await supabase.auth.exchangeCodeForSession(code)
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      return NextResponse.redirect(`${requestUrl.origin}/dashboard`)
     } catch (error) {
       console.error('Auth error:', error)
-      // Log the full error object for debugging
-      console.log('Full error object:', JSON.stringify(error, null, 2))
-      return NextResponse.redirect(new URL(`/?error=${encodeURIComponent('Authentication failed')}`, request.url))
+      return NextResponse.redirect(`${requestUrl.origin}/?error=${encodeURIComponent('Authentication failed')}`)
     }
   }
 
   console.warn('No code provided in callback')
-  return NextResponse.redirect(new URL('/', request.url))
+  return NextResponse.redirect(`${requestUrl.origin}/`)
 }
 

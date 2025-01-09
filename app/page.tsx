@@ -1,5 +1,5 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+'use client'
+
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { VideoThumbnail } from "@/components/VideoThumbnail"
@@ -7,15 +7,29 @@ import AuthButton from '@/components/AuthButton'
 import Features from '@/components/Features'
 import Pricing from '@/components/Pricing'
 import Alternatives from '@/components/Alternatives'
+import { useState } from 'react'
 
-export default async function LandingPage() {
-  const supabase = createServerComponentClient({ cookies })
-  const { data: { session } } = await supabase.auth.getSession()
+export default function LandingPage({
+  searchParams,
+}: {
+  searchParams: { error?: string }
+}) {
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+
+  const handleStartNow = () => {
+    setIsLoginModalOpen(true)
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fafafa] dark:bg-gray-950">
       <Header />
       <main className="flex-grow container mx-auto px-4 py-16 md:py-24">
+        {searchParams.error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{searchParams.error}</span>
+          </div>
+        )}
         {/* Hero Section */}
         <div className="max-w-4xl mx-auto text-center mb-16 md:mb-24">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
@@ -25,7 +39,7 @@ export default async function LandingPage() {
             it&apos;s like a gen z marketing team, but way cheaper
           </p>
           <div className="flex justify-center">
-            <AuthButton session={session} />
+            <AuthButton />
           </div>
         </div>
 

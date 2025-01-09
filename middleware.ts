@@ -15,10 +15,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/', req.url))
   }
 
+  // If logged in and trying to access login page, redirect to dashboard
+  if (session && req.nextUrl.pathname === '/') {
+    return NextResponse.redirect(new URL('/dashboard', req.url))
+  }
+
   return res
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/auth/callback'],
+  matcher: ['/', '/dashboard/:path*', '/auth/callback'],
 }
 

@@ -1,0 +1,26 @@
+# Ignore Next.js build output
+.next/ 
+
+# Node modules
+node_modules/
+
+# Production build artifacts
+out/
+dist/
+build/
+
+# Logs
+logs
+*.log
+
+# Coverage
+coverage/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# OS/Editor files
+.DS_Store
+.vscode/ 
