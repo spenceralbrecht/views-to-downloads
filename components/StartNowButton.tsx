@@ -16,9 +16,9 @@ export default function StartNowButton() {
     )
   }
 
-  // Otherwise, link to login (or show a login modal)
+  // Otherwise, point to your Google sign-in route
   return (
-    <Link href="/login">
+    <Link href="/api/auth/signin">
       <button className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">
         Start Now →
       </button>
