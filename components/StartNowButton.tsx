@@ -16,9 +16,9 @@ export default function StartNowButton() {
     )
   }
 
-  // Otherwise, point to your Google sign-in route
+  // Disable prefetch so it does a normal browser redirect
   return (
-    <Link href="/api/auth/signin">
+    <Link href="/api/auth/signin" prefetch={false}>
       <button className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">
         Start Now →
       </button>
