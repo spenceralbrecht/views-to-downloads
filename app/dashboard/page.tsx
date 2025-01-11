@@ -1,7 +1,10 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { PlaceholderContent } from "@/components/dashboard/PlaceholderContent"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Video, ImageIcon, User, Sparkles } from "lucide-react"
 
 export default async function Dashboard() {
   const supabase = createServerComponentClient({ cookies })
@@ -14,13 +17,55 @@ export default async function Dashboard() {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
-      {session.user && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Welcome, {session.user.email}!</h2>
-          <p>User ID: {session.user.id}</p>
-          <p>Last Sign In: {new Date(session.user.last_sign_in_at || '').toLocaleString()}</p>
-        </div>
-      )}
+      
+      {/* Feature Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <Link href="/dashboard/create" className="cursor-pointer">
+          <Card>
+            <CardHeader>
+              <Video className="h-8 w-8 mb-2 text-blue-500" />
+              <CardTitle>Create UGC videos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">Create & publish UGC videos promoting your product demo</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Card className="relative">
+          <CardHeader>
+            <ImageIcon className="h-8 w-8 mb-2 text-green-500" />
+            <CardTitle>Create slideshow videos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600">Create & publish image slideshow videos to TikTok</p>
+          </CardContent>
+          <div className="absolute top-4 right-4 px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
+            Not Available Yet
+          </div>
+        </Card>
+        <Card className="relative">
+          <CardHeader>
+            <User className="h-8 w-8 mb-2 text-purple-500" />
+            <CardTitle>UGC Avatar Generator</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600">Auto-magically generate and save viral hooks for your videos</p>
+          </CardContent>
+          <div className="absolute top-4 right-4 px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
+            Not Available Yet
+          </div>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Sparkles className="h-8 w-8 mb-2 text-amber-500" />
+            <CardTitle>Hook Generator</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600">Auto-magically generate and save viral hooks for your videos</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <PlaceholderContent />
     </div>
   )

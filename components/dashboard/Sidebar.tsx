@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { User } from '@supabase/supabase-js'
 import { signOut } from '@/app/auth/actions'
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { ImageIcon, User as UserIcon, Sparkles } from "lucide-react"
 
 interface SidebarProps {
   user: User | null;
@@ -19,7 +21,7 @@ export function Sidebar({ user }: SidebarProps) {
     { name: 'Home', href: '/dashboard', icon: Home },
     { name: 'Videos', href: '/dashboard/videos', icon: Video },
     { name: 'Hooks', href: '/dashboard/hooks', icon: Zap },
-    { name: 'Campaigns', href: '/dashboard/campaigns', icon: Activity },
+    { name: 'Apps', href: '/dashboard/apps', icon: Activity },
   ]
 
   const bottomNav = [
@@ -41,7 +43,7 @@ export function Sidebar({ user }: SidebarProps) {
         <div className="px-4 mb-4">
           <Button className="w-full bg-[#4287f5]" asChild>
             <Link href="/dashboard/create">
-              + Create Ad
+              + Create Content
             </Link>
           </Button>
         </div>
@@ -96,8 +98,9 @@ export function Sidebar({ user }: SidebarProps) {
         <div className="p-4 border-t">
           {user ? (
             <div className="text-xs text-gray-500">
-              <div className="font-medium">{user.email}</div>
-              <div>ID: {user.id.substring(0, 8)}...</div>
+              <div className="font-medium">
+                {user?.user_metadata?.name ?? user.email}
+              </div>
               <form action={signOut}>
                 <button
                   type="submit"

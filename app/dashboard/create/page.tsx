@@ -8,17 +8,32 @@ import { Card } from "@/components/ui/card"
 
 export default function CreateAd() {
   const [hook, setHook] = useState('')
-  const [selectedAvatar, setSelectedAvatar] = useState<number | null>(null)
-  
-  const avatars = Array.from({ length: 24 }, (_, i) => ({
-    id: i + 1,
-    src: `/placeholder.svg?height=100&width=100`
-  }))
+  const [selectedVideo, setSelectedVideo] = useState<number | null>(null)
+
+  // Generate an array of 69 videos, numbered 1..69
+  const allVideos = Array.from({ length: 69 }, (_, i) => i + 1)
+
+  // Pagination setup
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 24
+  const totalPages = Math.ceil(allVideos.length / pageSize)
+
+  const handlePrev = () => {
+    setCurrentPage((page) => (page > 1 ? page - 1 : page))
+  }
+
+  const handleNext = () => {
+    setCurrentPage((page) => (page < totalPages ? page + 1 : page))
+  }
+
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const videosToShow = allVideos.slice(startIndex, endIndex)
 
   return (
     <div className="p-8">
       <h1 className="text-2xl font-semibold mb-6">Create UGC ads</h1>
-      
+
       <Card className="p-6 bg-gray-50">
         <div className="space-y-8">
           {/* Hook Section */}
@@ -47,27 +62,54 @@ export default function CreateAd() {
           </div>
 
           {/* UGC Video Section */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <h2 className="font-medium">2. UGC video</h2>
-              <span className="text-gray-500">1/3</span>
+          <div className="flex">
+            <div className="flex-1">
+              <div className="flex justify-between mb-2">
+                <h2 className="font-medium">2. UGC video</h2>
+                <span className="text-gray-500">
+                  Page {currentPage} of {totalPages}
+                </span>
+              </div>
+              <div className="grid grid-cols-8 gap-2">
+                {videosToShow.map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => setSelectedVideo(num)}
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 ${
+                      selectedVideo === num
+                        ? 'border-blue-500'
+                        : 'border-transparent'
+                    }`}
+                  >
+                    <video
+                      src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/${num}.mp4`}
+                      preload="metadata"
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+              <div className="flex justify-end mt-4 gap-2">
+                <Button variant="outline" onClick={handlePrev} disabled={currentPage === 1}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" onClick={handleNext} disabled={currentPage === totalPages}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="grid grid-cols-8 gap-2">
-              {avatars.map((avatar) => (
-                <button
-                  key={avatar.id}
-                  onClick={() => setSelectedAvatar(avatar.id)}
-                  className={`relative aspect-square rounded-lg overflow-hidden border-2 ${
-                    selectedAvatar === avatar.id ? 'border-blue-500' : 'border-transparent'
-                  }`}
-                >
-                  <img
-                    src={avatar.src}
-                    alt={`Avatar ${avatar.id}`}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
+
+            {/* Video Preview Section */}
+            <div className="flex-1 ml-4">
+              {selectedVideo !== null && (
+                <video
+                  src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/${selectedVideo}.mp4`}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-1/2 h-auto object-cover rounded-lg"
+                />
+              )}
             </div>
           </div>
 

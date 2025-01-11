@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Video, ImageIcon, User, Sparkles } from 'lucide-react'
 
@@ -8,15 +9,17 @@ export default function Features() {
     <section id="features" className="max-w-5xl mx-auto mb-24">
       <h2 className="text-4xl md:text-5xl font-bold text-center mb-12">Features</h2>
       <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <Video className="h-8 w-8 mb-2 text-blue-500" />
-            <CardTitle>Create UGC videos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600">Create & publish UGC videos promoting your product demo</p>
-          </CardContent>
-        </Card>
+        <Link href="/dashboard/create" className="cursor-pointer">
+          <Card>
+            <CardHeader>
+              <Video className="h-8 w-8 mb-2 text-blue-500" />
+              <CardTitle>Create UGC videos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">Create & publish UGC videos promoting your product demo</p>
+            </CardContent>
+          </Card>
+        </Link>
         <Card className="relative">
           <CardHeader>
             <ImageIcon className="h-8 w-8 mb-2 text-green-500" />
