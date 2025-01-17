@@ -13,7 +13,6 @@ interface VideoThumbnailProps {
 export function VideoThumbnail({ video, thumbnail, index }: VideoThumbnailProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [error, setError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -42,33 +41,30 @@ export function VideoThumbnail({ video, thumbnail, index }: VideoThumbnailProps)
       }}
     >
       <div className="relative aspect-[9/16] rounded-xl overflow-hidden shadow-lg hover:scale-105 transition-transform duration-200">
-        <Image
-          src={thumbnail}
-          alt={`Video thumbnail ${index + 1}`}
-          layout="fill"
-          objectFit="cover"
-          className={isPlaying ? 'opacity-0' : 'opacity-100'}
-        />
         <video
           ref={videoRef}
           src={video}
-          className={`absolute inset-0 w-full h-full object-cover ${isPlaying ? 'opacity-100' : 'opacity-0'}`}
+          className="w-full h-full object-cover"
           preload="metadata"
           playsInline
           loop
           muted
-          onError={() => setError(true)}
         />
-        {error && (
-          <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
-            <span className="text-gray-500">Video unavailable</span>
-          </div>
+        {!isLoaded && (
+          <Image
+            src={thumbnail}
+            alt={`Video thumbnail ${index + 1}`}
+            fill
+            sizes="180px"
+            className="object-cover"
+            priority={index < 2}
+          />
         )}
         <div 
           className={`absolute inset-0 flex items-center justify-center ${isPlaying ? 'bg-black bg-opacity-0' : 'bg-black bg-opacity-40'}`}
           onClick={handlePlay}
         >
-          {!isPlaying && !error && (
+          {!isPlaying && (
             <button
               className="w-12 h-12 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center"
               aria-label={`Play demo video ${index + 1}`}
