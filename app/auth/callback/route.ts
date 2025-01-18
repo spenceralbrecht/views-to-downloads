@@ -5,11 +5,21 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
+  // Grab the cookie store (important for local dev)
+  const cookieStore = cookies()
+
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
 
   if (code) {
-    const supabase = createRouteHandlerClient({ cookies })
+    // Pass cookieOptions explicitly for local dev
+    const supabase = createRouteHandlerClient({
+      cookies: () => cookieStore,
+      cookieOptions: {
+        sameSite: 'none',
+        secure: false, // set to true in production with https
+      },
+    })
     
     try {
       await supabase.auth.exchangeCodeForSession(code)
@@ -23,4 +33,3 @@ export async function GET(request: Request) {
   console.warn('No code provided in callback')
   return NextResponse.redirect(`${requestUrl.origin}/`)
 }
-
