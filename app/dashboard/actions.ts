@@ -1,5 +1,8 @@
 'use server'
 
+import { createServerActionClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+
 export async function joinWaitlist(email: string) {
   const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
   const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
@@ -45,3 +48,42 @@ export async function joinWaitlist(email: string) {
   }
 }
 
+export async function uploadDemoVideo(formData: FormData) {
+  const supabase = createServerActionClient({ cookies })
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Must be logged in to upload a demo video.' }
+  }
+
+  const file = formData.get('videoFile') as File | null
+  if (!file) {
+    return { error: 'No video file selected.' }
+  }
+
+  // Upload to a Supabase Storage bucket named "demo-videos"
+  const filePath = `demo-videos/${user.id}/${Date.now()}_${file.name}`
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from('demo-videos')
+    .upload(filePath, file, { upsert: true })
+
+  if (uploadError) {
+    return { error: uploadError.message }
+  }
+
+  // Insert a row in the "input_content" table with the uploaded video's path
+  const { error: insertError } = await supabase
+    .from('input_content')
+    .insert({
+      user_id: user.id,
+      file_path: filePath
+    })
+
+  if (insertError) {
+    return { error: insertError.message }
+  }
+
+  return { success: true }
+}

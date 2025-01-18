@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
+import { uploadDemoVideo } from '../actions'
 
 export default function CreateAd() {
   const [hook, setHook] = useState('')
@@ -132,9 +133,27 @@ export default function CreateAd() {
                   />
                 </button>
               ))}
-              <button className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400">
-                +
-              </button>
+          
+              {/* New upload form for a demo video */}
+              <form action={uploadDemoVideo} encType="multipart/form-data">
+                <label
+                  htmlFor="demoVideo"
+                  className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 cursor-pointer"
+                >
+                  +
+                </label>
+                <input
+                  id="demoVideo"
+                  name="videoFile"
+                  type="file"
+                  accept="video/*"
+                  className="sr-only"
+                  onChange={(e) => {
+                    // auto-submit after file chosen
+                    e.currentTarget.form?.requestSubmit();
+                  }}
+                />
+              </form>
             </div>
           </div>
         </div>
@@ -187,4 +206,3 @@ export default function CreateAd() {
     </div>
   )
 }
-
