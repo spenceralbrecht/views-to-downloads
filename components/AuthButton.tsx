@@ -8,25 +8,26 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import StartNowButton from './StartNowButton'
 
 export default function AuthButton() {
-  const [session, setSession] = useState(null)
+  const [user, setUser] = useState(null)
   const supabase = createClientComponentClient()
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setSession(session)
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
     }
 
-    getSession()
+    fetchUser()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
     })
 
     return () => subscription.unsubscribe()
   }, [supabase.auth])
 
-  if (session) {
+  if (user) {
     return (
       <Button 
         size="lg" 
@@ -43,4 +44,3 @@ export default function AuthButton() {
 
   return <StartNowButton />
 }
-

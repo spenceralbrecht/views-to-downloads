@@ -63,10 +63,10 @@ export async function uploadDemoVideo(formData: FormData) {
     return { error: 'No video file selected.' }
   }
 
-  // Upload to a Supabase Storage bucket named "demo-videos"
-  const filePath = `demo-videos/${user.id}/${Date.now()}_${file.name}`
+  // Upload to a Supabase Storage bucket named "input-content"
+  const filePath = `input-content/${user.id}/${Date.now()}_${file.name}`
   const { data: uploadData, error: uploadError } = await supabase.storage
-    .from('demo-videos')
+    .from('input-content')
     .upload(filePath, file, { upsert: true })
 
   if (uploadError) {

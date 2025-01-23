@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useTransition } from 'react'
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
@@ -10,6 +10,7 @@ import { uploadDemoVideo } from '../actions'
 export default function CreateAd() {
   const [hook, setHook] = useState('')
   const [selectedVideo, setSelectedVideo] = useState<number | null>(null)
+  const [isPending, startTransition] = useTransition()
 
   // Generate an array of 69 videos, numbered 1..69
   const allVideos = Array.from({ length: 69 }, (_, i) => i + 1)
@@ -140,7 +141,11 @@ export default function CreateAd() {
                   htmlFor="demoVideo"
                   className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 cursor-pointer"
                 >
-                  +
+                  {isPending ? (
+                    <Loader2 className="animate-spin h-6 w-6" />
+                  ) : (
+                    '+'
+                  )}
                 </label>
                 <input
                   id="demoVideo"
@@ -149,8 +154,11 @@ export default function CreateAd() {
                   accept="video/*"
                   className="sr-only"
                   onChange={(e) => {
-                    // auto-submit after file chosen
-                    e.currentTarget.form?.requestSubmit();
+                    if (e.currentTarget.files?.[0]) {
+                      startTransition(() => {
+                        e.currentTarget.form?.requestSubmit();
+                      });
+                    }
                   }}
                 />
               </form>
