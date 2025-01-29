@@ -104,13 +104,22 @@ export default function CreateAd() {
             {/* Video Preview Section */}
             <div className="flex-1 ml-4">
               {selectedVideo !== null && (
-                <video
-                  src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/${selectedVideo}.mp4`}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-1/2 h-auto object-cover rounded-lg"
-                />
+                <div className="relative w-1/2">
+                  <video
+                    src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/${selectedVideo}.mp4`}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-auto object-cover rounded-lg"
+                  />
+                  {hook && (
+                    <div className="absolute inset-0 flex items-center justify-center p-2 text-center">
+                      <p className="text-white text-xl font-semibold drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)] whitespace-pre-wrap">
+                        {hook}
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
