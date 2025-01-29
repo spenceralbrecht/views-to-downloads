@@ -87,3 +87,47 @@ export async function uploadDemoVideo(formData: FormData) {
 
   return { success: true }
 }
+
+export async function addApp(url: string) {
+  'use server'
+  
+  const supabase = createServerActionClient({ cookies })
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    return { success: false, error: 'User not authenticated' }
+  }
+
+  const { error } = await supabase
+    .from('apps')
+    .insert({
+      owner_id: session.user.id,
+      app_store_url: url
+    })
+
+  if (error) {
+    console.error('Error adding app:', error)
+    return { success: false, error: error.message }
+  }
+
+  return { success: true }
+}
+
+export async function getApps() {
+  'use server'
+  
+  const supabase = createServerActionClient({ cookies })
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    return { data: null, error: 'Not authenticated' }
+  }
+
+  const { data, error } = await supabase
+    .from('apps')
+    .select('*')
+    .eq('owner_id', session.user.id)
+    .order('created_at', { ascending: false })
+
+  return { data, error: error?.message }
+}
