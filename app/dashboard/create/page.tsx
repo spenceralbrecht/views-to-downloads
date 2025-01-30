@@ -9,7 +9,7 @@ import { uploadDemoVideo } from '../actions'
 
 export default function CreateAd() {
   const [hook, setHook] = useState('')
-  const [selectedVideo, setSelectedVideo] = useState<number | null>(null)
+  const [selectedVideo, setSelectedVideo] = useState<number | null>(1)
   const [isPending, startTransition] = useTransition()
 
   // Generate an array of 69 videos, numbered 1..69
