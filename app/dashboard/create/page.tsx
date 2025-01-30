@@ -147,11 +147,6 @@ export default function CreateAd() {
           <div>
             <h2 className="font-medium mb-2">3. Demos</h2>
             <div className="flex gap-2">
-              <button className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400">
-                None
-              </button>
-            
-          
               {/* New upload form for a demo video */}
               <form action={uploadDemoVideo} encType="multipart/form-data">
                 <label
