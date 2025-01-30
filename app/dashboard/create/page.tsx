@@ -125,6 +125,7 @@ export default function CreateAd() {
                     src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/${selectedVideo}.mp4`}
                     autoPlay
                     playsInline
+                    loop
                     muted
                     className="w-full h-auto object-cover rounded-lg"
                   />
