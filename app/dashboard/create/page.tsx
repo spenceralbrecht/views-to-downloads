@@ -11,6 +11,7 @@ export default function CreateAd() {
   const [hook, setHook] = useState('')
   const [selectedVideo, setSelectedVideo] = useState<number | null>(1)
   const [isPending, startTransition] = useTransition()
+  const [textPosition, setTextPosition] = useState<'top' | 'middle' | 'bottom'>('middle')
 
   // Generate an array of 69 videos, numbered 1..69
   const allVideos = Array.from({ length: 69 }, (_, i) => i + 1)
@@ -52,13 +53,28 @@ export default function CreateAd() {
                 className="pr-8 bg-white"
                 placeholder="Enter your hook text..."
               />
-              <div className="absolute inset-y-0 right-2 flex items-center space-x-1">
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <ChevronLeft className="h-4 w-4 text-gray-400" />
-                </button>
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
-                </button>
+              <div className="absolute inset-y-0 right-2 flex items-center gap-1">
+                <Button
+                  variant={textPosition === 'top' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTextPosition('top')}
+                >
+                  Top
+                </Button>
+                <Button
+                  variant={textPosition === 'middle' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTextPosition('middle')}
+                >
+                  Middle
+                </Button>
+                <Button
+                  variant={textPosition === 'bottom' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTextPosition('bottom')}
+                >
+                  Bottom
+                </Button>
               </div>
             </div>
           </div>
@@ -113,7 +129,10 @@ export default function CreateAd() {
                     className="w-full h-auto object-cover rounded-lg"
                   />
                   {hook && (
-                    <div className="absolute inset-0 flex items-center justify-center p-2 text-center">
+                    <div className={`absolute inset-0 flex ${
+                      textPosition === 'top' ? 'items-start pt-4' : 
+                      textPosition === 'bottom' ? 'items-end pb-4' : 'items-center'
+                    } justify-center p-2 text-center`}>
                       <p className="text-white text-xl font-semibold drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)] whitespace-pre-wrap">
                         {hook}
                       </p>
