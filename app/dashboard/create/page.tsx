@@ -43,13 +43,13 @@ export default function CreateAd() {
           <div>
             <div className="flex justify-between mb-2">
               <h2 className="font-medium">1. Hook</h2>
-              <span className="text-gray-500">{hook.length}/30</span>
+              <span className="text-gray-500">{hook.length}/100</span>
             </div>
             <div className="relative">
               <Input
                 value={hook}
                 onChange={(e) => setHook(e.target.value)}
-                maxLength={30}
+                maxLength={100}
                 className="pr-8 bg-white"
                 placeholder="Enter your hook text..."
               />
