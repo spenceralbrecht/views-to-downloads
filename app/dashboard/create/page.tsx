@@ -131,18 +131,7 @@ export default function CreateAd() {
               <button className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400">
                 None
               </button>
-              {[1, 2, 3].map((demo) => (
-                <button
-                  key={demo}
-                  className="w-24 h-24 rounded-lg border-2 border-gray-200 overflow-hidden"
-                >
-                  <img
-                    src={`/placeholder.svg?height=96&width=96`}
-                    alt={`Demo ${demo}`}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
+            
           
               {/* New upload form for a demo video */}
               <form action={uploadDemoVideo} encType="multipart/form-data">
