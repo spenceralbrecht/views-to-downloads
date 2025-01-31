@@ -50,42 +50,90 @@ export async function joinWaitlist(email: string) {
 
 export async function uploadDemoVideo(formData: FormData) {
   const supabase = createServerActionClient({ cookies })
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  console.log('Starting video upload process...')
+  let user = null
+  
+  try {
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+    user = authUser
+    if (authError) console.error('Auth error:', authError)
+    
+    console.log('Authenticated user:', user?.id)
+    if (!user) {
+      console.warn('Upload attempt by unauthenticated user')
+      return { error: 'Must be logged in to upload a demo video.' }
+    }
 
-  if (!user) {
-    return { error: 'Must be logged in to upload a demo video.' }
-  }
+    const file = formData.get('videoFile') as File | null
+    console.log('Received file:', file?.name, 'Size:', file?.size, 'Type:', file?.type)
+    if (!file) {
+      console.warn('No file selected by user:', user.id)
+      return { error: 'No video file selected.' }
+    }
 
-  const file = formData.get('videoFile') as File | null
-  if (!file) {
-    return { error: 'No video file selected.' }
-  }
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      console.warn('File size exceeded by user:', user.id, 'File size:', file.size)
+      return { error: 'File size exceeds 50MB limit' };
+    }
 
-  // Upload to a Supabase Storage bucket named "input-content"
-  const filePath = `input-content/${user.id}/${Date.now()}_${file.name}`
-  const { data: uploadData, error: uploadError } = await supabase.storage
-    .from('input-content')
-    .upload(filePath, file, { upsert: true })
+    const filePath = `${user.id}/${Date.now()}_${file.name}`;
+    console.log('Starting storage upload to path:', filePath)
+    
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('input-content')
+      .upload(filePath, file, {
+        upsert: true,
+        cacheControl: '3600',
+        contentType: file.type,
+        duplex: 'half'
+      })
 
-  if (uploadError) {
-    return { error: uploadError.message }
-  }
-
-  // Insert a row in the "input_content" table with the uploaded video's path
-  const { error: insertError } = await supabase
-    .from('input_content')
-    .insert({
-      user_id: user.id,
-      file_path: filePath
+    if (uploadError) {
+      console.error('Storage upload failed:', {
+        path: filePath,
+        error: uploadError,
+        user: user.id,
+        fileSize: file.size
+      })
+      return { error: uploadError.message }
+    }
+    
+    console.log('Storage upload successful:', {
+      path: filePath,
+      bucket: 'input-content',
+      fileId: uploadData?.id
     })
 
-  if (insertError) {
-    return { error: insertError.message }
-  }
+    console.log('Starting database insert for user:', user.id)
+    const { error: insertError } = await supabase
+      .from('input_content')
+      .insert({
+        user_id: user.id,
+        content_url: filePath
+      })
 
-  return { success: true }
+    if (insertError) {
+      console.error('Database insert failed:', {
+        table: 'input_content',
+        error: insertError,
+        user: user.id,
+        filePath: filePath
+      })
+      return { error: insertError.message }
+    }
+
+    console.log('Database insert successful for file:', filePath)
+    return { success: true }
+    
+  } catch (error) {
+    console.error('Unexpected error in upload process:', {
+      error: error instanceof Error ? error.stack : 'Unknown error',
+      user: user?.id,
+      timestamp: new Date().toISOString()
+    })
+    return { error: 'Upload failed - check server logs' }
+  }
 }
 
 export async function addApp(url: string) {
