@@ -1,42 +1,74 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { uploadDemoVideo } from '../actions'
+import { supabase } from '@/lib/supabase'
 
 export default function CreateAd() {
   const [hook, setHook] = useState('')
   const [selectedVideo, setSelectedVideo] = useState<number | null>(1)
   const [isPending, startTransition] = useTransition()
   const [textPosition, setTextPosition] = useState<'top' | 'middle' | 'bottom'>('middle')
-
-  // Generate an array of 69 videos, numbered 1..69
+  
+  // For demo videos
+  const [demoVideos, setDemoVideos] = useState<Array<any>>([])
+  const [loadingDemos, setLoadingDemos] = useState(true)
+  
+  // Generate an array of 69 videos
   const allVideos = Array.from({ length: 69 }, (_, i) => i + 1)
 
-  // Pagination setup
+  // Pagination setup for the UGC videos (not demos)
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 24
   const totalPages = Math.ceil(allVideos.length / pageSize)
-
+  
   const handlePrev = () => {
     setCurrentPage((page) => (page > 1 ? page - 1 : page))
   }
-
+  
   const handleNext = () => {
     setCurrentPage((page) => (page < totalPages ? page + 1 : page))
   }
-
+  
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
   const videosToShow = allVideos.slice(startIndex, endIndex)
+  
+  // Fetch demo videos from the input_content table and convert file paths to public URLs
+  useEffect(() => {
+    async function fetchDemoVideos() {
+      setLoadingDemos(true)
+      const { data, error } = await supabase
+        .from('input_content')
+        .select('*')
+        .order('created_at', { ascending: false })
 
+      if (error) {
+        console.error('Error fetching demo videos:', error)
+      } else if (data) {
+        const demoVideosWithUrls = data.map((video) => {
+          const { data: publicData } = supabase
+            .storage
+            .from('input-content')
+            .getPublicUrl(video.content_url)
+          console.log('Demo video public URL:', publicData.publicUrl)
+          return { ...video, publicUrl: publicData.publicUrl }
+        })
+        setDemoVideos(demoVideosWithUrls)
+      }
+      setLoadingDemos(false)
+    }
+    fetchDemoVideos()
+  }, [])
+  
   return (
     <div className="p-8">
       <h1 className="text-2xl font-semibold mb-6">Create UGC ads</h1>
-
+      
       <Card className="p-6 bg-gray-50">
         <div className="space-y-8">
           {/* Hook Section */}
@@ -78,7 +110,7 @@ export default function CreateAd() {
               </div>
             </div>
           </div>
-
+          
           {/* UGC Video Section */}
           <div className="flex">
             <div className="flex-1">
@@ -116,7 +148,7 @@ export default function CreateAd() {
                 </Button>
               </div>
             </div>
-
+            
             {/* Video Preview Section */}
             <div className="flex-1 ml-4">
               {selectedVideo !== null && (
@@ -143,11 +175,11 @@ export default function CreateAd() {
               )}
             </div>
           </div>
-
+          
           {/* Demos Section */}
           <div>
             <h2 className="font-medium mb-2">3. Demos</h2>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               {/* New upload form for a demo video */}
               <form action={uploadDemoVideo}>
                 <label
@@ -169,16 +201,43 @@ export default function CreateAd() {
                   onChange={(e) => {
                     if (e.currentTarget.files?.[0]) {
                       startTransition(() => {
-                        e.currentTarget.form?.requestSubmit();
-                      });
+                        e.currentTarget.form?.requestSubmit()
+                      })
                     }
                   }}
                 />
               </form>
+              {/* Display uploaded demo videos */}
+              <div className="flex gap-2 overflow-x-auto">
+                {loadingDemos ? (
+                  <Loader2 className="animate-spin h-6 w-6" />
+                ) : demoVideos.length > 0 ? (
+                  demoVideos.map((video) => (
+                    <div
+                      key={video.id}
+                      className="relative w-24 h-24 rounded-lg overflow-hidden border"
+                    >
+                      <video
+                        src={video.publicUrl}
+                        preload="metadata"
+                        muted
+                        loop
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Debug Overlay: Always visible for now */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white text-xs transition-opacity duration-200 px-1">
+                        {video.publicUrl}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500">No demos uploaded yet</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
-
+        
         {/* Create Button */}
         <div className="mt-8 flex justify-end">
           <div className="flex items-center gap-4">
@@ -196,7 +255,7 @@ export default function CreateAd() {
           </div>
         </div>
       </Card>
-
+      
       {/* My Videos Section */}
       <div className="mt-12">
         <div className="flex justify-between items-center mb-6">
@@ -213,7 +272,7 @@ export default function CreateAd() {
             </div>
           </div>
         </div>
-
+        
         <div className="grid grid-cols-4 gap-4">
           <div className="aspect-[9/16] rounded-lg overflow-hidden bg-gray-100">
             <img
