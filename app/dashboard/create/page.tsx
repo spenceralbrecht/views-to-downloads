@@ -215,19 +215,17 @@ export default function CreateAd() {
                   demoVideos.map((video) => (
                     <div
                       key={video.id}
-                      className="relative w-24 h-24 rounded-lg overflow-hidden border"
+                      className="relative w-48 h-48 rounded-lg overflow-hidden border"
                     >
                       <video
                         src={video.publicUrl}
                         preload="metadata"
                         muted
                         loop
+                        playsInline
+                        controls
                         className="w-full h-full object-cover"
                       />
-                      {/* Debug Overlay: Always visible for now */}
-                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white text-xs transition-opacity duration-200 px-1">
-                        {video.publicUrl}
-                      </div>
                     </div>
                   ))
                 ) : (
