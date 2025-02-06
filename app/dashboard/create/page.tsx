@@ -5,19 +5,35 @@ import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { uploadDemoVideo } from '../actions'
-import { supabase } from '@/lib/supabase'
+import { uploadDemoVideo, createVideo } from '../actions'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 export default function CreateAd() {
   const [hook, setHook] = useState('')
   const [selectedVideo, setSelectedVideo] = useState<number | null>(1)
   const [isPending, startTransition] = useTransition()
   const [textPosition, setTextPosition] = useState<'top' | 'middle' | 'bottom'>('middle')
+  const supabase = createClientComponentClient()
   
   // For demo videos
   const [demoVideos, setDemoVideos] = useState<Array<any>>([])
   const [loadingDemos, setLoadingDemos] = useState(true)
+  const [selectedDemo, setSelectedDemo] = useState(null)
   
+  const [selectedInfluencerVideo, setSelectedInfluencerVideo] = useState<string>('');
+  const [selectedDemoVideo, setSelectedDemoVideo] = useState<string>('');
+  const [captionText, setCaptionText] = useState('');
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error) {
+        console.error('Error fetching user:', error)
+      }
+    }
+    getUser()
+  }, [supabase])
+
   // Generate an array of 69 videos
   const allVideos = Array.from({ length: 69 }, (_, i) => i + 1)
 
@@ -64,7 +80,119 @@ export default function CreateAd() {
     }
     fetchDemoVideos()
   }, [])
-  
+
+  // Add new state variables for finished videos
+  const [finishedVideos, setFinishedVideos] = useState<{ id: string; loading: boolean }[]>([]);
+  const [loadingFinished, setLoadingFinished] = useState(true);
+
+  useEffect(() => {
+    async function fetchFinishedVideos() {
+      setLoadingFinished(true);
+      try {
+        const res = await fetch('/api/finished-videos');
+        const json = await res.json();
+        if (json.error) {
+          console.error('Error fetching finished videos:', json.error);
+        } else {
+          setFinishedVideos(json.data || []);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      setLoadingFinished(false);
+    }
+    fetchFinishedVideos();
+  }, []);
+
+  // Add this function to construct the UGC video URL
+  const getUGCVideoUrl = (videoNumber: number | null) => {
+    if (!videoNumber) return '';
+    return `https://views-to-downloads.s3.us-east-2.amazonaws.com/${videoNumber}.mp4`;
+  };
+
+  const handleCreate = async () => {
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError) {
+      console.error('Error getting user:', userError)
+      return
+    }
+    if (!user) {
+      console.error('No authenticated user found')
+      return
+    }
+
+    // Get the app ID for this user
+    const { data: apps, error: appsError } = await supabase
+      .from('apps')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single()
+
+    if (appsError) {
+      console.error('Error getting app:', appsError)
+      return
+    }
+
+    if (!apps?.id) {
+      console.error('No app found for user')
+      return
+    }
+
+    const influencerVideoUrl = getUGCVideoUrl(selectedVideo);
+    
+    // Validate all required fields
+    const missingFields = [];
+    if (!selectedVideo) missingFields.push('influencer video');
+    if (!selectedDemoVideo) missingFields.push('demo video');
+    if (!captionText) missingFields.push('caption text');
+
+    if (missingFields.length > 0) {
+      alert(`Please provide the following required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    // Start the loading state
+    startTransition(async () => {
+      try {
+        const result = await createVideo({
+          influencer_video_url: influencerVideoUrl,
+          demo_footage_url: selectedDemoVideo,
+          captions: captionText,
+          user_uuid: user.id,
+          app_id: apps.id
+        });
+
+        if (result.error) {
+          alert(`Error creating video: ${result.error}`);
+        } else {
+          // Clear form and show success message
+          setSelectedVideo(null);
+          setSelectedDemoVideo('');
+          setCaptionText('');
+          alert('Video created successfully!');
+        }
+      } catch (error) {
+        console.error('Error creating video:', error);
+        alert('An unexpected error occurred while creating the video.');
+      }
+    });
+  };
+
+  const handleUGCVideoSelect = (num: number) => {
+    setSelectedVideo(num);
+    setSelectedInfluencerVideo(getUGCVideoUrl(num));
+  }
+
+  const handleDemoSelect = (video: any) => {
+    setSelectedDemo(video.id);
+    setSelectedDemoVideo(video.publicUrl);
+  }
+
+  useEffect(() => {
+    setCaptionText(hook);
+  }, [hook]);
+
   return (
     <div className="p-8">
       <h1 className="text-2xl font-semibold mb-6">Create UGC ads</h1>
@@ -124,7 +252,7 @@ export default function CreateAd() {
                 {videosToShow.map((num) => (
                   <button
                     key={num}
-                    onClick={() => setSelectedVideo(num)}
+                    onClick={() => handleUGCVideoSelect(num)}
                     className={`relative aspect-square rounded-lg overflow-hidden border-2 ${
                       selectedVideo === num
                         ? 'border-blue-500'
@@ -166,7 +294,7 @@ export default function CreateAd() {
               {selectedVideo !== null && (
                 <div className="relative w-1/2">
                   <video
-                    src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/${selectedVideo}.mp4`}
+                    src={getUGCVideoUrl(selectedVideo)}
                     autoPlay
                     playsInline
                     loop
@@ -227,7 +355,8 @@ export default function CreateAd() {
                   demoVideos.map((video) => (
                     <div
                       key={video.id}
-                      className="relative w-48 h-48 rounded-lg overflow-hidden border"
+                      onClick={() => handleDemoSelect(video)}
+                      className={`relative w-48 h-48 rounded-lg overflow-hidden border ${selectedDemo === video.id ? 'outline outline-2 outline-blue-500' : ''}`}
                     >
                       <video
                         src={video.publicUrl}
@@ -235,7 +364,8 @@ export default function CreateAd() {
                         muted
                         loop
                         playsInline
-                        controls
+                        onMouseEnter={(e) => e.currentTarget.play()}
+                        onMouseLeave={(e) => e.currentTarget.pause()}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -248,10 +378,9 @@ export default function CreateAd() {
           </div>
         </div>
         
-        {/* Create Button */}
         <div className="mt-8 flex justify-end">
           <div className="flex items-center gap-4">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" type="button">
               <img
                 src="/placeholder.svg?height=24&width=24"
                 alt="Sound"
@@ -259,7 +388,7 @@ export default function CreateAd() {
               />
               Sound
             </Button>
-            <Button className="bg-[#4287f5]">
+            <Button type="button" className="bg-[#4287f5]" onClick={handleCreate}>
               Create
             </Button>
           </div>
@@ -269,28 +398,35 @@ export default function CreateAd() {
       {/* My Videos Section */}
       <div className="mt-12">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-semibold">My Videos (1)</h2>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500">Page 1 of 1</span>
-            <div className="flex gap-1">
-              <Button variant="outline" size="icon">
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon">
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          <h2 className="text-2xl font-semibold">My Videos {finishedVideos.length > 0 ? `(${finishedVideos.length})` : ''}</h2>
+          {/* Pagination controls could be added here if needed */}
         </div>
-        
         <div className="grid grid-cols-4 gap-4">
-          <div className="aspect-[9/16] rounded-lg overflow-hidden bg-gray-100">
-            <img
-              src="/placeholder.svg?height=400&width=225"
-              alt="Video thumbnail"
-              className="w-full h-full object-cover"
-            />
-          </div>
+          {loadingFinished ? (
+            <Loader2 className="animate-spin h-6 w-6" />
+          ) : finishedVideos.length > 0 ? (
+            finishedVideos.map((video) => (
+              <div key={video.id} className="aspect-[9/16] rounded-lg overflow-hidden flex items-center justify-center bg-gray-100">
+                {video.loading ? (
+                  <Loader2 className="animate-spin h-6 w-6" />
+                ) : (
+                  <video
+                    src={video.url}
+                    autoPlay
+                    muted
+                    playsInline
+                    loop
+                    className="w-full h-full object-cover"
+                  />
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="col-span-4 flex flex-col items-center justify-center p-8 border rounded-lg text-gray-500">
+              <img src="/empty-state-icon.svg" alt="No videos" className="w-16 h-16 mb-4" />
+              <p>No finished videos yet.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

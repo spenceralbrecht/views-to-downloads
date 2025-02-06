@@ -179,3 +179,120 @@ export async function getApps() {
 
   return { data, error: error?.message }
 }
+
+interface CreateVideoParams {
+  influencer_video_url: string;
+  demo_footage_url: string;
+  captions?: string;
+  user_uuid?: string;
+  app_id: string;  
+}
+
+async function callVideoCreationAPI(params: {
+  influencer_video_url: string;
+  demo_footage_url: string;
+  captions?: string;
+  user_uuid?: string;
+}) {
+  const response = await fetch('https://content-creation-api.replit.app/api/create-video', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params), // Pass parameters exactly as received
+  });
+
+  if (!response.ok) {
+    throw new Error(`API call failed: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+export async function createVideo(videoData: CreateVideoParams) {
+  const supabase = createServerActionClient({ cookies })
+  
+  try {
+    console.log('Creating video with data:', JSON.stringify(videoData, null, 2))
+
+    // First create the output content record
+    const { data: outputContent, error: insertError } = await supabase
+      .from('output_content')
+      .insert([
+        {
+          app_id: videoData.app_id,
+          user_id: videoData.user_uuid,
+          status: 'processing',
+          url: JSON.stringify({
+            influencer_video: videoData.influencer_video_url,
+            demo_footage: videoData.demo_footage_url,
+            captions: videoData.captions || ''
+          })
+        }
+      ])
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error('Error creating output content:', {
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        code: insertError.code
+      })
+      throw new Error(`Failed to create output content: ${insertError.message}`)
+    }
+
+    // Call the external API to create the video
+    try {
+      const apiResponse = await callVideoCreationAPI({
+        influencer_video_url: videoData.influencer_video_url,
+        demo_footage_url: videoData.demo_footage_url,
+        captions: videoData.captions,
+        user_uuid: videoData.user_uuid
+      });
+
+      // Update the output content with the API response
+      const { error: updateError } = await supabase
+        .from('output_content')
+        .update({ 
+          status: 'completed',
+          url: apiResponse.output_url // Assuming API returns output_url
+        })
+        .eq('id', outputContent.id);
+
+      if (updateError) {
+        console.error('Error updating output content:', updateError)
+        throw new Error(`Failed to update output content: ${updateError.message}`)
+      }
+
+      console.log('Successfully created and processed video:', apiResponse)
+      return { success: true, data: { ...outputContent, final_url: apiResponse.output_url } }
+    } catch (apiError) {
+      // Update the output content to reflect the error
+      const { error: updateError } = await supabase
+        .from('output_content')
+        .update({ 
+          status: 'failed',
+          url: JSON.stringify({
+            error: apiError instanceof Error ? apiError.message : 'API call failed',
+            original_request: JSON.parse(outputContent.url)
+          })
+        })
+        .eq('id', outputContent.id);
+
+      if (updateError) {
+        console.error('Error updating output content with failure:', updateError)
+      }
+
+      throw apiError;
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+    console.error('Error in createVideo:', {
+      message: errorMessage,
+      originalError: error
+    })
+    throw new Error(errorMessage)
+  }
+}
