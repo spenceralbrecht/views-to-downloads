@@ -105,3 +105,22 @@ This schema enables:
 ✅ Users to define automation hooks for apps.  
 
 This relational setup ensures scalability and maintains a clear structure for managing applications and their associated user-generated content.
+
+## External Video Creation API
+The external API `content-creation-api.replit.app` is used to create videos and returns with this format: {
+    "status": "success",
+    "video_url": "https://zxwbqdkqgxhtdnvmukll.supabase.co/storage/v1/object/public/result-content/user_e3d6c0cc-e5c2-4589-a280-fcf35f602918/generated_video_1738799948146.mp4",
+    "details": {
+        "duration": 52.236236,
+        "processingTime": 3,
+        "captions": "hey what are u doing?",
+        "user_folder": "user_e3d6c0cc-e5c2-4589-a280-fcf35f602918"
+    }
+} 
+
+and expects this as input parameters:
+
+influencer_video_url (string, required): URL or path of the influencer video.
+demo_footage_url (string, required): URL or path of the demo footage.
+captions (string, optional): Text for the opening captions on the video.
+user_uuid (string, optional): Unique user identifier used to create a dedicated subfolder in the Supabase Storage bucket for organizing videos.
