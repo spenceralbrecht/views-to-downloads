@@ -8,6 +8,30 @@ import { Card } from "@/components/ui/card"
 import { uploadDemoVideo, createVideo } from '../actions'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
+interface OutputContent {
+  id: string
+  url: string
+  created_at: string
+  status: string
+}
+
+function VideoCard({ video }: { video: OutputContent }) {
+  return (
+    <Card className="p-4 space-y-2">
+      <video 
+        src={video.url} 
+        controls 
+        className="w-full rounded-lg"
+        style={{ maxHeight: '400px' }}
+      />
+      <div className="flex justify-between items-center text-sm text-gray-500">
+        <span>Created: {new Date(video.created_at).toLocaleDateString()}</span>
+        <span>Status: {video.status}</span>
+      </div>
+    </Card>
+  )
+}
+
 export default function CreateAd() {
   const [hook, setHook] = useState('')
   const [selectedVideo, setSelectedVideo] = useState<number | null>(1)
@@ -20,6 +44,10 @@ export default function CreateAd() {
   const [loadingDemos, setLoadingDemos] = useState(true)
   const [selectedDemo, setSelectedDemo] = useState(null)
   
+  // For output videos
+  const [outputVideos, setOutputVideos] = useState<OutputContent[]>([])
+  const [loadingOutputs, setLoadingOutputs] = useState(true)
+
   const [selectedInfluencerVideo, setSelectedInfluencerVideo] = useState<string>('');
   const [selectedDemoVideo, setSelectedDemoVideo] = useState<string>('');
   const [captionText, setCaptionText] = useState('');
@@ -80,6 +108,31 @@ export default function CreateAd() {
     }
     fetchDemoVideos()
   }, [])
+
+  // Fetch user's output videos
+  useEffect(() => {
+    const fetchOutputVideos = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: videos, error } = await supabase
+        .from('output_content')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching output videos:', error)
+        return
+      }
+
+      setOutputVideos(videos)
+      setLoadingOutputs(false)
+    }
+
+    fetchOutputVideos()
+  }, [supabase])
 
   // Add new state variables for finished videos
   const [finishedVideos, setFinishedVideos] = useState<{ id: string; loading: boolean }[]>([]);
@@ -397,37 +450,20 @@ export default function CreateAd() {
       
       {/* My Videos Section */}
       <div className="mt-12">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-semibold">My Videos {finishedVideos.length > 0 ? `(${finishedVideos.length})` : ''}</h2>
-          {/* Pagination controls could be added here if needed */}
-        </div>
-        <div className="grid grid-cols-4 gap-4">
-          {loadingFinished ? (
-            <Loader2 className="animate-spin h-6 w-6" />
-          ) : finishedVideos.length > 0 ? (
-            finishedVideos.map((video) => (
-              <div key={video.id} className="aspect-[9/16] rounded-lg overflow-hidden flex items-center justify-center bg-gray-100">
-                {video.loading ? (
-                  <Loader2 className="animate-spin h-6 w-6" />
-                ) : (
-                  <video
-                    src={video.url}
-                    autoPlay
-                    muted
-                    playsInline
-                    loop
-                    className="w-full h-full object-cover"
-                  />
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="col-span-4 flex flex-col items-center justify-center p-8 border rounded-lg text-gray-500">
-              <img src="/empty-state-icon.svg" alt="No videos" className="w-16 h-16 mb-4" />
-              <p>No finished videos yet.</p>
-            </div>
-          )}
-        </div>
+        <h2 className="text-xl font-semibold mb-4">My Videos</h2>
+        {loadingOutputs ? (
+          <div className="flex justify-center items-center h-32">
+            <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+        ) : outputVideos.length === 0 ? (
+          <p className="text-gray-500 text-center">No videos created yet. Create your first video above!</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {outputVideos.map((video) => (
+              <VideoCard key={video.id} video={video} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
