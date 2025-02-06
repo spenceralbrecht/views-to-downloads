@@ -57,19 +57,14 @@ Upon receiving a successful response, the application inserts a new record into 
 ### Create Video
 
 `POST /api/create-video`
-- **influencer_video_url** (string, required): URL or path of the influencer video.
-- **demo_footage_url** (string, required): URL or path of the demo footage.
-- **captions** (string, optional): Text for the opening captions on the video.
-- **user_uuid** (string, optional): Unique user identifier used to create a dedicated subfolder in the Supabase Storage bucket for organizing videos.
-
-## POST /api/create-video
 
 This endpoint accepts a JSON body with the following parameters:
 
-- `influencer_video_url` (string, required): URL or path of the influencer video.
-- `demo_footage_url` (string, required): URL or path of the demo footage.
-- `captions` (string, optional): Text for the opening captions on the video.
-- `user_uuid` (string, optional): Unique user identifier used to create a dedicated subfolder in the Supabase Storage bucket for organizing videos.
+- `influencerVideoUrl` (string, required): URL of the influencer video to process
+- `demoFootageUrl` (string, required): URL of the demo footage to append
+- `captionText` (string, optional): Text to overlay on the video
+- `captionPosition` (string, optional): Position of the caption text. Must be one of: "top", "middle", or "bottom". Defaults to "bottom"
+- `userUuid` (string, optional): Optional user ID to organize videos in folders
 
 Example usage:
 ```javascript
@@ -77,10 +72,11 @@ fetch('/api/create-video', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    influencer_video_url: 'https://example.com/influencer.mp4',
-    demo_footage_url: 'https://example.com/demo.mp4',
-    captions: 'Opening Caption',
-    user_uuid: 'user-1234'
+    influencerVideoUrl: 'https://example.com/influencer.mp4',
+    demoFootageUrl: 'https://example.com/demo.mp4',
+    captionText: 'Check out this awesome product!',
+    captionPosition: 'top',
+    userUuid: 'user-1234'
   })
 });
 ```
@@ -96,5 +92,6 @@ fetch('/api/create-video', {
 
 ## Changelog
 
+- 2025-02-05: Updated video creation API parameters to match new schema (influencerVideoUrl, demoFootageUrl, captionText, captionPosition)
 - 2025-02-05: Fixed TypeScript type error in `app/dashboard/create/page.tsx` by updating the state initialization for `items`. Changed from `useState([])` to `useState<{ id: string; loading: boolean }[]>([])` for proper typing.
-- 2025-02-05: Fixed createVideo type error by passing the required arguments (influencer_video_url, demo_footage_url, captions, and user_uuid) in the call from the create page.
+- 2025-02-05: Fixed createVideo type error by passing the required arguments in the call from the create page.

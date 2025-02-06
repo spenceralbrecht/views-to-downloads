@@ -7,29 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { uploadDemoVideo, createVideo } from '../actions'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { VideoCard, type OutputContent } from '@/components/video-card'
 
 interface OutputContent {
   id: string
   url: string
   created_at: string
   status: string
-}
-
-function VideoCard({ video }: { video: OutputContent }) {
-  return (
-    <Card className="p-4 space-y-2">
-      <video 
-        src={video.url} 
-        controls 
-        className="w-full rounded-lg"
-        style={{ maxHeight: '400px' }}
-      />
-      <div className="flex justify-between items-center text-sm text-gray-500">
-        <span>Created: {new Date(video.created_at).toLocaleDateString()}</span>
-        <span>Status: {video.status}</span>
-      </div>
-    </Card>
-  )
 }
 
 export default function CreateAd() {
@@ -209,10 +193,11 @@ export default function CreateAd() {
     startTransition(async () => {
       try {
         const result = await createVideo({
-          influencer_video_url: influencerVideoUrl,
-          demo_footage_url: selectedDemoVideo,
-          captions: captionText,
-          user_uuid: user.id,
+          influencerVideoUrl: selectedInfluencerVideo,
+          demoFootageUrl: selectedDemoVideo,
+          captionText: captionText,
+          captionPosition: textPosition,
+          userUuid: user.id,
           app_id: apps.id
         });
 

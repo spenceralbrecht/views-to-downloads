@@ -120,7 +120,12 @@ The external API `content-creation-api.replit.app` is used to create videos and 
 
 and expects this as input parameters:
 
-influencer_video_url (string, required): URL or path of the influencer video.
-demo_footage_url (string, required): URL or path of the demo footage.
-captions (string, optional): Text for the opening captions on the video.
-user_uuid (string, optional): Unique user identifier used to create a dedicated subfolder in the Supabase Storage bucket for organizing videos.
+POST /api/create-video
+This endpoint accepts a JSON body with the following parameters:
+
+Parameter	Type	Required	Description
+influencerVideoUrl	string	Yes	URL of the influencer video to process
+demoFootageUrl	string	Yes	URL of the demo footage to append
+captionText	string	No	Text to overlay on the video
+captionPosition	string	No	Position of the caption text. Must be one of: "top", "middle", or "bottom". Defaults to "bottom"
+userUuid	string	No	Optional user ID to organize videos in folders

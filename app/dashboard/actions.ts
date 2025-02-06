@@ -181,10 +181,11 @@ export async function getApps() {
 }
 
 interface VideoCreationRequest {
-  influencer_video_url: string;
-  demo_footage_url: string;
-  captions?: string;
-  user_uuid?: string;
+  influencerVideoUrl: string
+  demoFootageUrl: string
+  captionText?: string
+  captionPosition?: 'top' | 'middle' | 'bottom'
+  userUuid?: string
 }
 
 interface VideoCreationResponse {
@@ -199,7 +200,7 @@ interface VideoCreationResponse {
 }
 
 async function callVideoCreationAPI(params: VideoCreationRequest): Promise<VideoCreationResponse> {
-  const response = await fetch('https://content-creation-api.replit.app/api/create-video', {
+  const response = await fetch('https://content-creation-api-ydf6.onrender.com/api/create-video', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -226,10 +227,11 @@ export async function createVideo(videoData: VideoCreationRequest & { app_id: st
   try {
     // Call the external API first to get the video URL
     const { video_url, details } = await callVideoCreationAPI({
-      influencer_video_url: videoData.influencer_video_url,
-      demo_footage_url: videoData.demo_footage_url,
-      captions: videoData.captions,
-      user_uuid: videoData.user_uuid
+      influencerVideoUrl: videoData.influencerVideoUrl,
+      demoFootageUrl: videoData.demoFootageUrl,
+      captionText: videoData.captionText,
+      captionPosition: videoData.captionPosition,
+      userUuid: videoData.userUuid
     });
 
     // Create the output content record with the returned URL
@@ -237,7 +239,7 @@ export async function createVideo(videoData: VideoCreationRequest & { app_id: st
       .from('output_content')
       .insert([{
         app_id: videoData.app_id,
-        user_id: videoData.user_uuid,
+        user_id: videoData.userUuid,
         status: 'completed',
         url: video_url
       }])
