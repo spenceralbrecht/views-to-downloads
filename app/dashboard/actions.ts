@@ -200,25 +200,39 @@ interface VideoCreationResponse {
 }
 
 async function callVideoCreationAPI(params: VideoCreationRequest): Promise<VideoCreationResponse> {
-  const response = await fetch('https://content-creation-api-ydf6.onrender.com/api/create-video', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(params),
-  });
-
-  if (!response.ok) {
-    throw new Error(`API call failed: ${response.statusText}`);
-  }
-
-  const data = await response.json();
+  console.log('Calling video creation API with params:', JSON.stringify(params, null, 2));
   
-  if (data.status !== 'success' || !data.video_url) {
-    throw new Error('API response invalid or missing video_url');
-  }
+  try {
+    const response = await fetch('https://content-creation-api-ydf6.onrender.com/api/create-video', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
 
-  return data;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Video creation API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
+      throw new Error(`API call failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Video creation API response:', JSON.stringify(data, null, 2));
+    
+    if (data.status !== 'success' || !data.video_url) {
+      throw new Error('API response invalid or missing video_url');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in callVideoCreationAPI:', error);
+    throw error;
+  }
 }
 
 export async function createVideo(videoData: VideoCreationRequest & { app_id: string }) {
