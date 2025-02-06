@@ -203,7 +203,7 @@ async function callVideoCreationAPI(params: VideoCreationRequest): Promise<Video
   console.log('Calling video creation API with params:', JSON.stringify(params, null, 2));
   
   try {
-    const response = await fetch('https://content-creation-api-ydf6.onrender.com/api/create-video', {
+    const response = await fetch('https://content-creation-api-python.onrender.com/api/create-video', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
