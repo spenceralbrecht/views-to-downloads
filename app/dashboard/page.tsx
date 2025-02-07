@@ -2,9 +2,9 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { PlaceholderContent } from "@/components/dashboard/PlaceholderContent"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Video, ImageIcon, User, Sparkles } from "lucide-react"
+import { OnboardingChecklist } from '@/components/onboarding-checklist'
 
 export default async function Dashboard() {
   const supabase = createServerComponentClient({ cookies })
@@ -16,12 +16,6 @@ export default async function Dashboard() {
 
   return (
     <div className="dashboard-container">
-      <header className="dashboard-header">
-        <h1>My Apps</h1>
-        <Link href="/dashboard/add-app" title="Add New App">
-          <button type="button" className="add-app-button">+</button>
-        </Link>
-      </header>
       <div>
         <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
         
@@ -75,7 +69,8 @@ export default async function Dashboard() {
           </Link>
         </div>
 
-        <PlaceholderContent />
+        {/* Onboarding Checklist */}
+        <OnboardingChecklist />
       </div>
     </div>
   )

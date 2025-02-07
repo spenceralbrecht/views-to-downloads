@@ -2,6 +2,8 @@
 
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { z } from 'zod'
+import { appDataSchema, type FirecrawlResponse } from '@/types/firecrawl'
 
 export async function joinWaitlist(email: string) {
   const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
@@ -170,23 +172,31 @@ export async function addApp(url: string) {
 
   console.log('Successfully created app:', newApp.id)
 
-  // Return the app data immediately while scraping happens in background
+  // Return the app data immediately while extraction happens in background
   const returnValue = { success: true, app: newApp }
 
   if (process.env.FIRECRAWL_API_KEY) {
-    console.log('FIRECRAWL_API_KEY found, starting scraping')
-    // Trigger asynchronous scraping without blocking the response
+    console.log('FIRECRAWL_API_KEY found:', process.env.FIRECRAWL_API_KEY.substring(0, 5) + '...')
     try {
-      console.log('Starting firecrawl scraping for:', url)
+      console.log('Starting firecrawl extraction for:', url)
       const { default: FirecrawlApp } = await import('@mendable/firecrawl-js')
       const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY })
 
-      const scrapeResponse = await firecrawl.scrapeUrl(url, { formats: ['markdown', 'html'] })
-      console.log('Firecrawl response received, success:', scrapeResponse.success)
+      console.log('Calling Firecrawl extract with schema')
+      const extractResponse = await firecrawl.extract([url], {
+        prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
+        schema: appDataSchema
+      }) as FirecrawlResponse
 
-      if (scrapeResponse.success) {
-        const description = scrapeResponse.markdown
-        console.log('Description to be saved for app ID:', newApp.id)
+      console.log('Raw Firecrawl response:', JSON.stringify(extractResponse, null, 2))
+
+      if (extractResponse.success && extractResponse.data) {
+        const { app_name, app_description, app_logo_url } = extractResponse.data
+        console.log('Extracted app data:', {
+          app_name,
+          app_description: app_description?.substring(0, 50) + '...',
+          app_logo_url
+        })
 
         // First verify the app exists
         const { data: existingApp, error: checkError } = await supabase
@@ -200,34 +210,52 @@ export async function addApp(url: string) {
           return
         }
 
-        // Update the app_description field in the apps table
+        console.log('Updating app with extracted data...')
+        // Update all extracted fields in the apps table
+        const updateData = {
+          ...(app_name && { app_name }),
+          ...(app_description && { app_description }),
+          ...(app_logo_url && { app_logo_url })
+        }
+        
+        console.log('Update data being sent to Supabase:', updateData)
         const { error: updateError } = await supabase
           .from('apps')
-          .update({ app_description: description })
+          .update(updateData)
           .eq('id', newApp.id)
 
         if (updateError) {
-          console.error('Error updating app description:', updateError)
+          console.error('Error updating app details:', updateError)
         } else {
           // Verify the update by fetching the updated row
           const { data: verifyData, error: verifyError } = await supabase
             .from('apps')
-            .select('id, app_description')
+            .select('id, app_name, app_description, app_logo_url')
             .eq('id', newApp.id)
             .single()
 
-          console.log('Update verification:', {
+          console.log('Final app data in database:', {
             success: !verifyError,
             appId: newApp.id,
-            hasDescription: !!verifyData?.app_description,
-            descriptionLength: verifyData?.app_description?.length
+            data: verifyData
           })
         }
       } else {
-        console.error('Failed to scrape URL:', scrapeResponse.error)
+        console.error('Failed to extract app data:', {
+          success: extractResponse.success,
+          error: extractResponse.error,
+          data: extractResponse.data
+        })
       }
     } catch (error) {
-      console.error('Error during asynchronous scraping:', error)
+      console.error('Error during extraction:', error)
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        })
+      }
     }
   } else {
     console.log('No FIRECRAWL_API_KEY found in environment')
@@ -249,14 +277,14 @@ export async function getApps() {
   console.log('Fetching apps for user:', session.user.id)
   const { data, error } = await supabase
     .from('apps')
-    .select('id, app_store_url, app_description, created_at')
+    .select('id, app_store_url, app_name, app_description, app_logo_url, created_at')
     .eq('owner_id', session.user.id)
     .order('created_at', { ascending: false })
 
   if (error) {
     console.error('Error fetching apps:', error)
   } else {  
-    console.log('Fetched apps')
+    console.log('Fetched apps:', data)
   }
 
   return { data, error }

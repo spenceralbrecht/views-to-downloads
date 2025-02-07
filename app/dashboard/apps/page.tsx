@@ -5,9 +5,8 @@ import { useState, useTransition, useEffect } from 'react'
 import { AddAppModal } from "@/components/AddAppModal"
 import { AppDetailsModal } from "@/components/AppDetailsModal"
 import { LoadingAppCard } from "@/components/LoadingAppCard"
+import { AppCard } from "@/components/AppCard"
 import { addApp, getApps, deleteApp } from "../actions"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Trash2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +21,9 @@ import {
 type App = {
   id: string
   app_store_url: string
+  app_name?: string
   app_description?: string
+  app_logo_url?: string
   created_at: string
 }
 
@@ -117,87 +118,63 @@ export default function AppsPage() {
         </Button>
       </div>
 
+      {error && (
+        <div className="w-full max-w-6xl mb-4">
+          <p className="text-red-500">{error}</p>
+        </div>
+      )}
+
       {apps.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
           {apps.map((app) => 
             loadingApps.includes(app.id) ? (
               <LoadingAppCard key={app.id} />
             ) : (
-              <Card 
-                key={app.id} 
-                className="p-6 bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
-                onClick={(e) => handleCardClick(app, e)}
-              >
-                <CardHeader className="p-0 mb-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold">
-                      {new URL(app.app_store_url).hostname}
-                    </CardTitle>
-                    <span className="text-sm text-gray-500">
-                      {new Date(app.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <p className="text-gray-600 break-all mb-4">{app.app_store_url}</p>
-                  <div className="absolute bottom-6 right-6">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="delete-button h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setAppToDelete(app)
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <AppCard
+                key={app.id}
+                app={{
+                  app_name: app.app_name || '',
+                  app_description: app.app_description || '',
+                  app_logo_url: app.app_logo_url || '',
+                  app_store_url: app.app_store_url
+                }}
+                onClick={() => setSelectedApp(app)}
+              />
             )
           )}
         </div>
       ) : (
-        <div className="flex flex-col items-center">
-          <div className="text-center mb-8">
-            <h2 className="text-xl font-semibold">No apps connected yet</h2>
-            <p className="text-gray-600">Connect your first app to start generating content</p>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="mt-8 text-red-500 text-sm">
-          Error: {error}
+        <div className="text-center text-gray-500">
+          {isLoading ? 'Loading apps...' : 'No apps connected yet'}
         </div>
       )}
 
       <AddAppModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onAddApp={handleAddApp}
+        onSubmit={handleAddApp}
         isPending={isPending}
       />
 
       <AppDetailsModal
-        open={selectedApp !== null}
+        open={!!selectedApp}
         onOpenChange={(open) => !open && setSelectedApp(null)}
         app={selectedApp}
+        onDelete={handleDeleteApp}
       />
 
-      <AlertDialog open={appToDelete !== null} onOpenChange={(open) => !open && setAppToDelete(null)}>
+      <AlertDialog open={!!appToDelete} onOpenChange={() => setAppToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the app and all associated data. This action cannot be undone.
+              This will permanently delete this app and all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-500 hover:bg-red-600"
               onClick={() => appToDelete && handleDeleteApp(appToDelete)}
             >
               Delete
