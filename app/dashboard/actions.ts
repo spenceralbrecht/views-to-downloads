@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { appDataSchema, type FirecrawlResponse } from '@/types/firecrawl'
 import { generateAppDescription } from '@/utils/openai'
+import { OpenAI } from 'openai'
 
 export async function joinWaitlist(email: string) {
   const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
@@ -330,4 +331,104 @@ export async function deleteApp(appId: string) {
 
   revalidatePath('/dashboard/apps')
   return { success: true }
+}
+
+export async function generateHooks(appId: string) {
+  try {
+    const supabase = createServerActionClient({ cookies })
+    
+    // Get user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError) throw userError
+
+    // Get app details
+    const { data: app, error: appError } = await supabase
+      .from('apps')
+      .select('app_description')
+      .eq('id', appId)
+      .single()
+    
+    if (appError) throw appError
+    if (!app?.app_description) throw new Error('No app description found')
+
+    // Generate hooks using OpenAI
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+
+    const response = await openai.chat.completions.create({
+      model: 'o3-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a social media expert who creates engaging hooks for TikTok videos. Return your response as a JSON array of strings, with each string being a hook.'
+        },
+        {
+          role: 'user',
+          content: `Generate 10 one sentence hooks for TikTok videos based on this app description: ${app.app_description}`
+        }
+      ],
+      response_format: { type: "json_object" }
+    })
+
+    const content = response.choices[0].message.content
+    if (!content) throw new Error('No hooks generated')
+
+    const { hooks } = JSON.parse(content)
+    if (!Array.isArray(hooks)) throw new Error('Invalid hooks format')
+
+    // Save hooks to Supabase
+    const { data: savedHooks, error: insertError } = await supabase
+      .from('hooks')
+      .insert(
+        hooks.map(hook => ({
+          app_id: appId,
+          user_id: user.id,
+          hook_text: hook
+        }))
+      )
+      .select()
+
+    if (insertError) throw insertError
+
+    revalidatePath('/dashboard/hooks')
+    return { success: true, hooks: savedHooks }
+  } catch (error) {
+    console.error('Error generating hooks:', error)
+    return { error: error instanceof Error ? error.message : 'Failed to generate hooks' }
+  }
+}
+
+export async function getHooks(appId: string) {
+  try {
+    const supabase = createServerActionClient({ cookies })
+    const { data, error } = await supabase
+      .from('hooks')
+      .select('*')
+      .eq('app_id', appId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return { data }
+  } catch (error) {
+    console.error('Error getting hooks:', error)
+    return { error: error instanceof Error ? error.message : 'Failed to get hooks' }
+  }
+}
+
+export async function deleteHook(hookId: string) {
+  try {
+    const supabase = createServerActionClient({ cookies })
+    const { error } = await supabase
+      .from('hooks')
+      .delete()
+      .eq('id', hookId)
+
+    if (error) throw error
+    revalidatePath('/dashboard/hooks')
+    return { success: true }
+  } catch (error) {
+    console.error('Error deleting hook:', error)
+    return { error: error instanceof Error ? error.message : 'Failed to delete hook' }
+  }
 }
