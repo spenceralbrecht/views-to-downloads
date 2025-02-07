@@ -107,25 +107,37 @@ This schema enables:
 This relational setup ensures scalability and maintains a clear structure for managing applications and their associated user-generated content.
 
 ## External Video Creation API
-The external API `content-creation-api.replit.app` is used to create videos and returns with this format: {
-    "status": "success",
-    "video_url": "https://zxwbqdkqgxhtdnvmukll.supabase.co/storage/v1/object/public/result-content/user_e3d6c0cc-e5c2-4589-a280-fcf35f602918/generated_video_1738799948146.mp4",
-    "details": {
-        "duration": 52.236236,
-        "processingTime": 3,
-        "captions": "hey what are u doing?",
-        "user_folder": "user_e3d6c0cc-e5c2-4589-a280-fcf35f602918"
-    }
-} 
-
-and expects this as input parameters:
-
 POST /api/create-video
-This endpoint accepts a JSON body with the following parameters:
+Process and combine videos with optional caption overlay.
 
-Parameter	Type	Required	Description
-influencerVideoUrl	string	Yes	URL of the influencer video to process
-demoFootageUrl	string	Yes	URL of the demo footage to append
-captionText	string	No	Text to overlay on the video
-captionPosition	string	No	Position of the caption text. Must be one of: "top", "middle", or "bottom". Defaults to "bottom"
-userUuid	string	No	Optional user ID to organize videos in folders
+Request Body:
+
+{
+  "influencerVideoUrl": "string (valid HTTP/HTTPS URL)",
+  "demoFootageUrl": "string (valid HTTP/HTTPS URL)",
+  "captionText": "string (optional)",
+  "captionPosition": "string (optional, enum: 'top', 'middle', 'bottom', default: 'bottom')",
+  "userUuid": "string (optional)"
+}
+Response:
+
+{
+  "status": "string",
+  "video_url": "string (URL to processed video)",
+  "details": {
+    "duration": "float (video duration in seconds)"
+  }
+}
+Error Responses:
+
+500 Internal Server Error: When video processing or upload fails
+{
+  "detail": "string (error message)"
+}
+Notes:
+
+Both input video URLs must be publicly accessible HTTP/HTTPS URLs
+Maximum video size and duration limits may apply based on server configuration
+Processing time varies based on video length and complexity
+The response video URL will be a Supabase storage URL
+Processed videos are automatically cleaned up from local storage after upload

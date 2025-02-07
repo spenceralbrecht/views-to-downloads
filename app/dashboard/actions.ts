@@ -189,13 +189,10 @@ interface VideoCreationRequest {
 }
 
 interface VideoCreationResponse {
-  status: 'success';
+  status: string;
   video_url: string;
   details: {
     duration: number;
-    processingTime: number;
-    captions: string;
-    user_folder: string;
   };
 }
 
