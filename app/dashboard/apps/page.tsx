@@ -1,149 +1,140 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
-import { useState, useTransition, useEffect } from 'react'
 import { AddAppModal } from "@/components/AddAppModal"
 import { AppDetailsModal } from "@/components/AppDetailsModal"
-import { LoadingAppCard } from "@/components/LoadingAppCard"
 import { AppCard } from "@/components/AppCard"
+import { AppCardSkeleton } from "@/components/AppCardSkeleton"
 import { addApp, getApps, deleteApp } from "../actions"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { useToast } from "@/components/ui/use-toast"
 
 type App = {
   id: string
+  app_name: string
+  app_logo_url: string
   app_store_url: string
-  app_name?: string
-  app_description?: string
-  app_logo_url?: string
-  created_at: string
+  app_description: string
 }
 
 export default function AppsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedApp, setSelectedApp] = useState<App | null>(null)
-  const [appToDelete, setAppToDelete] = useState<App | null>(null)
-  const [isPending, startTransition] = useTransition()
-  const [error, setError] = useState<string|null>(null)
   const [apps, setApps] = useState<App[]>([])
-  const [loadingApps, setLoadingApps] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isAddingApp, setIsAddingApp] = useState(false)
+  const [isDeletingApp, setIsDeletingApp] = useState(false)
+  const { toast } = useToast()
 
-  // Initial load
   useEffect(() => {
     const loadApps = async () => {
       const { data, error } = await getApps()
-      if (data) setApps(data)
-      if (error) setError(error)
+      if (error) {
+        toast({
+          title: "Error loading apps",
+          description: error,
+          variant: "destructive",
+        })
+      } else if (data) {
+        setApps(data)
+      }
       setIsLoading(false)
     }
     loadApps()
-  }, [])
+  }, [toast])
 
   const handleAddApp = async (url: string) => {
-    setError(null)
-    startTransition(async () => {
-      const result = await addApp(url)
-      if (result.success) {
-        // Close modal first
-        setIsModalOpen(false)
-        
-        if (result.app) {
-          // Add the new app to the list
-          setApps(prev => [...prev, result.app])
-          
-          // Refresh the list to get the enhanced description
-          const { data } = await getApps()
-          if (data) {
-            setApps(data)
-          }
-        }
-      } else {
-        setError(result.error || 'Failed to add app')
+    setIsAddingApp(true)
+    const result = await addApp(url)
+    
+    if (result.error) {
+      toast({
+        title: "Error adding app",
+        description: result.error,
+        variant: "destructive",
+      })
+    } else if (result.success) {
+      // Refresh the apps list
+      const { data } = await getApps()
+      if (data) {
+        setApps(data)
       }
-    })
+      setIsModalOpen(false)
+      toast({
+        title: "App added",
+        description: "The app has been added successfully.",
+      })
+    }
+    setIsAddingApp(false)
   }
 
   const handleDeleteApp = async (app: App) => {
-    startTransition(async () => {
-      const result = await deleteApp(app.id)
-      if (result.success) {
-        setApps(prev => prev.filter(a => a.id !== app.id))
-      } else {
-        setError(result.error || 'Failed to delete app')
-      }
-      setAppToDelete(null)
-    })
-  }
+    if (!app?.id) return
 
-  const handleCardClick = (app: App, e: React.MouseEvent) => {
-    // Prevent opening details modal when clicking delete button
-    if ((e.target as HTMLElement).closest('.delete-button')) {
-      e.stopPropagation()
-      setAppToDelete(app)
-      return
+    setIsDeletingApp(true)
+    const result = await deleteApp(app.id)
+    
+    if (result.error) {
+      toast({
+        title: "Error deleting app",
+        description: result.error,
+        variant: "destructive",
+      })
+    } else {
+      setApps(prev => prev.filter(a => a.id !== app.id))
+      setSelectedApp(null)
+      toast({
+        title: "App deleted",
+        description: "The app has been deleted successfully.",
+      })
     }
-    setSelectedApp(app)
+    setIsDeletingApp(false)
   }
 
   return (
-    <div className="flex flex-col items-center min-h-screen bg-gray-50 p-8">
-      <h1 className="text-3xl font-bold mb-8">Connected Apps</h1>
-      
-      <div className="w-full max-w-6xl mb-8">
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-semibold">Your Apps</h1>
         <Button 
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center space-x-2 bg-white border border-gray-300 rounded-lg px-4 py-2 shadow-sm"
+          className="bg-black text-white hover:bg-gray-800"
         >
-          <span className="text-gray-600">+</span>
-          <span>Connect New App</span>
+          <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Add New App
         </Button>
       </div>
 
-      {error && (
-        <div className="w-full max-w-6xl mb-4">
-          <p className="text-red-500">{error}</p>
-        </div>
-      )}
-
-      {apps.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
-          {apps.map((app) => 
-            loadingApps.includes(app.id) ? (
-              <LoadingAppCard key={app.id} />
-            ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {isLoading ? (
+          // Show 3 skeleton cards while loading
+          Array.from({ length: 3 }).map((_, i) => (
+            <AppCardSkeleton key={i} />
+          ))
+        ) : apps.length > 0 ? (
+          <>
+            {apps.map(app => (
               <AppCard
                 key={app.id}
-                app={{
-                  app_name: app.app_name || '',
-                  app_description: app.app_description || '',
-                  app_logo_url: app.app_logo_url || '',
-                  app_store_url: app.app_store_url
-                }}
+                app={app}
                 onClick={() => setSelectedApp(app)}
               />
-            )
-          )}
-        </div>
-      ) : (
-        <div className="text-center text-gray-500">
-          {isLoading ? 'Loading apps...' : 'No apps connected yet'}
-        </div>
-      )}
+            ))}
+            {isAddingApp && <AppCardSkeleton />}
+          </>
+        ) : (
+          <div className="col-span-full text-center py-12">
+            <p className="text-gray-500">No apps yet. Click "Add New App" to get started.</p>
+          </div>
+        )}
+      </div>
 
       <AddAppModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         onAddApp={handleAddApp}
-        isPending={isPending}
+        isLoading={isAddingApp}
       />
 
       <AppDetailsModal
@@ -151,27 +142,8 @@ export default function AppsPage() {
         onOpenChange={(open) => !open && setSelectedApp(null)}
         app={selectedApp}
         onDelete={handleDeleteApp}
+        isDeleting={isDeletingApp}
       />
-
-      <AlertDialog open={!!appToDelete} onOpenChange={() => setAppToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this app and all associated data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-500 hover:bg-red-600"
-              onClick={() => appToDelete && handleDeleteApp(appToDelete)}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

@@ -32,13 +32,15 @@ type AppDetailsModalProps = {
     app_logo_url: string
   } | null
   onDelete?: (appId: string) => void
+  isDeleting?: boolean
 }
 
 export function AppDetailsModal({
   open,
   onOpenChange,
   app,
-  onDelete
+  onDelete,
+  isDeleting
 }: AppDetailsModalProps) {
   if (!app) return null
 
@@ -46,34 +48,67 @@ export function AppDetailsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] h-[85vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-2">
-          <div className="flex items-center gap-4">
-            {app.app_logo_url ? (
-              <div className="h-16 w-16 relative rounded-lg overflow-hidden flex-shrink-0">
-                <Image
-                  src={app.app_logo_url}
-                  alt={`${app.app_name} logo`}
-                  fill
-                  className="object-cover"
-                />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {app.app_logo_url ? (
+                <div className="h-16 w-16 relative rounded-lg overflow-hidden flex-shrink-0">
+                  <Image
+                    src={app.app_logo_url}
+                    alt={`${app.app_name} logo`}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-gray-400 text-3xl">?</span>
+                </div>
+              )}
+              <div>
+                <DialogTitle className="text-xl font-semibold">
+                  {app.app_name || 'Unnamed App'}
+                </DialogTitle>
+                <a 
+                  href={app.app_store_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 text-sm"
+                >
+                  View in App Store
+                </a>
               </div>
-            ) : (
-              <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-gray-400 text-3xl">?</span>
-              </div>
-            )}
-            <div>
-              <DialogTitle className="text-xl font-semibold">
-                {app.app_name || 'Unnamed App'}
-              </DialogTitle>
-              <a 
-                href={app.app_store_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 text-sm"
-              >
-                View in App Store
-              </a>
             </div>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50"
+                  disabled={isDeleting}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete App</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete {app.app_name}? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-red-500 hover:bg-red-600 text-white"
+                    onClick={() => onDelete?.(app.id)}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </DialogHeader>
 
@@ -92,42 +127,6 @@ export function AppDetailsModal({
             </div>
           </div>
         </ScrollArea>
-
-        {onDelete && (
-          <div className="p-6 pt-4 flex justify-end border-t">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete App</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this app? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-red-500 hover:bg-red-600"
-                    onClick={() => {
-                      onDelete(app.id)
-                      onOpenChange(false)
-                    }}
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   )

@@ -271,66 +271,106 @@ async function callVideoCreationAPI(params: VideoCreationRequest): Promise<Video
   }
 }
 
-export async function createVideo(videoData: VideoCreationRequest & { app_id: string }) {
-  const supabase = createServerActionClient({ cookies })
-  
+export async function createVideo(
+  influencerVideoUrl: string,
+  demoFootageUrl: string,
+  captionText: string,
+  captionPosition: 'top' | 'middle' | 'bottom',
+  appId: string
+) {
   try {
-    // Call the external API first to get the video URL
-    const { video_url, details } = await callVideoCreationAPI({
-      influencerVideoUrl: videoData.influencerVideoUrl,
-      demoFootageUrl: videoData.demoFootageUrl,
-      captionText: videoData.captionText,
-      captionPosition: videoData.captionPosition,
-      userUuid: videoData.userUuid,
-      appId: videoData.app_id  // Pass appId to the API
-    });
+    const supabase = createServerActionClient({ cookies })
+    
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('User not authenticated')
 
-    // Create the output content record with the returned URL
+    // First create a pending record in output_content
     const { data: outputContent, error: insertError } = await supabase
       .from('output_content')
-      .insert([{
-        app_id: videoData.app_id,
-        user_id: videoData.userUuid,
-        status: 'completed',
-        url: video_url
-      }])
+      .insert({
+        app_id: appId,
+        user_id: user.id,
+        status: 'pending',
+      })
       .select()
-      .single();
+      .single()
 
-    if (insertError) {
-      throw new Error(`Failed to create output content: ${insertError.message}`);
+    if (insertError) throw insertError
+
+    // Call the external API to create the video
+    const response = await fetch(`${process.env.VIDEO_API_URL}/create-video`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.VIDEO_API_KEY}`
+      },
+      body: JSON.stringify({
+        influencerVideoUrl,
+        demoFootageUrl,
+        captionText,
+        captionPosition,
+        userUuid: user.id,
+        appId,
+        outputId: outputContent.id // Pass the output ID to link the result
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.detail || 'Failed to create video')
     }
 
-    return { 
-      success: true, 
-      data: {
-        ...outputContent,
-        details  // Include processing details in response
-      }
-    };
+    const result = await response.json()
+
+    // Update the existing record with the video URL and status
+    const { error: updateError } = await supabase
+      .from('output_content')
+      .update({
+        url: result.video_url,
+        status: 'completed'
+      })
+      .eq('id', outputContent.id)
+
+    if (updateError) throw updateError
+
+    return { success: true, video: { ...outputContent, url: result.video_url, status: 'completed' } }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    console.error('Error in createVideo:', { message: errorMessage, originalError: error });
-    throw new Error(errorMessage);
+    console.error('Error creating video:', error)
+    return { error: error instanceof Error ? error.message : 'Failed to create video' }
   }
 }
 
 export async function deleteApp(appId: string) {
-  'use server'
-  
-  const supabase = createServerActionClient({ cookies })
-  const { error } = await supabase
-    .from('apps')
-    .delete()
-    .eq('id', appId)
+  try {
+    if (!appId) {
+      throw new Error('App ID is required')
+    }
 
-  if (error) {
+    const supabase = createServerActionClient({ cookies })
+    
+    // Delete hooks first due to foreign key constraint
+    const { error: hooksError } = await supabase
+      .from('hooks')
+      .delete()
+      .eq('app_id', appId)
+
+    if (hooksError) throw hooksError
+
+    // Delete app
+    const { error: appError } = await supabase
+      .from('apps')
+      .delete()
+      .eq('id', appId)
+
+    if (appError) throw appError
+
+    revalidatePath('/dashboard/apps')
+    return { success: true }
+  } catch (error) {
     console.error('Error deleting app:', error)
-    return { error: error.message }
+    return { error: error instanceof Error ? error.message : 'Failed to delete app' }
   }
-
-  revalidatePath('/dashboard/apps')
-  return { success: true }
 }
 
 export async function generateHooks(appId: string) {
@@ -401,18 +441,24 @@ export async function generateHooks(appId: string) {
 
 export async function getHooks(appId: string) {
   try {
+    if (!appId) {
+      throw new Error('App ID is required')
+    }
+
     const supabase = createServerActionClient({ cookies })
+    
     const { data, error } = await supabase
       .from('hooks')
       .select('*')
       .eq('app_id', appId)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
 
     if (error) throw error
+
     return { data }
   } catch (error) {
-    console.error('Error getting hooks:', error)
-    return { error: error instanceof Error ? error.message : 'Failed to get hooks' }
+    console.error('Error fetching hooks:', error)
+    return { error: error instanceof Error ? error.message : 'Failed to fetch hooks' }
   }
 }
 
