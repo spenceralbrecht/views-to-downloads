@@ -111,6 +111,15 @@ Apps can be managed through the dashboard with the following operations:
 2. Run `npm install` (or `yarn install`) to install dependencies.
 3. Run the development server with `npm run dev`.
 
+## Environment Variables
+
+Add the following to your `.env.local`:
+
+```bash
+# Stripe Configuration
+NEXT_PUBLIC_STRIPE_ENV=development # or 'production' for live environment
+```
+
 ## API Endpoints
 
 ### Create Video

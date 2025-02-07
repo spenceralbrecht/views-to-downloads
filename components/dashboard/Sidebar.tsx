@@ -9,6 +9,7 @@ import { User } from '@supabase/supabase-js'
 import { signOut } from '@/app/auth/actions'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { ImageIcon, User as UserIcon, Sparkles } from "lucide-react"
+import { stripeConfig } from '@/config/stripe'
 
 interface SidebarProps {
   user: User | null;
@@ -26,7 +27,7 @@ export function Sidebar({ user }: SidebarProps) {
 
   const bottomNav = [
     { name: 'Support', href: '/dashboard/support', icon: HelpCircle },
-    { name: 'Billing', href: '/dashboard/billing', icon: CreditCard },
+    { name: 'Billing', href: stripeConfig.checkoutLinks.standard, icon: CreditCard },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ]
 
@@ -118,4 +119,3 @@ export function Sidebar({ user }: SidebarProps) {
     </div>
   )
 }
-
