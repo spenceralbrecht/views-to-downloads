@@ -62,15 +62,17 @@ export default async function Dashboard() {
               Not Available Yet
             </div>
           </Card>
-          <Card>
-            <CardHeader>
-              <Sparkles className="h-8 w-8 mb-2 text-amber-500" />
-              <CardTitle>Hook Generator</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">Auto-magically generate and save viral hooks for your videos</p>
-            </CardContent>
-          </Card>
+          <Link href="/dashboard/hooks" className="cursor-pointer">
+            <Card>
+              <CardHeader>
+                <Sparkles className="h-8 w-8 mb-2 text-amber-500" />
+                <CardTitle>Hook Generator</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">Auto-magically generate and save viral hooks for your videos</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         <PlaceholderContent />

@@ -10,6 +10,22 @@ This is a web application for managing and creating UGC videos. The project is b
 - Create slideshow videos
 - Integrated with external content creation API to create videos
 - Manage connected apps with add/delete functionality
+- Generate viral hooks for your videos
+
+## Pages
+
+### Dashboard
+The main dashboard provides quick access to all major features:
+- UGC Video Creation
+- Slideshow Video Creation (coming soon)
+- UGC Avatar Generator (coming soon)
+- Hook Generator
+
+### Hooks Manager
+The hooks page allows users to:
+- Generate viral hooks for their connected apps
+- View and manage existing hooks
+- Add new apps if none exist
 
 ## Create Video API Integration
 
