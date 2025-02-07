@@ -221,8 +221,8 @@ async function callVideoCreationAPI(params: VideoCreationRequest): Promise<Video
     const data = await response.json();
     console.log('Video creation API response:', JSON.stringify(data, null, 2));
     
-    if (data.status !== 'success' || !data.video_url) {
-      throw new Error('API response invalid or missing video_url');
+    if (!data.video_url) {
+      throw new Error('API response missing video_url');
     }
 
     return data;

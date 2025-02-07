@@ -297,22 +297,10 @@ export default function CreateAd() {
                         : 'border-gray-200'
                     }`}
                   >
-                    <video
-                      src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/${num}.mp4`}
-                      preload="metadata"
+                    <img
+                      src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/thumbnail-${num}.png`}
+                      alt={`UGC Video ${num}`}
                       className="w-full h-full object-cover"
-                      onLoadedData={(e) => {
-                        const video = e.currentTarget;
-                        const canvas = document.createElement('canvas');
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        const ctx = canvas.getContext('2d');
-                        if (ctx) {
-                          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                          const dataUrl = canvas.toDataURL();
-                          video.parentElement.style.backgroundImage = `url(${dataUrl})`;
-                        }
-                      }}
                     />
                   </button>
                 ))}
