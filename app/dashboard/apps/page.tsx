@@ -52,30 +52,20 @@ export default function AppsPage() {
     setError(null)
     startTransition(async () => {
       const result = await addApp(url)
-      if (result.success && result.app) {
-        setApps(prev => [...prev, result.app])
-        setLoadingApps(prev => [...prev, result.app.id])
+      if (result.success) {
+        // Close modal first
         setIsModalOpen(false)
-
-        // Poll for updates to get the description
-        const pollInterval = setInterval(async () => {
+        
+        if (result.app) {
+          // Add the new app to the list
+          setApps(prev => [...prev, result.app])
+          
+          // Refresh the list to get the enhanced description
           const { data } = await getApps()
           if (data) {
-            const updatedApp = data.find(app => app.id === result.app.id)
-            if (updatedApp?.app_description) {
-              setApps(prev => prev.map(app => 
-                app.id === updatedApp.id ? updatedApp : app
-              ))
-              setLoadingApps(prev => prev.filter(id => id !== result.app.id))
-              clearInterval(pollInterval)
-            }
+            setApps(data)
           }
-        }, 2000)
-
-        setTimeout(() => {
-          clearInterval(pollInterval)
-          setLoadingApps(prev => prev.filter(id => id !== result.app.id))
-        }, 30000)
+        }
       } else {
         setError(result.error || 'Failed to add app')
       }
@@ -152,7 +142,7 @@ export default function AppsPage() {
       <AddAppModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onSubmit={handleAddApp}
+        onAddApp={handleAddApp}
         isPending={isPending}
       />
 

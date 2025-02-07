@@ -2,8 +2,10 @@
 
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { appDataSchema, type FirecrawlResponse } from '@/types/firecrawl'
+import { generateAppDescription } from '@/utils/openai'
 
 export async function joinWaitlist(email: string) {
   const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
@@ -138,130 +140,55 @@ export async function uploadDemoVideo(formData: FormData) {
   }
 }
 
-export async function addApp(url: string) {
-  'use server'
-  
-  console.log('Starting addApp for URL:', url)
-  const supabase = createServerActionClient({ cookies })
-  const { data: { session } } = await supabase.auth.getSession()
+export async function addApp(appStoreUrl: string) {
+  try {
+    // Get user
+    const supabase = createServerActionClient({ cookies })
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError) throw userError
 
-  if (!session) {
-    console.log('No session found')
-    return { success: false, error: 'User not authenticated' }
-  }
+    // Extract app data from Firecrawl
+    const { default: FirecrawlApp } = await import('@mendable/firecrawl-js')
+    const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY })
 
-  console.log('User authenticated:', session.user.id)
-  const { data: newApp, error } = await supabase
-    .from('apps')
-    .insert({
-      owner_id: session.user.id,
-      app_store_url: url
-    })
-    .select()
-    .single()
+    console.log('Extracting app data for:', appStoreUrl)
+    const extractResponse = await firecrawl.extract([appStoreUrl], {
+      prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
+      schema: appDataSchema
+    }) as FirecrawlResponse
 
-  if (error) {
-    console.error('Error adding app:', error)
-    return { success: false, error: error.message }
-  }
-
-  if (!newApp) {
-    console.error('No app data returned from insert')
-    return { success: false, error: 'Failed to create app' }
-  }
-
-  console.log('Successfully created app:', newApp.id)
-
-  // Return the app data immediately while extraction happens in background
-  const returnValue = { success: true, app: newApp }
-
-  if (process.env.FIRECRAWL_API_KEY) {
-    console.log('FIRECRAWL_API_KEY found:', process.env.FIRECRAWL_API_KEY.substring(0, 5) + '...')
-    try {
-      console.log('Starting firecrawl extraction for:', url)
-      const { default: FirecrawlApp } = await import('@mendable/firecrawl-js')
-      const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY })
-
-      console.log('Calling Firecrawl extract with schema')
-      const extractResponse = await firecrawl.extract([url], {
-        prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
-        schema: appDataSchema
-      }) as FirecrawlResponse
-
-      console.log('Raw Firecrawl response:', JSON.stringify(extractResponse, null, 2))
-
-      if (extractResponse.success && extractResponse.data) {
-        const { app_name, app_description, app_logo_url } = extractResponse.data
-        console.log('Extracted app data:', {
-          app_name,
-          app_description: app_description?.substring(0, 50) + '...',
-          app_logo_url
-        })
-
-        // First verify the app exists
-        const { data: existingApp, error: checkError } = await supabase
-          .from('apps')
-          .select('id')
-          .eq('id', newApp.id)
-          .single()
-
-        if (checkError || !existingApp) {
-          console.error('Could not find app to update:', { checkError, appId: newApp.id })
-          return
-        }
-
-        console.log('Updating app with extracted data...')
-        // Update all extracted fields in the apps table
-        const updateData = {
-          ...(app_name && { app_name }),
-          ...(app_description && { app_description }),
-          ...(app_logo_url && { app_logo_url })
-        }
-        
-        console.log('Update data being sent to Supabase:', updateData)
-        const { error: updateError } = await supabase
-          .from('apps')
-          .update(updateData)
-          .eq('id', newApp.id)
-
-        if (updateError) {
-          console.error('Error updating app details:', updateError)
-        } else {
-          // Verify the update by fetching the updated row
-          const { data: verifyData, error: verifyError } = await supabase
-            .from('apps')
-            .select('id, app_name, app_description, app_logo_url')
-            .eq('id', newApp.id)
-            .single()
-
-          console.log('Final app data in database:', {
-            success: !verifyError,
-            appId: newApp.id,
-            data: verifyData
-          })
-        }
-      } else {
-        console.error('Failed to extract app data:', {
-          success: extractResponse.success,
-          error: extractResponse.error,
-          data: extractResponse.data
-        })
-      }
-    } catch (error) {
-      console.error('Error during extraction:', error)
-      if (error instanceof Error) {
-        console.error('Error details:', {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
-        })
-      }
+    if (!extractResponse.success || !extractResponse.data) {
+      console.error('Firecrawl extraction failed:', extractResponse.error)
+      throw new Error(extractResponse.error || 'Failed to extract app data')
     }
-  } else {
-    console.log('No FIRECRAWL_API_KEY found in environment')
-  }
 
-  return returnValue
+    const { app_name, app_description, app_logo_url } = extractResponse.data
+    
+    // Process description through OpenAI
+    const enhancedDescription = await generateAppDescription(app_description)
+
+    // Insert into database
+    const { data: newApp, error: insertError } = await supabase
+      .from('apps')
+      .insert({
+        owner_id: user.id,
+        app_store_url: appStoreUrl,
+        app_description: enhancedDescription,
+        app_name,
+        app_logo_url
+      })
+      .select()
+      .single()
+
+    if (insertError) throw insertError
+    if (!newApp) throw new Error('Failed to create app')
+
+    revalidatePath('/dashboard/apps')
+    return { success: true, app: newApp }
+  } catch (error) {
+    console.error('Error adding app:', error)
+    return { error: error instanceof Error ? error.message : 'Failed to add app' }
+  }
 }
 
 export async function getApps() {
@@ -391,39 +318,16 @@ export async function deleteApp(appId: string) {
   'use server'
   
   const supabase = createServerActionClient({ cookies })
-  const { data: { session } } = await supabase.auth.getSession()
-
-  if (!session) {
-    return { success: false, error: 'Not authenticated' }
-  }
-
-  // First verify the app exists and belongs to the user
-  const { data: app } = await supabase
-    .from('apps')
-    .select('owner_id')
-    .eq('id', appId)
-    .single()
-
-  if (!app || app.owner_id !== session.user.id) {
-    return { success: false, error: 'App not found or unauthorized' }
-  }
-
-  // Delete the app with a returning clause to confirm deletion
-  const { data: deletedApp, error: deleteError } = await supabase
+  const { error } = await supabase
     .from('apps')
     .delete()
     .eq('id', appId)
-    .eq('owner_id', session.user.id)
-    .select()
-    .single()
 
-  if (deleteError) {
-    return { success: false, error: deleteError.message }
+  if (error) {
+    console.error('Error deleting app:', error)
+    return { error: error.message }
   }
 
-  if (!deletedApp) {
-    return { success: false, error: 'Failed to delete app' }
-  }
-
+  revalidatePath('/dashboard/apps')
   return { success: true }
 }

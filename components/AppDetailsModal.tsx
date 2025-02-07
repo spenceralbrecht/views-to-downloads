@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import { Trash2 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import {
   Dialog,
   DialogContent,
@@ -43,8 +44,8 @@ export function AppDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col gap-0 p-0">
-        <DialogHeader className="flex-shrink-0 p-6 pb-2">
+      <DialogContent className="sm:max-w-[600px] h-[85vh] flex flex-col p-0">
+        <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-4">
             {app.app_logo_url ? (
               <div className="h-16 w-16 relative rounded-lg overflow-hidden flex-shrink-0">
@@ -76,22 +77,24 @@ export function AppDetailsModal({
           </div>
         </DialogHeader>
 
-        <div className="px-6 pb-2">
+        <div className="px-6 py-2">
           <h4 className="font-medium">Description</h4>
         </div>
 
-        <ScrollArea className="flex-1 px-6">
-          <div className="pr-4">
+        <ScrollArea className="flex-1 overflow-y-auto">
+          <div className="px-6 pb-6">
             <div className="prose prose-sm max-w-none">
-              <p className="text-gray-600 whitespace-pre-wrap">
+              <ReactMarkdown 
+                className="text-gray-600 prose prose-headings:text-gray-900 prose-headings:font-semibold prose-h1:text-lg prose-h2:text-base prose-h3:text-base prose-p:text-sm prose-ul:text-sm"
+              >
                 {app.app_description || 'No description available'}
-              </p>
+              </ReactMarkdown>
             </div>
           </div>
         </ScrollArea>
 
         {onDelete && (
-          <div className="flex-shrink-0 p-6 pt-4 flex justify-end border-t">
+          <div className="p-6 pt-4 flex justify-end border-t">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
