@@ -12,10 +12,31 @@ This is a web application for managing and creating UGC videos. The project is b
 
 ## Create Video API Integration
 
-When a user clicks the "Create" button on the create UGC page, the application makes a POST request to the following endpoint:
+When creating a UGC video, users follow these steps:
+
+1. Select the target app for the video content
+2. Enter hook text and position
+3. Choose a UGC video
+4. Upload or select demo footage
+5. Click "Create" to initiate the video creation
+
+The application then makes a POST request to:
 
 ```
 https://content-creation-api.replit.app/api/create-video
+```
+
+The API accepts the following parameters:
+
+```json
+{
+    "influencerVideoUrl": "string (required)",
+    "demoFootageUrl": "string (required)",
+    "captionText": "string (optional)",
+    "captionPosition": "string (optional, enum: 'top', 'middle', 'bottom', default: 'bottom')",
+    "userUuid": "string (required)",
+    "app_id": "string (required)"
+}
 ```
 
 The API returns a JSON response in the following format:
@@ -80,6 +101,19 @@ fetch('/api/create-video', {
   })
 });
 ```
+
+## Video Loading States
+
+The application uses Supabase's realtime features to handle video processing states. The `output_content` table includes a `status` field that can have the following values:
+
+- `in_progress`: Video is currently being processed
+- `completed`: Video processing is complete and ready for viewing
+
+The UI automatically updates when a video's status changes, providing real-time feedback to users. This is implemented using:
+
+- Supabase's realtime subscriptions for instant updates
+- Loading skeletons for videos in the "in_progress" state
+- Automatic UI refresh when processing completes
 
 ## Future Improvements
 

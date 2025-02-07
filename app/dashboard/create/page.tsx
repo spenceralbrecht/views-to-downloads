@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { uploadDemoVideo, createVideo } from '../actions'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { VideoCard, type OutputContent } from '@/components/video-card'
+import { AppSelect } from '@/components/app-select'
 
 interface OutputContent {
   id: string
@@ -17,6 +18,7 @@ interface OutputContent {
 }
 
 export default function CreateAd() {
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null)
   const [hook, setHook] = useState('')
   const [selectedVideo, setSelectedVideo] = useState<number | null>(1)
   const [isPending, startTransition] = useTransition()
@@ -159,20 +161,8 @@ export default function CreateAd() {
       return
     }
 
-    // Get the app ID for this user
-    const { data: apps, error: appsError } = await supabase
-      .from('apps')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single()
-
-    if (appsError) {
-      console.error('Error getting app:', appsError)
-      return
-    }
-
-    if (!apps?.id) {
-      console.error('No app found for user')
+    if (!selectedAppId) {
+      alert('Please select an app first')
       return
     }
 
@@ -198,7 +188,7 @@ export default function CreateAd() {
           captionText: captionText,
           captionPosition: textPosition,
           userUuid: user.id,
-          app_id: apps.id
+          app_id: selectedAppId
         });
 
         if (result.error) {
@@ -237,10 +227,19 @@ export default function CreateAd() {
       
       <Card className="p-6 bg-gray-50">
         <div className="space-y-8">
+          {/* App Selection Section */}
+          <div>
+            <h2 className="font-medium mb-2">1. Select App</h2>
+            <AppSelect
+              selectedAppId={selectedAppId}
+              onSelect={setSelectedAppId}
+            />
+          </div>
+
           {/* Hook Section */}
           <div>
             <div className="flex justify-between mb-2">
-              <h2 className="font-medium">1. Hook</h2>
+              <h2 className="font-medium">2. Hook</h2>
               <span className="text-gray-500">{hook.length}/100</span>
             </div>
             <div className="relative">
@@ -281,7 +280,7 @@ export default function CreateAd() {
           <div className="flex">
             <div className="flex-1">
               <div className="flex justify-between mb-2">
-                <h2 className="font-medium">2. UGC video</h2>
+                <h2 className="font-medium">3. UGC video</h2>
                 <span className="text-gray-500">
                   Page {currentPage} of {totalPages}
                 </span>
@@ -344,7 +343,7 @@ export default function CreateAd() {
           
           {/* Demos Section */}
           <div>
-            <h2 className="font-medium mb-2">3. Demos</h2>
+            <h2 className="font-medium mb-2">4. Demos</h2>
             <div className="flex gap-2 items-center">
               {/* New upload form for a demo video */}
               <form action={uploadDemoVideo}>

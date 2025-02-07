@@ -186,6 +186,7 @@ interface VideoCreationRequest {
   captionText?: string
   captionPosition?: 'top' | 'middle' | 'bottom'
   userUuid?: string
+  appId?: string
 }
 
 interface VideoCreationResponse {
@@ -242,7 +243,8 @@ export async function createVideo(videoData: VideoCreationRequest & { app_id: st
       demoFootageUrl: videoData.demoFootageUrl,
       captionText: videoData.captionText,
       captionPosition: videoData.captionPosition,
-      userUuid: videoData.userUuid
+      userUuid: videoData.userUuid,
+      appId: videoData.app_id  // Pass appId to the API
     });
 
     // Create the output content record with the returned URL

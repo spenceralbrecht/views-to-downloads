@@ -117,7 +117,8 @@ Request Body:
   "demoFootageUrl": "string (valid HTTP/HTTPS URL)",
   "captionText": "string (optional)",
   "captionPosition": "string (optional, enum: 'top', 'middle', 'bottom', default: 'bottom')",
-  "userUuid": "string (optional)"
+  "userUuid": "string",
+  "appId": "string"
 }
 Response:
 
