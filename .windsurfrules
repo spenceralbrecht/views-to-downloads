@@ -28,6 +28,7 @@ Stores information about different applications.
 | created_at   | `timestamptz` | Timestamp when the app was created. |
 | owner_id     | `uuid`    | Foreign key referencing `auth.users.id`, indicating the owner of the app. |
 | app_store_url | `text`    | URL to the app in the app store. |
+| app_description | `text`    | Description of the app. |
 
 **Relationships:**
 - `owner_id` → `auth.users.id` (each app is owned by a user).

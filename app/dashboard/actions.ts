@@ -139,26 +139,101 @@ export async function uploadDemoVideo(formData: FormData) {
 export async function addApp(url: string) {
   'use server'
   
+  console.log('Starting addApp for URL:', url)
   const supabase = createServerActionClient({ cookies })
   const { data: { session } } = await supabase.auth.getSession()
 
   if (!session) {
+    console.log('No session found')
     return { success: false, error: 'User not authenticated' }
   }
 
-  const { error } = await supabase
+  console.log('User authenticated:', session.user.id)
+  const { data: newApp, error } = await supabase
     .from('apps')
     .insert({
       owner_id: session.user.id,
       app_store_url: url
     })
+    .select()
+    .single()
 
   if (error) {
     console.error('Error adding app:', error)
     return { success: false, error: error.message }
   }
 
-  return { success: true }
+  if (!newApp) {
+    console.error('No app data returned from insert')
+    return { success: false, error: 'Failed to create app' }
+  }
+
+  console.log('Successfully created app:', newApp.id)
+
+  // Return the app data immediately while scraping happens in background
+  const returnValue = { success: true, app: newApp }
+
+  if (process.env.FIRECRAWL_API_KEY) {
+    console.log('FIRECRAWL_API_KEY found, starting scraping')
+    // Trigger asynchronous scraping without blocking the response
+    try {
+      console.log('Starting firecrawl scraping for:', url)
+      const { default: FirecrawlApp } = await import('@mendable/firecrawl-js')
+      const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY })
+
+      const scrapeResponse = await firecrawl.scrapeUrl(url, { formats: ['markdown', 'html'] })
+      console.log('Firecrawl response received, success:', scrapeResponse.success)
+
+      if (scrapeResponse.success) {
+        const description = scrapeResponse.markdown
+        console.log('Description to be saved for app ID:', newApp.id)
+
+        // First verify the app exists
+        const { data: existingApp, error: checkError } = await supabase
+          .from('apps')
+          .select('id')
+          .eq('id', newApp.id)
+          .single()
+
+        if (checkError || !existingApp) {
+          console.error('Could not find app to update:', { checkError, appId: newApp.id })
+          return
+        }
+
+        // Update the app_description field in the apps table
+        const { error: updateError } = await supabase
+          .from('apps')
+          .update({ app_description: description })
+          .eq('id', newApp.id)
+
+        if (updateError) {
+          console.error('Error updating app description:', updateError)
+        } else {
+          // Verify the update by fetching the updated row
+          const { data: verifyData, error: verifyError } = await supabase
+            .from('apps')
+            .select('id, app_description')
+            .eq('id', newApp.id)
+            .single()
+
+          console.log('Update verification:', {
+            success: !verifyError,
+            appId: newApp.id,
+            hasDescription: !!verifyData?.app_description,
+            descriptionLength: verifyData?.app_description?.length
+          })
+        }
+      } else {
+        console.error('Failed to scrape URL:', scrapeResponse.error)
+      }
+    } catch (error) {
+      console.error('Error during asynchronous scraping:', error)
+    }
+  } else {
+    console.log('No FIRECRAWL_API_KEY found in environment')
+  }
+
+  return returnValue
 }
 
 export async function getApps() {
@@ -171,13 +246,20 @@ export async function getApps() {
     return { data: null, error: 'Not authenticated' }
   }
 
+  console.log('Fetching apps for user:', session.user.id)
   const { data, error } = await supabase
     .from('apps')
-    .select('*')
+    .select('id, app_store_url, app_description, created_at')
     .eq('owner_id', session.user.id)
     .order('created_at', { ascending: false })
 
-  return { data, error: error?.message }
+  if (error) {
+    console.error('Error fetching apps:', error)
+  } else {  
+    console.log('Fetched apps')
+  }
+
+  return { data, error }
 }
 
 interface VideoCreationRequest {
@@ -275,4 +357,45 @@ export async function createVideo(videoData: VideoCreationRequest & { app_id: st
     console.error('Error in createVideo:', { message: errorMessage, originalError: error });
     throw new Error(errorMessage);
   }
+}
+
+export async function deleteApp(appId: string) {
+  'use server'
+  
+  const supabase = createServerActionClient({ cookies })
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  // First verify the app exists and belongs to the user
+  const { data: app } = await supabase
+    .from('apps')
+    .select('owner_id')
+    .eq('id', appId)
+    .single()
+
+  if (!app || app.owner_id !== session.user.id) {
+    return { success: false, error: 'App not found or unauthorized' }
+  }
+
+  // Delete the app with a returning clause to confirm deletion
+  const { data: deletedApp, error: deleteError } = await supabase
+    .from('apps')
+    .delete()
+    .eq('id', appId)
+    .eq('owner_id', session.user.id)
+    .select()
+    .single()
+
+  if (deleteError) {
+    return { success: false, error: deleteError.message }
+  }
+
+  if (!deletedApp) {
+    return { success: false, error: 'Failed to delete app' }
+  }
+
+  return { success: true }
 }

@@ -9,6 +9,7 @@ This is a web application for managing and creating UGC videos. The project is b
 - Fetch and display demo videos from Supabase
 - Create slideshow videos
 - Integrated with external content creation API to create videos
+- Manage connected apps with add/delete functionality
 
 ## Create Video API Integration
 
@@ -63,9 +64,30 @@ Upon receiving a successful response, the application inserts a new record into 
 ## Project Structure
 
 - `app/`: Contains Next.js pages and server actions.
+  - `dashboard/`: Dashboard pages for managing apps and content
+    - `apps/`: Connected apps management (view, add, delete apps)
+    - `videos/`: Video management and creation
 - `components/`: UI components used throughout the application.
 - `lib/`: Utility functions and Supabase client configuration.
 - `supabase/`: Contains Supabase related configuration if applicable.
+
+## Database Schema
+
+### Apps Table
+The application uses Supabase to store connected apps with the following schema:
+
+| Column          | Type         | Description                           |
+|----------------|-------------|---------------------------------------|
+| id             | uuid        | Primary key                           |
+| created_at     | timestamptz | Creation timestamp                    |
+| owner_id       | uuid        | Foreign key to auth.users             |
+| app_store_url  | text        | URL to the app in the store           |
+| app_description| text        | Auto-generated app description        |
+
+Apps can be managed through the dashboard with the following operations:
+- Add new app: Enter app store URL to connect a new app
+- View app details: Click on app card to view full details
+- Delete app: Use trash icon to remove app (requires confirmation)
 
 ## Instructions
 
