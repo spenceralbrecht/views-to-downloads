@@ -11,6 +11,11 @@ import { VideoCard } from '@/components/video-card'
 import { AppSelect } from '@/components/app-select'
 import type { DemoVideo, OutputVideo } from '@/app/types'
 
+interface Hook {
+  id: string
+  hook_text: string
+}
+
 export default function CreateAd() {
   const supabase = createClientComponentClient()
   const [isPending, startTransition] = useTransition()
@@ -18,7 +23,10 @@ export default function CreateAd() {
   // State for app selection
   const [selectedAppId, setSelectedAppId] = useState<string>('')
 
-  // State for hook text
+  // State for hooks
+  const [hooks, setHooks] = useState<Hook[]>([])
+  const [currentHookIndex, setCurrentHookIndex] = useState(0)
+  const [loadingHooks, setLoadingHooks] = useState(false)
   const [hook, setHook] = useState('')
   const [textPosition, setTextPosition] = useState<'top' | 'middle' | 'bottom'>('bottom')
 
@@ -107,6 +115,37 @@ export default function CreateAd() {
     fetchOutputVideos()
   }, [supabase])
 
+  // Fetch hooks when app is selected
+  useEffect(() => {
+    async function fetchHooks() {
+      if (!selectedAppId) {
+        setHooks([])
+        setHook('')
+        return
+      }
+
+      setLoadingHooks(true)
+      const { data, error } = await supabase
+        .from('hooks')
+        .select('*')
+        .eq('app_id', selectedAppId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching hooks:', error)
+      } else if (data) {
+        setHooks(data)
+        if (data.length > 0) {
+          setHook(data[0].hook_text)
+          setCurrentHookIndex(0)
+        }
+      }
+      setLoadingHooks(false)
+    }
+
+    fetchHooks()
+  }, [selectedAppId, supabase])
+
   // Get UGC video URL
   const getUGCVideoUrl = (videoNumber: number | null) => {
     if (!videoNumber) return ''
@@ -175,6 +214,20 @@ export default function CreateAd() {
     setSelectedDemoVideo(video.publicUrl || '')
   }
 
+  const handlePrevHook = () => {
+    if (currentHookIndex > 0) {
+      setCurrentHookIndex(prev => prev - 1)
+      setHook(hooks[currentHookIndex - 1].hook_text)
+    }
+  }
+
+  const handleNextHook = () => {
+    if (currentHookIndex < hooks.length - 1) {
+      setCurrentHookIndex(prev => prev + 1)
+      setHook(hooks[currentHookIndex + 1].hook_text)
+    }
+  }
+
   return (
     <div className="p-8">
       <h1 className="text-2xl font-semibold mb-6">Create UGC ads</h1>
@@ -194,39 +247,62 @@ export default function CreateAd() {
           <div>
             <div className="flex justify-between mb-2">
               <h2 className="font-medium">2. Hook</h2>
-              <span className="text-gray-500">{hook.length}/100</span>
+              <span className="text-gray-500">
+                {hooks.length > 0 && `Hook ${currentHookIndex + 1} of ${hooks.length}`}
+              </span>
             </div>
-            <div className="relative">
-              <Input
-                value={hook}
-                onChange={(e) => setHook(e.target.value)}
-                maxLength={100}
-                className="pr-8 bg-white"
-                placeholder="Enter your hook text..."
-              />
-              <div className="absolute inset-y-0 right-2 flex items-center gap-1">
-                <Button
-                  variant={textPosition === 'top' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTextPosition('top')}
-                >
-                  Top
-                </Button>
-                <Button
-                  variant={textPosition === 'middle' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTextPosition('middle')}
-                >
-                  Middle
-                </Button>
-                <Button
-                  variant={textPosition === 'bottom' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTextPosition('bottom')}
-                >
-                  Bottom
-                </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handlePrevHook}
+                disabled={currentHookIndex === 0 || hooks.length === 0 || loadingHooks}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <div className="flex-1 relative">
+                <Input
+                  value={hook}
+                  onChange={(e) => setHook(e.target.value)}
+                  maxLength={100}
+                  className="pr-24 bg-white"
+                  placeholder={loadingHooks ? "Loading hooks..." : hooks.length === 0 ? "No hooks found for this app" : "Enter your hook text..."}
+                  disabled={loadingHooks}
+                />
+                <div className="absolute inset-y-0 right-2 flex items-center gap-1">
+                  <Button
+                    variant={textPosition === 'top' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTextPosition('top')}
+                  >
+                    Top
+                  </Button>
+                  <Button
+                    variant={textPosition === 'middle' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTextPosition('middle')}
+                  >
+                    Middle
+                  </Button>
+                  <Button
+                    variant={textPosition === 'bottom' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTextPosition('bottom')}
+                  >
+                    Bottom
+                  </Button>
+                </div>
               </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleNextHook}
+                disabled={currentHookIndex === hooks.length - 1 || hooks.length === 0 || loadingHooks}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
           
