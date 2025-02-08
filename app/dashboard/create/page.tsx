@@ -9,6 +9,7 @@ import { uploadDemoVideo, createVideo } from '../actions'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { VideoCard } from '@/components/video-card'
 import { AppSelect } from '@/components/app-select'
+import { PricingDialog } from '@/components/pricing-dialog'
 import type { DemoVideo, OutputVideo } from '@/app/types'
 
 interface Hook {
@@ -43,6 +44,10 @@ export default function CreateAd() {
   // State for output videos
   const [outputVideos, setOutputVideos] = useState<OutputVideo[]>([])
   const [loadingOutputs, setLoadingOutputs] = useState(true)
+
+  // State for pricing dialog
+  const [showPricing, setShowPricing] = useState(false)
+  const [isSubscribed, setIsSubscribed] = useState(false)
 
   // Generate an array of 69 videos
   const allVideos = Array.from({ length: 69 }, (_, i) => i + 1)
@@ -146,6 +151,29 @@ export default function CreateAd() {
     fetchHooks()
   }, [selectedAppId, supabase])
 
+  // Check subscription status
+  useEffect(() => {
+    async function checkSubscription() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('status')
+        .eq('user_id', user.id)
+        .single()
+
+      if (error) {
+        console.error('Error checking subscription:', error)
+        return
+      }
+
+      setIsSubscribed(data?.status === 'active')
+    }
+
+    checkSubscription()
+  }, [supabase])
+
   // Get UGC video URL
   const getUGCVideoUrl = (videoNumber: number | null) => {
     if (!videoNumber) return ''
@@ -204,6 +232,16 @@ export default function CreateAd() {
     })
   }
 
+  // Handle create button click
+  const handleCreateClick = async () => {
+    if (!isSubscribed) {
+      setShowPricing(true)
+      return
+    }
+
+    handleCreate()
+  }
+
   const handleUGCVideoSelect = (num: number) => {
     setSelectedVideo(num)
     setSelectedInfluencerVideo(getUGCVideoUrl(num))
@@ -230,6 +268,8 @@ export default function CreateAd() {
 
   return (
     <div className="p-8">
+      <PricingDialog open={showPricing} onOpenChange={setShowPricing} />
+      
       <h1 className="text-2xl font-semibold mb-6">Create UGC ads</h1>
       
       <Card className="p-6 bg-gray-50">
@@ -443,7 +483,7 @@ export default function CreateAd() {
               />
               Sound
             </Button>
-            <Button type="button" className="bg-[#4287f5]" onClick={handleCreate}>
+            <Button type="button" className="bg-[#4287f5]" onClick={handleCreateClick}>
               Create
             </Button>
           </div>

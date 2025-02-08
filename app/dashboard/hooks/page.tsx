@@ -12,6 +12,8 @@ import {
 import { HookItem } from "@/components/HookItem"
 import { getApps, generateHooks, getHooks, deleteHook } from "../actions"
 import { useToast } from "@/components/ui/use-toast"
+import { PricingDialog } from "@/components/pricing-dialog"
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 type App = {
   id: string
@@ -30,7 +32,28 @@ export default function HooksPage() {
   const [selectedHooks, setSelectedHooks] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [showPricing, setShowPricing] = useState(false)
+  const [isSubscribed, setIsSubscribed] = useState<boolean | null>(null)
   const { toast } = useToast()
+  const supabase = createClientComponentClient()
+
+  // Check subscription status
+  useEffect(() => {
+    const checkSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: subscription } = await supabase
+        .from('subscriptions')
+        .select('status')
+        .eq('user_id', user.id)
+        .single()
+
+      setIsSubscribed(subscription?.status === 'active')
+    }
+
+    checkSubscription()
+  }, [])
 
   // Load apps
   useEffect(() => {
@@ -106,6 +129,12 @@ export default function HooksPage() {
   const handleGenerateHooks = async () => {
     if (!selectedApp) return
 
+    // Check subscription status first
+    if (!isSubscribed) {
+      setShowPricing(true)
+      return
+    }
+
     setIsGenerating(true)
     const { hooks: newHooks, error } = await generateHooks(selectedApp)
     setIsGenerating(false)
@@ -131,6 +160,8 @@ export default function HooksPage() {
 
   return (
     <div className="p-6">
+      <PricingDialog open={showPricing} onOpenChange={setShowPricing} />
+      
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-semibold">Hooks Manager</h1>
@@ -200,7 +231,7 @@ export default function HooksPage() {
             />
           ))
         ) : (
-          <div className="text-gray-500 text-sm p-4">
+          <div className="text-center text-gray-500 py-8">
             No hooks found. Click "Generate New Hooks" to create some.
           </div>
         )}
