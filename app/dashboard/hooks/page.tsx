@@ -43,13 +43,8 @@ export default function HooksPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data: subscription } = await supabase
-        .from('subscriptions')
-        .select('status')
-        .eq('user_id', user.id)
-        .single()
-
-      setIsSubscribed(subscription?.status === 'active')
+      const subscriptionStatus = user.user_metadata?.stripe_subscription_status;
+      setIsSubscribed(subscriptionStatus === 'active');
     }
 
     checkSubscription()

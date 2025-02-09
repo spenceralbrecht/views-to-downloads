@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { VideoCard, type OutputContent } from '@/components/video-card'
+import { VideoCard } from '@/components/VideoCard'
+import type { OutputContent } from '@/types/video'
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<OutputContent[]>([])

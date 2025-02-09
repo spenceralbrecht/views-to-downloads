@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     // Create a Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       customer_email: user.email,
+      client_reference_id: user.id, // This must be a valid UUID from Supabase
       line_items: [
         {
           price: priceId,
@@ -32,8 +33,13 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?canceled=true`,
+      success_url: `${process.env.NEXT_PUBLIC_TEST_APP_URL}/dashboard?success=true`, // Use test URL in development
+      cancel_url: `${process.env.NEXT_PUBLIC_TEST_APP_URL}/dashboard?canceled=true`,
+      automatic_tax: { enabled: true },
+      tax_id_collection: { enabled: true },
+      customer_creation: 'always', // Always create a new customer
+      payment_method_types: ['card'],
+      billing_address_collection: 'required',
       metadata: {
         userId: user.id
       }

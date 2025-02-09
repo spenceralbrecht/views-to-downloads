@@ -1,27 +1,39 @@
 interface StripeConfig {
   checkoutLinks: {
-    standard: string;
+    starter: string;
+    growth: string;
+    scale: string;
   };
   productIds: {
-    standard: string;
+    starter: string;
+    growth: string;
+    scale: string;
   };
 }
 
 const devConfig: StripeConfig = {
   checkoutLinks: {
-    standard: 'https://billing.stripe.com/p/login/test_28o9CPbdf0uJ55m000'
+    starter: process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_LINK || '',
+    growth: process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_LINK || '',
+    scale: process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_LINK || ''
   },
   productIds: {
-    standard: 'price_test_123' // Replace with your actual test product ID
+    starter: process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID || '',
+    growth: process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID || '',
+    scale: process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID || ''
   }
 }
 
 const prodConfig: StripeConfig = {
   checkoutLinks: {
-    standard: 'https://billing.stripe.com/p/login/test_28o9CPbdf0uJ55m000' // Replace with your actual production link
+    starter: process.env.NEXT_PUBLIC_STRIPE_STARTER_LINK || '',
+    growth: process.env.NEXT_PUBLIC_STRIPE_GROWTH_LINK || '',
+    scale: process.env.NEXT_PUBLIC_STRIPE_SCALE_LINK || ''
   },
   productIds: {
-    standard: 'price_live_123' // Replace with your actual production product ID
+    starter: process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID || '',
+    growth: process.env.NEXT_PUBLIC_STRIPE_GROWTH_PRICE_ID || '',
+    scale: process.env.NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID || ''
   }
 }
 

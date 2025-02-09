@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { uploadDemoVideo, createVideo } from '../actions'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { VideoCard } from '@/components/video-card'
+import { VideoCard } from '@/components/VideoCard'
 import { AppSelect } from '@/components/app-select'
 import { PricingDialog } from '@/components/pricing-dialog'
 import type { DemoVideo, OutputVideo } from '@/app/types'
@@ -49,6 +49,9 @@ export default function CreateAd() {
   const [showPricing, setShowPricing] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
 
+  // State for demo video error
+  const [demoVideoError, setDemoVideoError] = useState<boolean>(false)
+
   // Generate an array of 69 videos
   const allVideos = Array.from({ length: 69 }, (_, i) => i + 1)
 
@@ -82,6 +85,7 @@ export default function CreateAd() {
         console.error('Error fetching demo videos:', error)
       } else if (data) {
         const demoVideosWithUrls = await Promise.all(data.map(async (video) => {
+          // Get the public URL for the full path including user ID
           const { data: publicData } = supabase
             .storage
             .from('input-content')
@@ -113,7 +117,16 @@ export default function CreateAd() {
         return
       }
 
-      setOutputVideos(videos)
+      // Get public URLs for the output videos
+      const outputVideosWithUrls = await Promise.all((videos || []).map(async (video) => {
+        const { data: publicData } = supabase
+          .storage
+          .from('output-content')
+          .getPublicUrl(video.url)
+        return { ...video, url: publicData.publicUrl }
+      }))
+
+      setOutputVideos(outputVideosWithUrls)
       setLoadingOutputs(false)
     }
 
@@ -157,18 +170,8 @@ export default function CreateAd() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('status')
-        .eq('user_id', user.id)
-        .single()
-
-      if (error) {
-        console.error('Error checking subscription:', error)
-        return
-      }
-
-      setIsSubscribed(data?.status === 'active')
+      const subscriptionStatus = user.user_metadata?.stripe_subscription_status;
+      setIsSubscribed(subscriptionStatus === 'active');
     }
 
     checkSubscription()
@@ -431,10 +434,16 @@ export default function CreateAd() {
                   id="demoVideo"
                   name="videoFile"
                   type="file"
-                  accept="video/*"
+                  accept="video/mp4"
                   className="sr-only"
                   onChange={(e) => {
-                    if (e.currentTarget.files?.[0]) {
+                    const file = e.currentTarget.files?.[0];
+                    if (file) {
+                      if (!file.type.includes('mp4')) {
+                        alert('Please upload an MP4 video file only');
+                        e.currentTarget.value = '';
+                        return;
+                      }
                       startTransition(() => {
                         e.currentTarget.form?.requestSubmit()
                       })
@@ -453,16 +462,42 @@ export default function CreateAd() {
                       onClick={() => handleDemoSelect(video)}
                       className={`relative w-48 h-48 rounded-lg overflow-hidden border ${selectedDemo === video.id ? 'outline outline-2 outline-blue-500' : ''}`}
                     >
-                      <video
-                        src={video.publicUrl}
-                        preload="metadata"
-                        muted
-                        loop
-                        playsInline
-                        onMouseEnter={(e) => e.currentTarget.play()}
-                        onMouseLeave={(e) => e.currentTarget.pause()}
-                        className="w-full h-full object-cover"
-                      />
+                      {demoVideoError ? (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                          <p className="text-sm text-gray-500 text-center px-4">Error loading video</p>
+                        </div>
+                      ) : (
+                        <video
+                          key={video.publicUrl} // Add key to force re-render when URL changes
+                          src={video.publicUrl}
+                          preload="auto"
+                          muted
+                          loop
+                          playsInline
+                          onLoadedData={(e) => {
+                            if (e.currentTarget.readyState >= 3) {
+                              e.currentTarget.pause();
+                              setDemoVideoError(false);
+                            }
+                          }}
+                          onError={(e) => {
+                            console.error('Error loading demo video:', e);
+                            setDemoVideoError(true);
+                          }}
+                          onMouseEnter={(e) => {
+                            if (e.currentTarget.readyState >= 3) {
+                              e.currentTarget.play().catch(err => {
+                                console.error('Error playing video:', err);
+                                setDemoVideoError(true);
+                              });
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.pause();
+                          }}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </div>
                   ))
                 ) : (

@@ -12,9 +12,9 @@ const PRICE_IDS = [
 ]
 
 const CHECKOUT_LINKS = {
-  [process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID!]: process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_CHECKOUT_URL,
-  [process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID!]: process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_CHECKOUT_URL,
-  [process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID!]: process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_CHECKOUT_URL,
+  [process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID!]: process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_LINK,
+  [process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID!]: process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_LINK,
+  [process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID!]: process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_LINK,
 }
 
 export async function GET() {
@@ -26,6 +26,10 @@ export async function GET() {
           expand: ['product']
         })
         const product = price.product as Stripe.Product
+        const checkoutUrl = process.env.NEXT_PUBLIC_STRIPE_ENV === 'production'
+          ? CHECKOUT_LINKS[price.id]?.replace('test_', '') // Remove test_ prefix for production
+          : CHECKOUT_LINKS[price.id]
+
         return {
           id: price.id,
           name: product.name,
@@ -33,7 +37,7 @@ export async function GET() {
           interval: price.recurring?.interval || 'month',
           features: product.metadata.features ? JSON.parse(product.metadata.features) : [],
           popular: product.metadata.popular === 'true',
-          checkoutUrl: CHECKOUT_LINKS[price.id] || ''
+          checkoutUrl: checkoutUrl || ''
         }
       })
     )

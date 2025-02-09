@@ -27,7 +27,7 @@ export function Sidebar({ user }: SidebarProps) {
 
   const bottomNav = [
     { name: 'Support', href: '/dashboard/support', icon: HelpCircle },
-    { name: 'Billing', href: stripeConfig.checkoutLinks.standard, icon: CreditCard },
+    { name: 'Billing', href: '/dashboard/billing', icon: CreditCard },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ]
 
@@ -100,7 +100,19 @@ export function Sidebar({ user }: SidebarProps) {
           {user ? (
             <div className="text-xs text-gray-500">
               <div className="font-medium">
-                {user?.user_metadata?.name ?? user.email}
+                {user?.user_metadata?.name || 'User'}
+              </div>
+              <div className="text-gray-400 truncate">
+                {user?.email}
+              </div>
+              <div className={`text-sm mt-1 ${
+                user?.user_metadata?.stripe_subscription_status === 'active' 
+                  ? 'text-green-600' 
+                  : 'text-yellow-600'
+              }`}>
+                {user?.user_metadata?.stripe_subscription_status === 'active' 
+                  ? '✓ Subscribed' 
+                  : '○ Not subscribed'}
               </div>
               <form action={signOut}>
                 <button

@@ -105,6 +105,42 @@ Apps can be managed through the dashboard with the following operations:
 - View app details: Click on app card to view full details
 - Delete app: Use trash icon to remove app (requires confirmation)
 
+## Pricing Plans and Stripe Integration
+
+The application offers three pricing tiers:
+- Starter: Basic plan for individuals getting started
+- Growth: Enhanced features for growing creators
+- Scale: Full suite of features for businesses
+
+### Stripe Configuration
+
+The Stripe payment links and price IDs are configured in `config/stripe.ts` and are environment-specific. The configuration uses environment variables from `.env.local`:
+
+```env
+NEXT_PUBLIC_STRIPE_ENV=development|production
+NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID=price_xxx
+NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID=price_xxx
+NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID=price_xxx
+```
+
+Development environment uses test payment links and price IDs, while production environment uses live ones. To switch between environments, set the `NEXT_PUBLIC_STRIPE_ENV` environment variable.
+
+Example configuration structure:
+```typescript
+interface StripeConfig {
+  checkoutLinks: {
+    starter: string;
+    growth: string;
+    scale: string;
+  };
+  productIds: {
+    starter: string;
+    growth: string;
+    scale: string;
+  };
+}
+```
+
 ## Instructions
 
 1. Update your environment variables (e.g., AIRTABLE_API_KEY, AIRTABLE_BASE_ID) as required.

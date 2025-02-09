@@ -76,6 +76,12 @@ export async function uploadDemoVideo(formData: FormData) {
       return { error: 'No video file selected.' }
     }
 
+    // Validate file type
+    if (!file.type.includes('mp4')) {
+      console.warn('Invalid file type uploaded by user:', user.id, 'File type:', file.type)
+      return { error: 'Only MP4 video files are allowed.' }
+    }
+
     const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
       console.warn('File size exceeded by user:', user.id, 'File size:', file.size)
@@ -285,6 +291,12 @@ export async function createVideo(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('User not authenticated')
 
+    // Check if user has an active subscription
+    const subscriptionStatus = user.user_metadata?.stripe_subscription_status
+    if (!subscriptionStatus || subscriptionStatus !== 'active') {
+      throw new Error('Active subscription required')
+    }
+
     // First create a pending record in output_content
     const { data: outputContent, error: insertError } = await supabase
       .from('output_content')
@@ -341,6 +353,38 @@ export async function createVideo(
   }
 }
 
+export async function deleteVideo(videoId: string) {
+  const supabase = createServerActionClient({ cookies })
+  
+  // Get user
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('Not authenticated')
+
+  // First verify the video belongs to the user
+  const { data: video } = await supabase
+    .from('output_content')
+    .select('user_id')
+    .eq('id', videoId)
+    .single()
+
+  if (!video || video.user_id !== user.id) {
+    throw new Error('Video not found or unauthorized')
+  }
+
+  const { error } = await supabase
+    .from('output_content')
+    .delete()
+    .eq('id', videoId)
+    .eq('user_id', user.id)
+  
+  if (error) {
+    throw new Error('Failed to delete video')
+  }
+  
+  return { success: true }
+}
+
 export async function deleteApp(appId: string) {
   try {
     if (!appId) {
@@ -349,11 +393,28 @@ export async function deleteApp(appId: string) {
 
     const supabase = createServerActionClient({ cookies })
     
+    // Get user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError) throw userError
+    if (!user) throw new Error('Not authenticated')
+
+    // First verify the app belongs to the user
+    const { data: app } = await supabase
+      .from('apps')
+      .select('owner_id')
+      .eq('id', appId)
+      .single()
+
+    if (!app || app.owner_id !== user.id) {
+      throw new Error('App not found or unauthorized')
+    }
+    
     // Delete hooks first due to foreign key constraint
     const { error: hooksError } = await supabase
       .from('hooks')
       .delete()
       .eq('app_id', appId)
+      .eq('user_id', user.id)
 
     if (hooksError) throw hooksError
 
@@ -362,6 +423,7 @@ export async function deleteApp(appId: string) {
       .from('apps')
       .delete()
       .eq('id', appId)
+      .eq('owner_id', user.id)
 
     if (appError) throw appError
 
@@ -440,41 +502,55 @@ export async function generateHooks(appId: string) {
 }
 
 export async function getHooks(appId: string) {
-  try {
-    if (!appId) {
-      throw new Error('App ID is required')
-    }
+  const supabase = createServerActionClient({ cookies })
+  
+  // Get user
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) return { data: null, error: 'Not authenticated' }
 
-    const supabase = createServerActionClient({ cookies })
-    
-    const { data, error } = await supabase
-      .from('hooks')
-      .select('*')
-      .eq('app_id', appId)
-      .order('created_at', { ascending: true })
+  const { data, error } = await supabase
+    .from('hooks')
+    .select('*')
+    .eq('app_id', appId)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
 
-    if (error) throw error
-
-    return { data }
-  } catch (error) {
+  if (error) {
     console.error('Error fetching hooks:', error)
-    return { error: error instanceof Error ? error.message : 'Failed to fetch hooks' }
   }
+
+  return { data, error }
 }
 
 export async function deleteHook(hookId: string) {
-  try {
-    const supabase = createServerActionClient({ cookies })
-    const { error } = await supabase
-      .from('hooks')
-      .delete()
-      .eq('id', hookId)
+  const supabase = createServerActionClient({ cookies })
+  
+  // Get user
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('Not authenticated')
 
-    if (error) throw error
-    revalidatePath('/dashboard/hooks')
-    return { success: true }
-  } catch (error) {
-    console.error('Error deleting hook:', error)
-    return { error: error instanceof Error ? error.message : 'Failed to delete hook' }
+  // First verify the hook belongs to the user
+  const { data: hook } = await supabase
+    .from('hooks')
+    .select('user_id')
+    .eq('id', hookId)
+    .single()
+
+  if (!hook || hook.user_id !== user.id) {
+    throw new Error('Hook not found or unauthorized')
   }
+
+  const { error } = await supabase
+    .from('hooks')
+    .delete()
+    .eq('id', hookId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    throw new Error('Failed to delete hook')
+  }
+
+  return { success: true }
 }

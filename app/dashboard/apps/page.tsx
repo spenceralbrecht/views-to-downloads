@@ -68,11 +68,11 @@ export default function AppsPage() {
     setIsAddingApp(false)
   }
 
-  const handleDeleteApp = async (app: App) => {
-    if (!app?.id) return
+  const handleDeleteApp = async (appId: string) => {
+    if (!appId) return
 
     setIsDeletingApp(true)
-    const result = await deleteApp(app.id)
+    const result = await deleteApp(appId)
     
     if (result.error) {
       toast({
@@ -81,7 +81,7 @@ export default function AppsPage() {
         variant: "destructive",
       })
     } else {
-      setApps(prev => prev.filter(a => a.id !== app.id))
+      setApps(prev => prev.filter(a => a.id !== appId))
       setSelectedApp(null)
       toast({
         title: "App deleted",
@@ -141,7 +141,7 @@ export default function AppsPage() {
         open={!!selectedApp}
         onOpenChange={(open) => !open && setSelectedApp(null)}
         app={selectedApp}
-        onDelete={handleDeleteApp}
+        onDelete={() => handleDeleteApp(selectedApp?.id)}
         isDeleting={isDeletingApp}
       />
     </div>
