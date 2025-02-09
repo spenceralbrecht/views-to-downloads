@@ -2,13 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Download, Home, Video, Zap, Activity, HelpCircle, CreditCard, Settings } from 'lucide-react'
+import { Download, Home, Video, Zap, Activity, HelpCircle, CreditCard, Settings, Sparkles } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { User } from '@supabase/supabase-js'
 import { signOut } from '@/app/auth/actions'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { ImageIcon, User as UserIcon, Sparkles } from "lucide-react"
+import { ImageIcon, User as UserIcon } from "lucide-react"
 import { stripeConfig } from '@/config/stripe'
 
 interface SidebarProps {
@@ -27,7 +27,12 @@ export function Sidebar({ user }: SidebarProps) {
 
   const bottomNav = [
     { name: 'Support', href: '/dashboard/support', icon: HelpCircle },
-    { name: 'Billing', href: '/dashboard/billing', icon: CreditCard },
+    { 
+      name: 'Billing', 
+      href: stripeConfig.customerBillingLink || '/dashboard/billing', 
+      icon: CreditCard,
+      external: true 
+    },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ]
 
@@ -88,6 +93,8 @@ export function Sidebar({ user }: SidebarProps) {
             <Link
               key={item.name}
               href={item.href}
+              target={item.external ? "_blank" : undefined}
+              rel={item.external ? "noopener noreferrer" : undefined}
               className="flex items-center px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
             >
               <item.icon className="mr-3 h-5 w-5 text-gray-400" />
@@ -98,26 +105,36 @@ export function Sidebar({ user }: SidebarProps) {
 
         <div className="p-4 border-t">
           {user ? (
-            <div className="text-xs text-gray-500">
-              <div className="font-medium">
+            <div className="text-xs">
+              <div className="font-medium text-gray-700">
                 {user?.user_metadata?.name || 'User'}
               </div>
-              <div className="text-gray-400 truncate">
+              <div className="text-gray-500 truncate">
                 {user?.email}
               </div>
-              <div className={`text-sm mt-1 ${
-                user?.user_metadata?.stripe_subscription_status === 'active' 
-                  ? 'text-green-600' 
-                  : 'text-yellow-600'
-              }`}>
-                {user?.user_metadata?.stripe_subscription_status === 'active' 
-                  ? '✓ Subscribed' 
-                  : '○ Not subscribed'}
+              <div className="flex items-center gap-1 mt-2">
+                {user?.user_metadata?.stripe_subscription_status === 'active' ? (
+                  <>
+                    <Sparkles className="h-4 w-4 text-green-500" />
+                    <span className="text-green-600 font-medium">
+                      {user?.user_metadata?.stripe_plan_name ? (
+                        `${user.user_metadata.stripe_plan_name.charAt(0).toUpperCase()}${user.user_metadata.stripe_plan_name.slice(1)} Plan`
+                      ) : (
+                        'Active Plan'
+                      )}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-4 w-4 text-yellow-500" />
+                    <span className="text-yellow-600">Not subscribed</span>
+                  </>
+                )}
               </div>
               <form action={signOut}>
                 <button
                   type="submit"
-                  className="mt-2 text-blue-500 hover:text-blue-600"
+                  className="mt-3 text-blue-500 hover:text-blue-600"
                 >
                   Sign out
                 </button>

@@ -9,6 +9,7 @@ interface StripeConfig {
     growth: string;
     scale: string;
   };
+  customerBillingLink: string;
 }
 
 const devConfig: StripeConfig = {
@@ -21,7 +22,8 @@ const devConfig: StripeConfig = {
     starter: process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID || '',
     growth: process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID || '',
     scale: process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID || ''
-  }
+  },
+  customerBillingLink: process.env.NEXT_PUBLIC_STRIPE_TEST_CUSTOMER_BILLING_LINK || ''
 }
 
 const prodConfig: StripeConfig = {
@@ -34,7 +36,8 @@ const prodConfig: StripeConfig = {
     starter: process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID || '',
     growth: process.env.NEXT_PUBLIC_STRIPE_GROWTH_PRICE_ID || '',
     scale: process.env.NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID || ''
-  }
+  },
+  customerBillingLink: process.env.NEXT_PUBLIC_STRIPE_CUSTOMER_BILLING_LINK || ''
 }
 
 export const stripeConfig = process.env.NEXT_PUBLIC_STRIPE_ENV === 'production' ? prodConfig : devConfig

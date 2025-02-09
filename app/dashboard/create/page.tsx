@@ -185,6 +185,11 @@ export default function CreateAd() {
 
   // Handle video creation
   const handleCreate = async () => {
+    if (isPending) {
+      console.log('Video creation already in progress')
+      return
+    }
+
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
       console.error('Error getting user:', userError)
@@ -196,11 +201,9 @@ export default function CreateAd() {
       return
     }
 
-    const influencerVideoUrl = getUGCVideoUrl(selectedVideo)
-    
     // Validate required fields
     const missingFields = []
-    if (!selectedVideo) missingFields.push('influencer video')
+    if (!selectedInfluencerVideo) missingFields.push('influencer video')
     if (!selectedDemoVideo) missingFields.push('demo video')
     if (!hook) missingFields.push('caption text')
 
@@ -212,7 +215,7 @@ export default function CreateAd() {
     startTransition(async () => {
       try {
         const result = await createVideo({
-          influencerVideoUrl,
+          influencerVideoUrl: selectedInfluencerVideo,
           demoFootageUrl: selectedDemoVideo,
           captionText: hook,
           captionPosition: textPosition,
@@ -230,7 +233,11 @@ export default function CreateAd() {
         }
       } catch (error) {
         console.error('Error creating video:', error)
-        alert('An unexpected error occurred while creating the video.')
+        if (error instanceof Error) {
+          alert(`Error creating video: ${error.message}`)
+        } else {
+          alert('An unexpected error occurred while creating the video.')
+        }
       }
     })
   }

@@ -198,6 +198,25 @@ The UI automatically updates when a video's status changes, providing real-time 
 - Loading skeletons for videos in the "in_progress" state
 - Automatic UI refresh when processing completes
 
+## Testing
+
+The project uses Vitest for testing. Tests are located in the `__tests__` directory.
+
+### Running Tests
+
+```bash
+bun test
+```
+
+Note: Tests use the Supabase credentials from your `.env.local` file. Make sure you have the following variables set:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+### Test Structure
+
+- `__tests__/stripe/` - Tests for Stripe integration functionality
+  - `metadata.test.ts` - Tests for managing Stripe metadata in user profiles
+
 ## Future Improvements
 
 - Enhance error handling and logging

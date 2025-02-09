@@ -277,13 +277,21 @@ async function callVideoCreationAPI(params: VideoCreationRequest): Promise<Video
   }
 }
 
-export async function createVideo(
+export async function createVideo({
+  influencerVideoUrl,
+  demoFootageUrl,
+  captionText,
+  captionPosition,
+  userUuid,
+  app_id: appId
+}: {
   influencerVideoUrl: string,
   demoFootageUrl: string,
   captionText: string,
   captionPosition: 'top' | 'middle' | 'bottom',
-  appId: string
-) {
+  userUuid: string,
+  app_id: string
+}) {
   try {
     const supabase = createServerActionClient({ cookies })
     
@@ -297,7 +305,7 @@ export async function createVideo(
       throw new Error('Active subscription required')
     }
 
-    // First create a pending record in output_content
+    // Create a pending record in output_content
     const { data: outputContent, error: insertError } = await supabase
       .from('output_content')
       .insert({
@@ -310,43 +318,63 @@ export async function createVideo(
 
     if (insertError) throw insertError
 
-    // Call the external API to create the video
-    const response = await fetch(`${process.env.VIDEO_API_URL}/create-video`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.VIDEO_API_KEY}`
-      },
-      body: JSON.stringify({
-        influencerVideoUrl,
-        demoFootageUrl,
-        captionText,
-        captionPosition,
-        userUuid: user.id,
-        appId,
-        outputId: outputContent.id // Pass the output ID to link the result
+    try {
+      // Call the external API to create the video
+      const response = await fetch('https://content-creation-api-python.onrender.com/api/create-video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          influencerVideoUrl,
+          demoFootageUrl,
+          captionText,
+          captionPosition,
+          userUuid: user.id,
+          appId,
+          outputId: outputContent.id
+        })
       })
-    })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.detail || 'Failed to create video')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        console.error('Video creation API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorData
+        })
+        
+        // Update the record to failed status
+        await supabase
+          .from('output_content')
+          .update({ status: 'failed' })
+          .eq('id', outputContent.id)
+        
+        throw new Error(`Failed to create video: ${response.status} ${response.statusText}`)
+      }
+
+      const result = await response.json()
+
+      // Update the existing record with the video URL and status
+      const { error: updateError } = await supabase
+        .from('output_content')
+        .update({
+          url: result.video_url,
+          status: 'completed'
+        })
+        .eq('id', outputContent.id)
+
+      if (updateError) throw updateError
+
+      return { success: true, video: { ...outputContent, url: result.video_url, status: 'completed' } }
+    } catch (error) {
+      // Ensure we update the record status if anything fails
+      await supabase
+        .from('output_content')
+        .update({ status: 'failed' })
+        .eq('id', outputContent.id)
+      throw error
     }
-
-    const result = await response.json()
-
-    // Update the existing record with the video URL and status
-    const { error: updateError } = await supabase
-      .from('output_content')
-      .update({
-        url: result.video_url,
-        status: 'completed'
-      })
-      .eq('id', outputContent.id)
-
-    if (updateError) throw updateError
-
-    return { success: true, video: { ...outputContent, url: result.video_url, status: 'completed' } }
   } catch (error) {
     console.error('Error creating video:', error)
     return { error: error instanceof Error ? error.message : 'Failed to create video' }

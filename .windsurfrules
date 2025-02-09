@@ -2,6 +2,8 @@ This project uses Bun.
 
 These are the keys in the .env.local file but in the real file they all have a value assigned to them.
 
+Keep the readme up to date with the project structure and how the files are organized.
+
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
@@ -22,6 +24,8 @@ STRIPE_TEST_SECRET_KEY=
 STRIPE_SECRET_KEY=
 # STRIPE_TEST_WEBHOOK_SECRET=whsec_vwrdSMqPXMcZ70m1BZgiFWDV1K9TQ20I # from dashboard
 STRIPE_TEST_WEBHOOK_SECRET=
+NEXT_PUBLIC_STRIPE_TEST_CUSTOMER_BILLING_LINK=
+NEXT_PUBLIC_STRIPE_CUSTOMER_BILLING_LINK=
 NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID=
 NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID=
 NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID=
