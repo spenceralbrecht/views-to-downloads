@@ -10,6 +10,7 @@ import { useUser } from '@supabase/auth-helpers-react'
 import { useSubscription } from '@/hooks/useSubscription'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { SubscriptionGuard } from '@/components/SubscriptionGuard'
+import { ContentLimitGuard } from '@/components/ContentLimitGuard'
 import { Loader2 } from 'lucide-react'
 
 type App = {
@@ -150,19 +151,21 @@ export default function HooksPage() {
             onSelect={setSelectedAppId}
           />
           <SubscriptionGuard>
-            <Button
-              onClick={handleGenerateHooks}
-              disabled={!selectedAppId || isGenerating}
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                'Generate Hooks'
-              )}
-            </Button>
+            <ContentLimitGuard>
+              <Button
+                onClick={handleGenerateHooks}
+                disabled={!selectedAppId || isGenerating}
+              >
+                {isGenerating ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating...
+                  </div>
+                ) : (
+                  "Generate Hooks"
+                )}
+              </Button>
+            </ContentLimitGuard>
           </SubscriptionGuard>
         </div>
       </div>

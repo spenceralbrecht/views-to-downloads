@@ -13,6 +13,9 @@ import { useUser } from '@supabase/auth-helpers-react'
 import { useSubscription } from '@/hooks/useSubscription'
 import type { DemoVideo, OutputVideo } from '@/app/types'
 import { SubscriptionGuard } from '@/components/SubscriptionGuard'
+import { ContentLimitGuard } from '@/components/ContentLimitGuard'
+import { incrementContentUsage } from '@/utils/subscription'
+import { useToast } from "@/components/ui/use-toast"
 
 interface Hook {
   id: string
@@ -24,6 +27,7 @@ export default function CreateAd() {
   const [isPending, startTransition] = useTransition()
   const user = useUser()
   const { isSubscribed } = useSubscription(user)
+  const { toast } = useToast()
 
   // State for app selection
   const [selectedAppId, setSelectedAppId] = useState<string>('')
@@ -184,6 +188,42 @@ export default function CreateAd() {
 
   // Handle video creation
   const handleCreateVideo = async () => {
+    if (!selectedAppId) {
+      toast({
+        title: "App Required",
+        description: "Please select an app for your video",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!hook) {
+      toast({
+        title: "Hook Required",
+        description: "Please select or generate a hook for your video",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!selectedInfluencerVideo) {
+      toast({
+        title: "UGC Video Required",
+        description: "Please select an influencer video from the grid",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!selectedDemoVideo) {
+      toast({
+        title: "Demo Video Required",
+        description: "Please upload or select a demo video",
+        variant: "destructive"
+      })
+      return
+    }
+
     if (isPending) {
       return
     }
@@ -204,6 +244,17 @@ export default function CreateAd() {
     if (!hook) missingFields.push('caption text')
 
     if (missingFields.length > 0) {
+      return
+    }
+
+    // Check and increment content usage
+    const canCreate = await incrementContentUsage(user.id)
+    if (!canCreate) {
+      toast({
+        title: "Monthly limit reached",
+        description: "You've reached your monthly content creation limit. Please upgrade your plan to create more content.",
+        variant: "destructive"
+      })
       return
     }
 
@@ -260,6 +311,10 @@ export default function CreateAd() {
 
   const handleDemoVideoSelect = (url: string) => {
     setSelectedDemoVideo(url)
+  }
+
+  const handleDeleteVideo = (id: string) => {
+    setOutputVideos(videos => videos.filter(video => video.id !== id))
   }
 
   return (
@@ -482,21 +537,23 @@ export default function CreateAd() {
               Sound
             </Button>
             <SubscriptionGuard>
-              <Button 
-                type="button" 
-                className="bg-[#4287f5] hover:bg-[#3270d8] text-white" 
-                onClick={isPending ? undefined : handleCreateVideo} 
-                disabled={isPending}
-              >
-                {isPending ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating...
-                  </div>
-                ) : (
-                  "Create Video"
-                )}
-              </Button>
+              <ContentLimitGuard>
+                <Button 
+                  type="button" 
+                  className="bg-[#4287f5] hover:bg-[#3270d8] text-white" 
+                  onClick={handleCreateVideo} 
+                  disabled={isPending}
+                >
+                  {isPending ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating...
+                    </div>
+                  ) : (
+                    "Create Video"
+                  )}
+                </Button>
+              </ContentLimitGuard>
             </SubscriptionGuard>
           </div>
         </div>
@@ -514,7 +571,11 @@ export default function CreateAd() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {outputVideos.map((video) => (
-              <VideoCard key={video.id} video={video} isPending={video.id === pendingVideo?.id} />
+              <VideoCard 
+                key={video.id} 
+                video={video} 
+                onDelete={handleDeleteVideo}
+              />
             ))}
           </div>
         )}

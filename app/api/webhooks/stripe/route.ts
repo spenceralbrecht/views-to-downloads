@@ -79,7 +79,7 @@ async function handleStripeWebhook(event: Stripe.Event) {
           planName = 'scale'
         }
 
-        // Create or update subscription record
+        // Create or update subscription record with reset content usage
         const { error } = await supabaseAdmin.from('subscriptions').upsert({
           user_id: userId,
           stripe_customer_id: customerId,
@@ -88,7 +88,9 @@ async function handleStripeWebhook(event: Stripe.Event) {
           plan_name: planName,
           status: subscription.status,
           current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          content_used_this_month: 0, // Reset content usage on new subscription
+          content_reset_date: new Date(subscription.current_period_start * 1000).toISOString()
         }, {
           onConflict: 'user_id'
         })
@@ -101,6 +103,41 @@ async function handleStripeWebhook(event: Stripe.Event) {
         return { status: 'success', message: 'Subscription created/updated' }
       }
 
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription
+        const customerId = subscription.customer as string
+        const priceId = subscription.items.data[0].price.id
+
+        // Determine new plan name from price ID
+        let planName = 'starter'
+        if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID) {
+          planName = 'growth'
+        } else if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID) {
+          planName = 'scale'
+        }
+
+        // Update subscription with new plan and reset content usage for upgrade
+        const { error } = await supabaseAdmin
+          .from('subscriptions')
+          .update({
+            stripe_price_id: priceId,
+            plan_name: planName,
+            status: subscription.status,
+            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            content_used_this_month: 0, // Reset content usage on plan change
+            content_reset_date: new Date(subscription.current_period_start * 1000).toISOString()
+          })
+          .eq('stripe_customer_id', customerId)
+
+        if (error) {
+          console.error('Error updating subscription:', error)
+          return { status: 'error', message: 'Failed to update subscription' }
+        }
+
+        return { status: 'success', message: 'Subscription updated' }
+      }
+
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription
         const customerId = subscription.customer as string
@@ -110,7 +147,9 @@ async function handleStripeWebhook(event: Stripe.Event) {
           .update({
             status: 'canceled',
             stripe_price_id: null,
-            plan_name: null
+            plan_name: null,
+            content_used_this_month: 0, // Reset content usage on cancellation
+            content_reset_date: null
           })
           .eq('stripe_customer_id', customerId)
 
@@ -130,11 +169,15 @@ async function handleStripeWebhook(event: Stripe.Event) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId as string)
         const customerId = subscription.customer as string
 
+        // Update subscription and reset content usage for new billing period
         const { error } = await supabaseAdmin
           .from('subscriptions')
           .update({
             status: subscription.status,
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            content_used_this_month: 0, // Reset content usage on new billing period
+            content_reset_date: new Date(subscription.current_period_start * 1000).toISOString()
           })
           .eq('stripe_customer_id', customerId)
 
@@ -150,7 +193,6 @@ async function handleStripeWebhook(event: Stripe.Event) {
       case 'customer.created':
       case 'customer.updated':
       case 'customer.subscription.created':
-      case 'customer.subscription.updated':
         return { status: 'success', message: `Skipped ${event.type}` }
 
       default:

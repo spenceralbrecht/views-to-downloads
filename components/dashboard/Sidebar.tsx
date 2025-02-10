@@ -10,7 +10,7 @@ import { signOut } from '@/app/auth/actions'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { ImageIcon, User as UserIcon } from "lucide-react"
 import { stripeConfig } from '@/config/stripe'
-import { useSubscription } from '@/hooks/useSubscription'
+import { useSubscription, CONTENT_LIMITS } from '@/hooks/useSubscription'
 import { Badge } from '@/components/ui/badge'
 
 interface SidebarProps {
@@ -19,7 +19,7 @@ interface SidebarProps {
 
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
-  const { subscription, isSubscribed, plan, loading } = useSubscription(user)
+  const { subscription, isSubscribed, plan, contentUsed, contentRemaining, contentLimit, loading } = useSubscription(user)
   
   const navigation = [
     { name: 'Home', href: '/dashboard', icon: Home },
@@ -39,22 +39,8 @@ export function Sidebar({ user }: SidebarProps) {
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ]
 
-  // Calculate video limits based on plan
-  const getVideoLimits = () => {
-    switch (plan) {
-      case 'scale':
-        return { total: 1000, remaining: 1000 }
-      case 'growth':
-        return { total: 200, remaining: 200 }
-      case 'starter':
-        return { total: 50, remaining: 50 }
-      default:
-        return { total: 5, remaining: 5 }
-    }
-  }
-
-  const { total, remaining } = getVideoLimits()
-  const usagePercentage = ((total - remaining) / total) * 100
+  // Calculate progress percentage
+  const progressPercentage = (contentUsed / contentLimit) * 100
 
   return (
     <div className="flex h-screen w-64 flex-col fixed left-0 top-0 border-r bg-gray-50/50">
@@ -87,26 +73,55 @@ export function Sidebar({ user }: SidebarProps) {
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <item.icon className={`mr-3 h-5 w-5 ${
-                  isActive ? 'text-gray-500' : 'text-gray-400'
-                }`} />
+                <item.icon
+                  className={`mr-3 h-5 w-5 ${
+                    isActive ? 'text-gray-500' : 'text-gray-400'
+                  }`}
+                  aria-hidden="true"
+                />
                 {item.name}
               </Link>
             )
           })}
         </nav>
 
+        {/* Subscription Usage */}
+        <div className="px-4 py-4 border-t border-gray-200">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Content Usage</span>
+              <span className="font-medium">
+                {contentUsed} / {contentLimit}
+              </span>
+            </div>
+            <Progress value={progressPercentage} className="h-2" />
+            <div className="flex justify-between items-center">
+              <Badge variant="outline" className="capitalize">
+                {plan || 'No Plan'}
+              </Badge>
+              <span className="text-xs text-gray-500">
+                {contentRemaining} remaining
+              </span>
+            </div>
+            {subscription?.content_reset_date && (
+              <div className="text-xs text-gray-500 text-right">
+                Resets {new Date(subscription.content_reset_date).toLocaleDateString()}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="px-4 mt-8">
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">{remaining} videos remaining</span>
+              <span className="text-gray-500">{contentRemaining} videos remaining</span>
               {subscription?.current_period_end && (
                 <span className="text-gray-500">
                   Resets {new Date(subscription.current_period_end).toLocaleDateString()}
                 </span>
               )}
             </div>
-            <Progress value={usagePercentage} className="h-1" />
+            <Progress value={progressPercentage} className="h-1" />
           </div>
         </div>
       </div>

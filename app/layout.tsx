@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/react"
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import Script from 'next/script'
+import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
   title: 'Views to Downloads',
@@ -32,6 +33,7 @@ export default async function RootLayout({
       </head>
       <body>
         {children}
+        <Toaster />
         <Analytics />
       </body>
     </html>

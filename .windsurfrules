@@ -136,6 +136,36 @@ Stores automation triggers associated with apps.
 
 ---
 
+# `subscriptions` Table Schema
+
+The `subscriptions` table manages user subscriptions and integrates with Stripe for payment processing.
+
+## **Primary Key**
+- **`id` (UUID, Primary Key)**: Unique identifier for each subscription record.
+
+## **Foreign Key**
+- **`user_id` (UUID, Foreign Key)**: Links to the user who owns the subscription.
+
+## **Stripe-Related Fields**
+- **`stripe_customer_id` (TEXT)**: The Stripe customer ID associated with the user.
+- **`stripe_subscription_id` (TEXT)**: The Stripe subscription ID corresponding to this record.
+- **`stripe_price_id` (TEXT)**: The Stripe price ID associated with the subscription plan.
+
+## **Subscription Details**
+- **`plan_name` (TEXT)**: The name of the subscription plan (e.g., "Basic", "Premium").
+- **`status` (TEXT)**: The current status of the subscription (e.g., "active", "canceled", "past_due").
+
+## **Subscription Period**
+- **`current_period_start` (TIMESTAMPTZ)**: Timestamp indicating the start of the current billing cycle.
+- **`current_period_end` (TIMESTAMPTZ)**: Timestamp marking the end of the current billing cycle.
+
+## **Timestamps**
+- **`created_at` (TIMESTAMPTZ)**: The timestamp when the subscription record was created.
+- **`updated_at` (TIMESTAMPTZ)**: The timestamp when the subscription record was last updated.
+
+## **Usage**
+This table enables tracking of user subscriptions, including linking users to their Stripe subscription details, monitoring the current billing cycle, and handling subscription status changes. It is a key part of subscription-based services where users are billed periodically.
+
 ## **3. Relationships Diagram**
 Here’s a summary of how the tables connect:
 

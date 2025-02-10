@@ -105,6 +105,65 @@ Apps can be managed through the dashboard with the following operations:
 - View app details: Click on app card to view full details
 - Delete app: Use trash icon to remove app (requires confirmation)
 
+## Subscription Plans and Content Limits
+
+The application offers three subscription tiers with different content creation limits:
+
+1. **Starter Plan**
+   - 10 pieces of content per month
+   - Basic features
+   - Perfect for individual creators
+
+2. **Growth Plan**
+   - 50 pieces of content per month
+   - All Starter features
+   - Ideal for growing channels
+
+3. **Scale Plan**
+   - 150 pieces of content per month
+   - All Growth features
+   - Built for professional content creators
+
+Content limits reset at the start of each billing period. When upgrading plans, the content limit is immediately adjusted and usage is reset.
+
+### Content Usage Tracking
+
+The application tracks content creation across all types (videos, images, etc.) with these features:
+- Real-time usage display in the sidebar
+- Progress bar showing percentage used
+- Automatic reset at billing period start
+- Usage limits enforced before content creation
+
+## Subscription Management
+
+### 1. **Subscription States**
+   The application manages subscriptions through Stripe with these states:
+   - Active: Full access to features within plan limits
+   - Canceled: Access until end of current period
+   - Past Due: Grace period with continued access
+
+### 2. **Plan Changes**
+   When changing plans:
+   - Upgrades: Immediate access to new limits
+   - Downgrades: New limits apply at next billing cycle
+   - Content usage resets on plan change
+
+### 3. **Webhook Processing**
+   The following Stripe webhooks manage subscription state:
+   - `checkout.session.completed`: Initial subscription creation
+     - Matches user by email
+     - Creates subscription record
+     - Sets initial content limits
+   - `customer.subscription.updated`: Plan changes
+     - Updates plan and limits
+     - Resets usage counters
+   - `invoice.paid`: Renewal processing
+     - Extends subscription period
+     - Resets monthly usage
+   - `customer.subscription.deleted`: Cancellations
+     - Updates subscription status
+     - Maintains access until period end
+
 ## Pricing Plans and Stripe Integration
 
 The application offers three pricing tiers:

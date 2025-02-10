@@ -7,16 +7,46 @@ import { deleteVideo } from '@/app/dashboard/actions'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { formatDistanceToNow, isWithinInterval, subHours } from 'date-fns'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface VideoCardProps {
   video: OutputContent
   isPending?: boolean
+  onDelete?: (id: string) => void
 }
 
-export function VideoCard({ video, isPending = false }: VideoCardProps) {
+export function VideoCard({ video, isPending = false, onDelete }: VideoCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const isLoading = video.status === 'in_progress'
   const supabase = createClientComponentClient()
+
+  // Format the date - show relative time if within 24 hours
+  const formatDate = (date: string) => {
+    const createdDate = new Date(date)
+    const now = new Date()
+    
+    const isWithin24Hours = isWithinInterval(createdDate, {
+      start: subHours(now, 24),
+      end: now
+    })
+
+    if (isWithin24Hours) {
+      return formatDistanceToNow(createdDate, { addSuffix: true })
+    }
+
+    return createdDate.toLocaleDateString()
+  }
 
   if (isPending) {
     return (
@@ -47,6 +77,8 @@ export function VideoCard({ video, isPending = false }: VideoCardProps) {
     try {
       setIsDeleting(true)
       await deleteVideo(video.id)
+      // Call the onDelete callback if provided
+      onDelete?.(video.id)
     } catch (error) {
       console.error('Failed to delete video:', error)
     } finally {
@@ -89,7 +121,7 @@ export function VideoCard({ video, isPending = false }: VideoCardProps) {
       <div className="p-4">
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500">
-            {new Date(video.created_at).toLocaleDateString()}
+            {formatDate(video.created_at)}
           </span>
           <div className="flex gap-2">
             {isLoading ? (
@@ -102,19 +134,42 @@ export function VideoCard({ video, isPending = false }: VideoCardProps) {
                   variant="ghost"
                   size="icon"
                   onClick={handleDownload}
-                  className="h-8 w-8 bg-white hover:bg-gray-100"
                 >
-                  <Download className="h-4 w-4 text-gray-600" />
+                  <Download className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="h-8 w-8 bg-white hover:bg-gray-100"
-                >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-500 hover:text-red-600"
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Video</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete this video? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-red-500 hover:bg-red-600 text-white"
+                        onClick={handleDelete}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </>
             )}
           </div>

@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { User } from '@supabase/supabase-js'
 
+export const CONTENT_LIMITS = {
+  starter: 10,
+  growth: 50,
+  scale: 150
+} as const
+
 export type Subscription = {
   id: string
   user_id: string
@@ -14,6 +20,8 @@ export type Subscription = {
   status: string
   current_period_start: string
   current_period_end: string
+  content_used_this_month: number
+  content_reset_date: string
 }
 
 export function useSubscription(user: User | null) {
@@ -80,10 +88,17 @@ export function useSubscription(user: User | null) {
     }
   }, [user, supabase])
 
+  const contentRemaining = subscription?.plan_name 
+    ? CONTENT_LIMITS[subscription.plan_name] - (subscription.content_used_this_month || 0)
+    : 0 // No content allowed without subscription
+
   return {
     subscription,
     loading,
     isSubscribed: subscription !== null,
-    plan: subscription?.plan_name || null
+    plan: subscription?.plan_name || null, // No default plan without subscription
+    contentUsed: subscription?.content_used_this_month || 0,
+    contentRemaining,
+    contentLimit: subscription?.plan_name ? CONTENT_LIMITS[subscription.plan_name] : 0
   }
 }
