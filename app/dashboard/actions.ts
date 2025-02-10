@@ -300,8 +300,14 @@ export async function createVideo({
     if (!user) throw new Error('User not authenticated')
 
     // Check if user has an active subscription
-    const subscriptionStatus = user.user_metadata?.stripe_subscription_status
-    if (!subscriptionStatus || subscriptionStatus !== 'active') {
+    const { data: subscription, error: subscriptionError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .single()
+
+    if (subscriptionError || !subscription) {
       throw new Error('Active subscription required')
     }
 

@@ -2,18 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { AppSelect } from "@/components/app-select"
 import { HookItem } from "@/components/HookItem"
 import { getApps, generateHooks, getHooks, deleteHook } from "../actions"
 import { useToast } from "@/components/ui/use-toast"
-import { PricingDialog } from "@/components/pricing-dialog"
+import { useUser } from '@supabase/auth-helpers-react'
+import { useSubscription } from '@/hooks/useSubscription'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { SubscriptionGuard } from '@/components/SubscriptionGuard'
+import { Loader2 } from 'lucide-react'
 
 type App = {
   id: string
@@ -26,211 +23,169 @@ type Hook = {
 }
 
 export default function HooksPage() {
-  const [selectedApp, setSelectedApp] = useState<string>('')
+  const [selectedAppId, setSelectedAppId] = useState<string>('')
   const [apps, setApps] = useState<App[]>([])
   const [hooks, setHooks] = useState<Hook[]>([])
-  const [selectedHooks, setSelectedHooks] = useState<Set<string>>(new Set())
-  const [isLoading, setIsLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [showPricing, setShowPricing] = useState(false)
-  const [isSubscribed, setIsSubscribed] = useState<boolean | null>(null)
   const { toast } = useToast()
   const supabase = createClientComponentClient()
+  const user = useUser()
+  const { isSubscribed } = useSubscription(user)
 
-  // Check subscription status
   useEffect(() => {
-    const checkSubscription = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const subscriptionStatus = user.user_metadata?.stripe_subscription_status;
-      setIsSubscribed(subscriptionStatus === 'active');
-    }
-
-    checkSubscription()
-  }, [])
-
-  // Load apps
-  useEffect(() => {
-    const loadApps = async () => {
-      const { data } = await getApps()
-      if (data) {
-        setApps(data)
-        if (data.length > 0) {
-          setSelectedApp(data[0].id)
+    const fetchApps = async () => {
+      try {
+        const result = await getApps()
+        if (result.error) {
+          throw new Error(result.error)
         }
+        setApps(result.data)
+      } catch (error) {
+        console.error('Error fetching apps:', error)
+        toast({
+          title: "Error fetching apps",
+          description: "Please try again later",
+          variant: "destructive"
+        })
       }
-      setIsLoading(false)
     }
-    loadApps()
+
+    fetchApps()
   }, [])
 
-  // Load hooks when app is selected
   useEffect(() => {
     const loadHooks = async () => {
-      if (!selectedApp) return
-      const { data, error } = await getHooks(selectedApp)
-      if (error) {
+      if (!selectedAppId) return
+      try {
+        const result = await getHooks(selectedAppId)
+        if (result.error) {
+          throw new Error(result.error)
+        }
+        setHooks(result.data)
+      } catch (error) {
+        console.error('Error fetching hooks:', error)
         toast({
-          title: "Error loading hooks",
-          description: error,
-          variant: "destructive",
+          title: "Error fetching hooks",
+          description: "Please try again later",
+          variant: "destructive"
         })
-      } else if (data) {
-        setHooks(data)
       }
     }
     loadHooks()
-  }, [selectedApp, toast])
-
-  const handleSelectHook = (id: string, selected: boolean) => {
-    setSelectedHooks(prev => {
-      const newSet = new Set(prev)
-      if (selected) {
-        newSet.add(id)
-      } else {
-        newSet.delete(id)
-      }
-      return newSet
-    })
-  }
+  }, [selectedAppId])
 
   const handleDeleteHook = async (id: string) => {
-    const { error } = await deleteHook(id)
-    if (error) {
-      toast({
-        title: "Error deleting hook",
-        description: error,
-        variant: "destructive",
-      })
-    } else {
+    try {
+      const result = await deleteHook(id)
+      if (result.error) {
+        throw new Error(result.error)
+      }
       setHooks(hooks => hooks.filter(hook => hook.id !== id))
-      setSelectedHooks(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(id)
-        return newSet
-      })
       toast({
         title: "Hook deleted",
         description: "The hook has been deleted successfully.",
       })
+    } catch (error) {
+      console.error('Error deleting hook:', error)
+      toast({
+        title: "Error deleting hook",
+        description: error.message,
+        variant: "destructive"
+      })
     }
   }
 
-  const handleDeselectAll = () => {
-    setSelectedHooks(new Set())
-  }
-
   const handleGenerateHooks = async () => {
-    if (!selectedApp) return
-
-    // Check subscription status first
     if (!isSubscribed) {
-      setShowPricing(true)
+      return
+    }
+
+    if (!selectedAppId) {
+      toast({
+        title: "Select an app",
+        description: "Please select an app to generate hooks for",
+        variant: "destructive"
+      })
       return
     }
 
     setIsGenerating(true)
-    const { hooks: newHooks, error } = await generateHooks(selectedApp)
-    setIsGenerating(false)
 
-    if (error) {
-      toast({
-        title: "Error generating hooks",
-        description: error,
-        variant: "destructive",
-      })
-    } else if (newHooks) {
-      setHooks(prev => [...newHooks, ...prev])
+    try {
+      const result = await generateHooks(selectedAppId)
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      // Refresh hooks list
+      const hooksResult = await getHooks(selectedAppId)
+      if (hooksResult.error) {
+        throw new Error(hooksResult.error)
+      }
+      setHooks(hooksResult.data)
+
       toast({
         title: "Hooks generated",
-        description: "New hooks have been generated successfully.",
+        description: "New hooks have been generated for your app"
       })
+    } catch (error) {
+      console.error('Error generating hooks:', error)
+      toast({
+        title: "Error generating hooks",
+        description: error.message,
+        variant: "destructive"
+      })
+    } finally {
+      setIsGenerating(false)
     }
   }
 
-  if (isLoading) {
-    return <div className="p-6">Loading...</div>
-  }
-
   return (
-    <div className="p-6">
-      <PricingDialog open={showPricing} onOpenChange={setShowPricing} />
-      
+    <div className="p-8">
       <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-semibold">Generate Hooks</h1>
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-semibold">Hooks Manager</h1>
-          <Select value={selectedApp} onValueChange={setSelectedApp}>
-            <SelectTrigger className="w-[240px]">
-              <SelectValue placeholder="Select an app">
-                {apps.find(app => app.id === selectedApp)?.app_name || 'Select an app'}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {apps.map(app => (
-                <SelectItem key={app.id} value={app.id}>
-                  {app.app_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            className="text-sm"
-            onClick={handleDeselectAll}
-            disabled={selectedHooks.size === 0}
-          >
-            Deselect all
-          </Button>
-          <Button 
-            className="bg-black text-white hover:bg-gray-800"
-            onClick={handleGenerateHooks}
-            disabled={!selectedApp || isGenerating}
-          >
-            {isGenerating ? (
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                <span>Generating...</span>
-              </div>
-            ) : (
-              <>
-                <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                Generate New Hooks
-              </>
-            )}
-          </Button>
+          <AppSelect
+            selectedAppId={selectedAppId}
+            onSelect={setSelectedAppId}
+          />
+          <SubscriptionGuard>
+            <Button
+              onClick={handleGenerateHooks}
+              disabled={!selectedAppId || isGenerating}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                'Generate Hooks'
+              )}
+            </Button>
+          </SubscriptionGuard>
         </div>
       </div>
 
-      <div className="grid grid-cols-[auto,1fr,auto] gap-4 text-sm text-gray-500 px-4 py-2 border-b">
-        <div className="w-16">Select</div>
-        <div>Hook</div>
-        <div className="w-24">Actions</div>
-      </div>
-
-      <div className="divide-y">
-        {hooks.length > 0 ? (
-          hooks.map(hook => (
-            <HookItem
-              key={hook.id}
-              id={hook.id}
-              text={hook.hook_text}
-              selected={selectedHooks.has(hook.id)}
-              onSelect={handleSelectHook}
-              onDelete={handleDeleteHook}
-            />
-          ))
-        ) : (
-          <div className="text-center text-gray-500 py-8">
-            No hooks found. Click "Generate New Hooks" to create some.
+      {hooks.length > 0 ? (
+        <div className="space-y-4">
+          <h2 className="text-lg font-medium">Generated Hooks</h2>
+          <div className="space-y-2">
+            {hooks.map((hook) => (
+              <HookItem
+                key={hook.id}
+                id={hook.id}
+                text={hook.hook_text}
+                onDelete={() => handleDeleteHook(hook.id)}
+              />
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-gray-500">No hooks found. Generate some hooks to get started!</p>
+        </div>
+      )}
     </div>
   )
 }

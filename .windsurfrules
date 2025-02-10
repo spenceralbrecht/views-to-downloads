@@ -2,7 +2,7 @@ This project uses Bun.
 
 This project is deployed in production to the url https://viewstodownloads.com.
 
-Do everything you can to avoid unnecessary complexity. 
+Do everything you can to avoid unnecessary complexity. Showing localhost notifications is not good UX.
 
 These are the keys in the .env.local file but in the real file they all have a value assigned to them.
 

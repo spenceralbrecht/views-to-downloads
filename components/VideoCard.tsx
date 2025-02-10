@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { OutputContent } from '@/types/video'
-import { Trash2, Download } from 'lucide-react'
+import { Trash2, Download, Loader2 } from 'lucide-react'
 import { deleteVideo } from '@/app/dashboard/actions'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -10,12 +10,23 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 interface VideoCardProps {
   video: OutputContent
+  isPending?: boolean
 }
 
-export function VideoCard({ video }: VideoCardProps) {
+export function VideoCard({ video, isPending = false }: VideoCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const isLoading = video.status === 'in_progress'
   const supabase = createClientComponentClient()
+
+  if (isPending) {
+    return (
+      <Card className="relative aspect-video bg-gray-100 animate-pulse">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+        </div>
+      </Card>
+    )
+  }
 
   // Clean the URL by removing any query parameters
   const cleanVideoUrl = (url: string) => {

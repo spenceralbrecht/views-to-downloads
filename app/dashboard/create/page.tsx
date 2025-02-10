@@ -9,8 +9,10 @@ import { uploadDemoVideo, createVideo } from '../actions'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { VideoCard } from '@/components/VideoCard'
 import { AppSelect } from '@/components/app-select'
-import { PricingDialog } from '@/components/pricing-dialog'
+import { useUser } from '@supabase/auth-helpers-react'
+import { useSubscription } from '@/hooks/useSubscription'
 import type { DemoVideo, OutputVideo } from '@/app/types'
+import { SubscriptionGuard } from '@/components/SubscriptionGuard'
 
 interface Hook {
   id: string
@@ -20,6 +22,8 @@ interface Hook {
 export default function CreateAd() {
   const supabase = createClientComponentClient()
   const [isPending, startTransition] = useTransition()
+  const user = useUser()
+  const { isSubscribed } = useSubscription(user)
 
   // State for app selection
   const [selectedAppId, setSelectedAppId] = useState<string>('')
@@ -34,23 +38,18 @@ export default function CreateAd() {
   // State for video selection
   const [selectedVideo, setSelectedVideo] = useState<number | null>(null)
   const [selectedInfluencerVideo, setSelectedInfluencerVideo] = useState('')
-  const [selectedDemo, setSelectedDemo] = useState<string>('')
   const [selectedDemoVideo, setSelectedDemoVideo] = useState('')
+  const [selectedDemo, setSelectedDemo] = useState<string>('')
 
   // State for demo videos
   const [demoVideos, setDemoVideos] = useState<DemoVideo[]>([])
-  const [loadingDemos, setLoadingDemos] = useState(true)
+  const [loadingDemos, setLoadingDemos] = useState(false)
+  const [isUploadingDemo, startDemoUpload] = useTransition()
 
   // State for output videos
   const [outputVideos, setOutputVideos] = useState<OutputVideo[]>([])
   const [loadingOutputs, setLoadingOutputs] = useState(true)
-
-  // State for pricing dialog
-  const [showPricing, setShowPricing] = useState(false)
-  const [isSubscribed, setIsSubscribed] = useState(false)
-
-  // State for demo video error
-  const [demoVideoError, setDemoVideoError] = useState<boolean>(false)
+  const [pendingVideo, setPendingVideo] = useState<any>(null)
 
   // Generate an array of 69 videos
   const allVideos = Array.from({ length: 69 }, (_, i) => i + 1)
@@ -171,7 +170,7 @@ export default function CreateAd() {
       if (!user) return
 
       const subscriptionStatus = user.user_metadata?.stripe_subscription_status;
-      setIsSubscribed(subscriptionStatus === 'active');
+      // setIsSubscribed(subscriptionStatus === 'active');
     }
 
     checkSubscription()
@@ -184,20 +183,17 @@ export default function CreateAd() {
   }
 
   // Handle video creation
-  const handleCreate = async () => {
+  const handleCreateVideo = async () => {
     if (isPending) {
-      console.log('Video creation already in progress')
       return
     }
 
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
-      console.error('Error getting user:', userError)
       return
     }
 
     if (!selectedAppId) {
-      alert('Please select an app first')
       return
     }
 
@@ -208,9 +204,21 @@ export default function CreateAd() {
     if (!hook) missingFields.push('caption text')
 
     if (missingFields.length > 0) {
-      alert(`Please provide the following required fields: ${missingFields.join(', ')}`)
       return
     }
+
+    // Create a pending video object
+    const pendingVideoObj = {
+      id: crypto.randomUUID(),
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      app_id: selectedAppId,
+      user_id: user.id
+    }
+    
+    // Add the pending video to the list
+    setOutputVideos(prev => [pendingVideoObj, ...prev])
+    setPendingVideo(pendingVideoObj)
 
     startTransition(async () => {
       try {
@@ -224,32 +232,25 @@ export default function CreateAd() {
         })
 
         if ('error' in result) {
-          alert(`Error creating video: ${result.error}`)
+          // Remove the pending video if there was an error
+          setOutputVideos(prev => prev.filter(v => v.id !== pendingVideoObj.id))
+          setPendingVideo(null)
+          return
         } else {
           setSelectedVideo(null)
           setSelectedDemoVideo('')
           setHook('')
-          alert('Video created successfully!')
+          setPendingVideo(null)
+          // Fetch the updated video list
+          fetchOutputVideos()
         }
       } catch (error) {
         console.error('Error creating video:', error)
-        if (error instanceof Error) {
-          alert(`Error creating video: ${error.message}`)
-        } else {
-          alert('An unexpected error occurred while creating the video.')
-        }
+        // Remove the pending video if there was an error
+        setOutputVideos(prev => prev.filter(v => v.id !== pendingVideoObj.id))
+        setPendingVideo(null)
       }
     })
-  }
-
-  // Handle create button click
-  const handleCreateClick = async () => {
-    if (!isSubscribed) {
-      setShowPricing(true)
-      return
-    }
-
-    handleCreate()
   }
 
   const handleUGCVideoSelect = (num: number) => {
@@ -257,29 +258,12 @@ export default function CreateAd() {
     setSelectedInfluencerVideo(getUGCVideoUrl(num))
   }
 
-  const handleDemoSelect = (video: DemoVideo) => {
-    setSelectedDemo(video.id)
-    setSelectedDemoVideo(video.publicUrl || '')
-  }
-
-  const handlePrevHook = () => {
-    if (currentHookIndex > 0) {
-      setCurrentHookIndex(prev => prev - 1)
-      setHook(hooks[currentHookIndex - 1].hook_text)
-    }
-  }
-
-  const handleNextHook = () => {
-    if (currentHookIndex < hooks.length - 1) {
-      setCurrentHookIndex(prev => prev + 1)
-      setHook(hooks[currentHookIndex + 1].hook_text)
-    }
+  const handleDemoVideoSelect = (url: string) => {
+    setSelectedDemoVideo(url)
   }
 
   return (
     <div className="p-8">
-      <PricingDialog open={showPricing} onOpenChange={setShowPricing} />
-      
       <h1 className="text-2xl font-semibold mb-6">Create UGC ads</h1>
       
       <Card className="p-6 bg-gray-50">
@@ -305,7 +289,7 @@ export default function CreateAd() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={handlePrevHook}
+                onClick={() => setCurrentHookIndex(currentHookIndex - 1)}
                 disabled={currentHookIndex === 0 || hooks.length === 0 || loadingHooks}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -348,7 +332,7 @@ export default function CreateAd() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={handleNextHook}
+                onClick={() => setCurrentHookIndex(currentHookIndex + 1)}
                 disabled={currentHookIndex === hooks.length - 1 || hooks.length === 0 || loadingHooks}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -431,7 +415,7 @@ export default function CreateAd() {
                   htmlFor="demoVideo"
                   className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 cursor-pointer"
                 >
-                  {isPending ? (
+                  {isUploadingDemo ? (
                     <Loader2 className="animate-spin h-6 w-6" />
                   ) : (
                     '+'
@@ -447,11 +431,10 @@ export default function CreateAd() {
                     const file = e.currentTarget.files?.[0];
                     if (file) {
                       if (!file.type.includes('mp4')) {
-                        alert('Please upload an MP4 video file only');
                         e.currentTarget.value = '';
                         return;
                       }
-                      startTransition(() => {
+                      startDemoUpload(() => {
                         e.currentTarget.form?.requestSubmit()
                       })
                     }
@@ -466,45 +449,18 @@ export default function CreateAd() {
                   demoVideos.map((video) => (
                     <div
                       key={video.id}
-                      onClick={() => handleDemoSelect(video)}
-                      className={`relative w-48 h-48 rounded-lg overflow-hidden border ${selectedDemo === video.id ? 'outline outline-2 outline-blue-500' : ''}`}
+                      onClick={() => handleDemoVideoSelect(video.publicUrl)}
+                      className={`relative w-48 h-48 rounded-lg overflow-hidden border ${selectedDemoVideo === video.publicUrl ? 'outline outline-2 outline-blue-500' : ''}`}
                     >
-                      {demoVideoError ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                          <p className="text-sm text-gray-500 text-center px-4">Error loading video</p>
-                        </div>
-                      ) : (
-                        <video
-                          key={video.publicUrl} // Add key to force re-render when URL changes
-                          src={video.publicUrl}
-                          preload="auto"
-                          muted
-                          loop
-                          playsInline
-                          onLoadedData={(e) => {
-                            if (e.currentTarget.readyState >= 3) {
-                              e.currentTarget.pause();
-                              setDemoVideoError(false);
-                            }
-                          }}
-                          onError={(e) => {
-                            console.error('Error loading demo video:', e);
-                            setDemoVideoError(true);
-                          }}
-                          onMouseEnter={(e) => {
-                            if (e.currentTarget.readyState >= 3) {
-                              e.currentTarget.play().catch(err => {
-                                console.error('Error playing video:', err);
-                                setDemoVideoError(true);
-                              });
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.pause();
-                          }}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
+                      <video
+                        key={video.publicUrl}
+                        src={video.publicUrl}
+                        preload="auto"
+                        muted
+                        loop
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   ))
                 ) : (
@@ -525,9 +481,23 @@ export default function CreateAd() {
               />
               Sound
             </Button>
-            <Button type="button" className="bg-[#4287f5]" onClick={handleCreateClick}>
-              Create
-            </Button>
+            <SubscriptionGuard>
+              <Button 
+                type="button" 
+                className="bg-[#4287f5] hover:bg-[#3270d8] text-white" 
+                onClick={isPending ? undefined : handleCreateVideo} 
+                disabled={isPending}
+              >
+                {isPending ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Creating...
+                  </div>
+                ) : (
+                  "Create Video"
+                )}
+              </Button>
+            </SubscriptionGuard>
           </div>
         </div>
       </Card>
@@ -544,23 +514,11 @@ export default function CreateAd() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {outputVideos.map((video) => (
-              <VideoCard key={video.id} video={video} />
+              <VideoCard key={video.id} video={video} isPending={video.id === pendingVideo?.id} />
             ))}
           </div>
         )}
       </div>
     </div>
-  )
-}
-
-function VideoCardSkeleton() {
-  return (
-    <Card className="overflow-hidden">
-      <div className="aspect-video bg-gray-100 animate-pulse" />
-      <div className="p-4 space-y-3">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-4 w-1/2" />
-      </div>
-    </Card>
   )
 }

@@ -74,14 +74,6 @@ export function Sidebar({ user }: SidebarProps) {
           </Button>
         </div>
 
-        {!loading && (
-          <div className="px-4 mb-4">
-            <Badge variant={isSubscribed ? "default" : "secondary"} className="w-full justify-center py-1">
-              {isSubscribed ? `${plan?.toUpperCase()} Plan` : 'Free Plan'}
-            </Badge>
-          </div>
-        )}
-
         <nav className="space-y-1 px-2">
           {navigation.map((item) => {
             const isActive = pathname === item.href
@@ -136,6 +128,13 @@ export function Sidebar({ user }: SidebarProps) {
         </nav>
 
         <div className="px-4 py-4 border-t">
+          {!loading && (
+            <div className="mb-4">
+              <Badge variant={isSubscribed ? "default" : "secondary"} className="w-full justify-center py-1">
+                {isSubscribed ? `${plan?.toUpperCase()} Plan` : 'Free Plan'}
+              </Badge>
+            </div>
+          )}
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <UserIcon className="h-8 w-8 text-gray-400" />

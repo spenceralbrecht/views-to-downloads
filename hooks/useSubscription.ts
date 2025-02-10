@@ -34,6 +34,7 @@ export function useSubscription(user: User | null) {
           .from('subscriptions')
           .select('*')
           .eq('user_id', user.id)
+          .eq('status', 'active')
           .single()
 
         if (error) {
@@ -82,7 +83,7 @@ export function useSubscription(user: User | null) {
   return {
     subscription,
     loading,
-    isSubscribed: subscription?.status === 'active',
+    isSubscribed: subscription !== null,
     plan: subscription?.plan_name || null
   }
 }
