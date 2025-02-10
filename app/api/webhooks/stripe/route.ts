@@ -18,130 +18,116 @@ const supabaseAdmin = createClient(
   }
 )
 
-async function handleStripeWebhook(event) {
-  switch (event.type) {
-    case 'checkout.session.completed': {
-      const session = event.data.object as Stripe.Checkout.Session
-      const customerId = session.customer as string
-      const subscriptionId = session.subscription as string
-      const userId = session.client_reference_id
+async function handleStripeWebhook(event: Stripe.Event) {
+  console.log('Processing webhook event:', event.type);
 
-      if (!userId) {
-        console.error('No client_reference_id in session')
-        return { error: 'No client_reference_id' }
-      }
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+        const customerId = session.customer as string
+        const subscriptionId = session.subscription as string
+        const userId = session.client_reference_id
 
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-      if (!uuidRegex.test(userId)) {
-        console.error('Invalid client_reference_id format:', userId)
-        return { error: 'Invalid client_reference_id format' }
-      }
+        if (!userId) {
+          console.log('No client_reference_id in session');
+          return { status: 'success', message: 'Skipped - no client_reference_id' }
+        }
 
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-      const priceId = subscription.items.data[0].price.id
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+        const priceId = subscription.items.data[0].price.id
 
-      const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
-      
-      if (userError) {
-        console.error('Error getting user:', userError)
-        return { error: 'Error getting user' }
-      }
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
+        
+        if (userError || !user) {
+          console.error('Error finding user:', userError);
+          return { status: 'success', message: 'Skipped - user not found' }
+        }
 
-      let planName = 'starter'
-      if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID) {
-        planName = 'growth'
-      } else if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID) {
-        planName = 'scale'
-      }
+        let planName = 'starter'
+        if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID) {
+          planName = 'growth'
+        } else if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID) {
+          planName = 'scale'
+        }
 
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(
-        userId,
-        {
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
           user_metadata: {
-            ...user?.user_metadata, 
+            ...user.user_metadata,
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId,
             stripe_subscription_status: subscription.status,
             stripe_price_id: priceId,
             stripe_plan_name: planName
           }
+        })
+        return { status: 'success', message: 'User updated with subscription info' }
+      }
+
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription
+        const customerId = subscription.customer as string
+
+        const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers()
+        if (userError) {
+          console.error('Error listing users:', userError);
+          return { status: 'error', message: 'Failed to list users' }
         }
-      )
 
-      if (error) {
-        console.error('Error updating user:', error)
-        return { error: 'Error updating user' }
-      }
-      break
-    }
+        const user = users.users.find(u => u.user_metadata?.stripe_customer_id === customerId)
+        if (!user) {
+          console.log('No user found with customer ID:', customerId);
+          return { status: 'success', message: 'Skipped - user not found' }
+        }
 
-    case 'customer.subscription.updated': {
-      const subscription = event.data.object as Stripe.Subscription
-      const customerId = subscription.customer as string
-
-      const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers()
-      const user = users?.users.find(
-        (u) => u.user_metadata?.stripe_customer_id === customerId
-      )
-
-      if (userError || !user) {
-        console.error('Error finding user:', userError)
-        return { error: 'Error finding user' }
-      }
-
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(
-        user.id,
-        {
+        await supabaseAdmin.auth.admin.updateUserById(user.id, {
           user_metadata: {
-            ...user.user_metadata, 
+            ...user.user_metadata,
             stripe_subscription_status: subscription.status,
             stripe_price_id: subscription.items.data[0].price.id
           }
+        })
+        return { status: 'success', message: 'Subscription status updated' }
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription
+        const customerId = subscription.customer as string
+
+        const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers()
+        if (userError) {
+          console.error('Error listing users:', userError);
+          return { status: 'error', message: 'Failed to list users' }
         }
-      )
 
-      if (error) {
-        console.error('Error updating user:', error)
-        return { error: 'Error updating user' }
-      }
-      break
-    }
+        const user = users.users.find(u => u.user_metadata?.stripe_customer_id === customerId)
+        if (!user) {
+          console.log('No user found with customer ID:', customerId);
+          return { status: 'success', message: 'Skipped - user not found' }
+        }
 
-    case 'customer.subscription.deleted': {
-      const subscription = event.data.object as Stripe.Subscription
-      const customerId = subscription.customer as string
-
-      const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers()
-      const user = users?.users.find(
-        (u) => u.user_metadata?.stripe_customer_id === customerId
-      )
-
-      if (userError || !user) {
-        console.error('Error finding user:', userError)
-        return { error: 'Error finding user' }
-      }
-
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(
-        user.id,
-        {
+        await supabaseAdmin.auth.admin.updateUserById(user.id, {
           user_metadata: {
-            ...user.user_metadata, 
+            ...user.user_metadata,
             stripe_subscription_status: 'canceled',
             stripe_price_id: null,
             stripe_plan_name: null
           }
-        }
-      )
-
-      if (error) {
-        console.error('Error updating user:', error)
-        return { error: 'Error updating user' }
+        })
+        return { status: 'success', message: 'Subscription canceled' }
       }
-      break
+
+      default:
+        console.log('Unhandled event type:', event.type);
+        return { status: 'success', message: `Unhandled event type: ${event.type}` }
+    }
+  } catch (error) {
+    console.error('Error in webhook handler:', error);
+    return { 
+      status: 'error', 
+      message: error instanceof Error ? error.message : 'Unknown error'
     }
   }
-
-  return { message: 'Webhook processed' }
 }
 
 export async function POST(req: Request) {
