@@ -3,8 +3,11 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 
+// Configure Stripe for Edge Runtime
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia'
+  apiVersion: '2024-12-18.acacia',
+  httpClient: Stripe.createFetchHttpClient(), // Use fetch-based HTTP client
+  cryptoProvider: Stripe.createSubtleCryptoProvider() // Use SubtleCrypto for Edge
 })
 
 // Create a Supabase client with the service role key
@@ -179,7 +182,7 @@ export async function POST(req: Request) {
 
   try {
     console.log('Constructing event with signature:', signature.substring(0, 10) + '...');
-    const event = stripe.webhooks.constructEvent(
+    const event = await stripe.webhooks.constructEventAsync(
       body,
       signature,
       process.env.STRIPE_TEST_WEBHOOK_SECRET!
