@@ -44,6 +44,15 @@ export async function POST(req: Request) {
       return new NextResponse(JSON.stringify({ url: session.url }))
     }
 
+    // Get user email from Supabase
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
+    if (userError || !user?.email) {
+      return new NextResponse(
+        JSON.stringify({ error: 'User not found' }),
+        { status: 404 }
+      )
+    }
+
     // Create new checkout session
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -57,9 +66,16 @@ export async function POST(req: Request) {
       success_url: process.env.NEXT_PUBLIC_TEST_APP_URL + '/dashboard?success=true',
       cancel_url: process.env.NEXT_PUBLIC_TEST_APP_URL + '/dashboard?canceled=true',
       client_reference_id: userId,
-      allow_promotion_codes: true,
-      billing_address_collection: 'required',
-      customer_email: undefined // Let Stripe collect email to avoid duplicate customers
+      customer_email: user.email,
+      subscription_data: {
+        metadata: {
+          userId: userId // Add userId to subscription metadata
+        }
+      },
+      customer_creation: 'always',
+      metadata: {
+        userId: userId // Add userId to session metadata
+      }
     })
 
     return new NextResponse(JSON.stringify({ url: session.url }))

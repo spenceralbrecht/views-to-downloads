@@ -18,6 +18,51 @@ const supabaseAdmin = createClient(
   }
 )
 
+async function getUserIdFromStripe(customerId: string, subscriptionId?: string): Promise<string | null> {
+  try {
+    // First check subscription metadata if we have a subscription ID
+    if (subscriptionId) {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+      if (subscription.metadata?.userId) {
+        return subscription.metadata.userId
+      }
+    }
+
+    // Then check customer metadata
+    const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer
+    if (customer.metadata?.userId) {
+      return customer.metadata.userId
+    }
+
+    return null
+  } catch (error) {
+    console.error('Error getting userId from Stripe:', error)
+    return null
+  }
+}
+
+async function getUserIdFromEmail(email: string | null | undefined): Promise<string | null> {
+  if (!email) return null;
+  
+  try {
+    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({
+      filters: {
+        email: email
+      }
+    });
+
+    if (error || !users || users.length === 0) {
+      console.log('No user found for email:', email)
+      return null
+    }
+
+    return users[0].id
+  } catch (error) {
+    console.error('Error finding user by email:', error)
+    return null
+  }
+}
+
 async function handleStripeWebhook(event: Stripe.Event) {
   console.log('Processing webhook event:', event.type);
 
@@ -46,11 +91,9 @@ async function handleStripeWebhook(event: Stripe.Event) {
 
         // If no subscription exists yet, try to find the user from metadata
         if (!existingSub) {
-          const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer
-          const userId = customer.metadata.userId
-
+          const userId = await getUserIdFromStripe(customerId, subscription.id)
           if (!userId) {
-            console.log('No userId in customer metadata:', customerId)
+            console.log('No userId found for customer:', customerId)
             return { status: 'error', message: 'No userId found for customer' }
           }
 
@@ -72,44 +115,55 @@ async function handleStripeWebhook(event: Stripe.Event) {
             console.error('Error creating subscription:', createError)
             return { status: 'error', message: 'Failed to create subscription' }
           }
-        } else {
-          // Update existing subscription
-          const { error: updateError } = await supabaseAdmin
-            .from('subscriptions')
-            .update({
-              stripe_subscription_id: subscription.id,
-              stripe_price_id: priceId,
-              plan_name: planName,
-              status: subscription.status,
-              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
-            })
-            .eq('id', existingSub.id)
 
-          if (updateError) {
-            console.error('Error updating subscription:', updateError)
-            return { status: 'error', message: 'Failed to update subscription' }
-          }
+          return { status: 'success', message: 'Subscription created' }
         }
 
-        return { status: 'success', message: 'Subscription processed' }
+        // Update existing subscription
+        const { error: updateError } = await supabaseAdmin
+          .from('subscriptions')
+          .update({
+            stripe_subscription_id: subscription.id,
+            stripe_price_id: priceId,
+            plan_name: planName,
+            status: subscription.status,
+            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+          })
+          .eq('id', existingSub.id)
+
+        if (updateError) {
+          console.error('Error updating subscription:', updateError)
+          return { status: 'error', message: 'Failed to update subscription' }
+        }
+
+        return { status: 'success', message: 'Subscription updated' }
       }
 
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
         const customerId = session.customer as string
         const subscriptionId = session.subscription as string
-        const userId = session.client_reference_id
+        
+        // Try to get userId from multiple sources
+        const userId = session.client_reference_id || 
+                      session.metadata?.userId || 
+                      await getUserIdFromEmail(session.customer_details?.email)
 
         if (!userId) {
-          console.log('No client_reference_id in session')
-          return { status: 'success', message: 'Skipped - no client_reference_id' }
+          console.log('No userId found, attempting to match by email:', session.customer_details?.email)
+          return { status: 'success', message: 'Skipped - user not found' }
         }
 
-        // Store userId in customer metadata for future reference
-        await stripe.customers.update(customerId, {
-          metadata: { userId }
-        })
+        // Store userId in both customer and subscription metadata
+        await Promise.all([
+          stripe.customers.update(customerId, {
+            metadata: { userId }
+          }),
+          stripe.subscriptions.update(subscriptionId, {
+            metadata: { userId }
+          })
+        ])
 
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
         const priceId = subscription.items.data[0].price.id

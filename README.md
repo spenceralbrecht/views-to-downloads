@@ -141,6 +141,76 @@ interface StripeConfig {
 }
 ```
 
+## Stripe Subscription Flow
+
+### Overview
+The application uses Stripe for handling subscriptions and payments. Here's the complete flow from checkout to feature access:
+
+1. **Checkout Initiation**
+   - User clicks a subscription plan button on the dashboard
+   - Frontend sends request to `/api/stripe/checkout` with:
+     - `priceId`: The selected plan's price ID
+     - `userId`: The authenticated user's ID
+
+2. **Checkout Session Creation**
+   - Backend checks if user has an existing subscription
+     - If active subscription exists, redirects to Stripe billing portal
+     - If no subscription, creates new Stripe checkout session
+   - Session is created with:
+     - User's email (from Supabase)
+     - Plan details and pricing
+     - Success/cancel URLs
+     - Metadata containing userId for tracking
+
+3. **Payment Process**
+   - User is redirected to Stripe's hosted checkout page
+   - Enters payment information
+   - Completes payment
+
+4. **Webhook Processing**
+   The following Stripe webhooks update the subscription status:
+   - `checkout.session.completed`: Initial checkout success
+     - Creates customer in Stripe
+     - Stores userId in customer metadata
+     - Creates subscription record in database
+   - `customer.subscription.created`: Subscription activation
+     - Updates subscription status to active
+     - Records subscription period dates
+   - `invoice.paid`: Recurring payments
+     - Updates subscription period end date
+     - Maintains active status
+   - `customer.subscription.deleted`: Cancellation
+     - Updates subscription status to canceled
+     - Removes access to premium features
+
+5. **Database Updates**
+   The `subscriptions` table tracks:
+   - `user_id`: Link to Supabase user
+   - `stripe_customer_id`: Stripe customer reference
+   - `stripe_subscription_id`: Active subscription reference
+   - `stripe_price_id`: Selected plan's price
+   - `plan_name`: Plan tier (starter/growth/scale)
+   - `status`: Subscription status
+   - `current_period_end`: Access expiration date
+
+6. **Feature Access**
+   - Application checks subscription status before allowing access to premium features
+   - Middleware validates subscription status on protected routes
+   - UI dynamically updates based on subscription status
+   - Users can manage their subscription through the Stripe billing portal
+
+### Error Handling
+- Failed payments trigger Stripe's automatic retry system
+- Webhook failures are logged for debugging
+- Users are notified of payment issues through Stripe's communication
+- Application gracefully handles subscription status changes
+
+### Testing Subscriptions
+For testing in development:
+1. Use Stripe test card: 4242 4242 4242 4242
+2. Set future expiry date and any CVC
+3. Use any email to receive test receipts
+
 ## Instructions
 
 1. Update your environment variables (e.g., AIRTABLE_API_KEY, AIRTABLE_BASE_ID) as required.
