@@ -18,29 +18,6 @@ const supabaseAdmin = createClient(
   }
 )
 
-async function getUserIdFromStripe(customerId: string, subscriptionId?: string): Promise<string | null> {
-  try {
-    // First check subscription metadata if we have a subscription ID
-    if (subscriptionId) {
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-      if (subscription.metadata?.userId) {
-        return subscription.metadata.userId
-      }
-    }
-
-    // Then check customer metadata
-    const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer
-    if (customer.metadata?.userId) {
-      return customer.metadata.userId
-    }
-
-    return null
-  } catch (error) {
-    console.error('Error getting userId from Stripe:', error)
-    return null
-  }
-}
-
 async function getUserIdFromEmail(email: string | null | undefined): Promise<string | null> {
   if (!email) return null;
   
@@ -68,94 +45,20 @@ async function handleStripeWebhook(event: Stripe.Event) {
 
   try {
     switch (event.type) {
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription
-        const customerId = subscription.customer as string
-
-        // Get the subscription details
-        const { data: existingSub } = await supabaseAdmin
-          .from('subscriptions')
-          .select()
-          .eq('stripe_customer_id', customerId)
-          .single()
-
-        // Get the price details
-        const priceId = subscription.items.data[0].price.id
-        let planName = 'starter'
-        if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID) {
-          planName = 'growth'
-        } else if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID) {
-          planName = 'scale'
-        }
-
-        // If no subscription exists yet, try to find the user from metadata
-        if (!existingSub) {
-          const userId = await getUserIdFromStripe(customerId, subscription.id)
-          if (!userId) {
-            console.log('No userId found for customer:', customerId)
-            return { status: 'error', message: 'No userId found for customer' }
-          }
-
-          // Create new subscription record
-          const { error: createError } = await supabaseAdmin
-            .from('subscriptions')
-            .insert({
-              user_id: userId,
-              stripe_customer_id: customerId,
-              stripe_subscription_id: subscription.id,
-              stripe_price_id: priceId,
-              plan_name: planName,
-              status: subscription.status,
-              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
-            })
-
-          if (createError) {
-            console.error('Error creating subscription:', createError)
-            return { status: 'error', message: 'Failed to create subscription' }
-          }
-
-          return { status: 'success', message: 'Subscription created' }
-        }
-
-        // Update existing subscription
-        const { error: updateError } = await supabaseAdmin
-          .from('subscriptions')
-          .update({
-            stripe_subscription_id: subscription.id,
-            stripe_price_id: priceId,
-            plan_name: planName,
-            status: subscription.status,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
-          })
-          .eq('id', existingSub.id)
-
-        if (updateError) {
-          console.error('Error updating subscription:', updateError)
-          return { status: 'error', message: 'Failed to update subscription' }
-        }
-
-        return { status: 'success', message: 'Subscription updated' }
-      }
-
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
         const customerId = session.customer as string
         const subscriptionId = session.subscription as string
         
-        // Try to get userId from multiple sources
-        const userId = session.client_reference_id || 
-                      session.metadata?.userId || 
-                      await getUserIdFromEmail(session.customer_details?.email)
+        // Get userId from customer email
+        const userId = await getUserIdFromEmail(session.customer_details?.email)
 
         if (!userId) {
-          console.log('No userId found, attempting to match by email:', session.customer_details?.email)
+          console.log('No user found for email:', session.customer_details?.email)
           return { status: 'success', message: 'Skipped - user not found' }
         }
 
-        // Store userId in both customer and subscription metadata
+        // Store userId in customer and subscription metadata for future reference
         await Promise.all([
           stripe.customers.update(customerId, {
             metadata: { userId }
@@ -168,6 +71,7 @@ async function handleStripeWebhook(event: Stripe.Event) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
         const priceId = subscription.items.data[0].price.id
 
+        // Determine plan name from price ID
         let planName = 'starter'
         if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID) {
           planName = 'growth'
@@ -175,6 +79,7 @@ async function handleStripeWebhook(event: Stripe.Event) {
           planName = 'scale'
         }
 
+        // Create or update subscription record
         const { error } = await supabaseAdmin.from('subscriptions').upsert({
           user_id: userId,
           stripe_customer_id: customerId,
@@ -244,6 +149,8 @@ async function handleStripeWebhook(event: Stripe.Event) {
       // We can safely ignore these events
       case 'customer.created':
       case 'customer.updated':
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated':
         return { status: 'success', message: `Skipped ${event.type}` }
 
       default:

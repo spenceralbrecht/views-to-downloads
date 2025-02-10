@@ -10,6 +10,8 @@ import { signOut } from '@/app/auth/actions'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { ImageIcon, User as UserIcon } from "lucide-react"
 import { stripeConfig } from '@/config/stripe'
+import { useSubscription } from '@/hooks/useSubscription'
+import { Badge } from '@/components/ui/badge'
 
 interface SidebarProps {
   user: User | null;
@@ -17,6 +19,7 @@ interface SidebarProps {
 
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
+  const { subscription, isSubscribed, plan, loading } = useSubscription(user)
   
   const navigation = [
     { name: 'Home', href: '/dashboard', icon: Home },
@@ -36,6 +39,23 @@ export function Sidebar({ user }: SidebarProps) {
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ]
 
+  // Calculate video limits based on plan
+  const getVideoLimits = () => {
+    switch (plan) {
+      case 'scale':
+        return { total: 1000, remaining: 1000 }
+      case 'growth':
+        return { total: 200, remaining: 200 }
+      case 'starter':
+        return { total: 50, remaining: 50 }
+      default:
+        return { total: 5, remaining: 5 }
+    }
+  }
+
+  const { total, remaining } = getVideoLimits()
+  const usagePercentage = ((total - remaining) / total) * 100
+
   return (
     <div className="flex h-screen w-64 flex-col fixed left-0 top-0 border-r bg-gray-50/50">
       <div className="flex h-14 items-center border-b px-4">
@@ -53,6 +73,14 @@ export function Sidebar({ user }: SidebarProps) {
             </Link>
           </Button>
         </div>
+
+        {!loading && (
+          <div className="px-4 mb-4">
+            <Badge variant={isSubscribed ? "default" : "secondary"} className="w-full justify-center py-1">
+              {isSubscribed ? `${plan?.toUpperCase()} Plan` : 'Free Plan'}
+            </Badge>
+          </div>
+        )}
 
         <nav className="space-y-1 px-2">
           {navigation.map((item) => {
@@ -79,10 +107,14 @@ export function Sidebar({ user }: SidebarProps) {
         <div className="px-4 mt-8">
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">49 videos remaining</span>
-              <span className="text-gray-500">Resets in 25 days</span>
+              <span className="text-gray-500">{remaining} videos remaining</span>
+              {subscription?.current_period_end && (
+                <span className="text-gray-500">
+                  Resets {new Date(subscription.current_period_end).toLocaleDateString()}
+                </span>
+              )}
             </div>
-            <Progress value={33} className="h-1" />
+            <Progress value={usagePercentage} className="h-1" />
           </div>
         </div>
       </div>
@@ -103,46 +135,21 @@ export function Sidebar({ user }: SidebarProps) {
           ))}
         </nav>
 
-        <div className="p-4 border-t">
-          {user ? (
-            <div className="text-xs">
-              <div className="font-medium text-gray-700">
-                {user?.user_metadata?.name || 'User'}
-              </div>
-              <div className="text-gray-500 truncate">
-                {user?.email}
-              </div>
-              <div className="flex items-center gap-1 mt-2">
-                {user?.user_metadata?.stripe_subscription_status === 'active' ? (
-                  <>
-                    <Sparkles className="h-4 w-4 text-green-500" />
-                    <span className="text-green-600 font-medium">
-                      {user?.user_metadata?.stripe_plan_name ? (
-                        `${user.user_metadata.stripe_plan_name.charAt(0).toUpperCase()}${user.user_metadata.stripe_plan_name.slice(1)} Plan`
-                      ) : (
-                        'Active Plan'
-                      )}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4 text-yellow-500" />
-                    <span className="text-yellow-600">Not subscribed</span>
-                  </>
-                )}
-              </div>
-              <form action={signOut}>
-                <button
-                  type="submit"
-                  className="mt-3 text-blue-500 hover:text-blue-600"
-                >
-                  Sign out
-                </button>
-              </form>
+        <div className="px-4 py-4 border-t">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <UserIcon className="h-8 w-8 text-gray-400" />
             </div>
-          ) : (
-            <div className="text-xs text-gray-500">Not signed in</div>
-          )}
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-700">{user?.email}</p>
+              <button
+                onClick={() => signOut()}
+                className="text-xs font-medium text-gray-500 hover:text-gray-700"
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

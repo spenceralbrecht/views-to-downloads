@@ -112,78 +112,45 @@ The application offers three pricing tiers:
 - Growth: Enhanced features for growing creators
 - Scale: Full suite of features for businesses
 
-### Stripe Configuration
-
-The Stripe payment links and price IDs are configured in `config/stripe.ts` and are environment-specific. The configuration uses environment variables from `.env.local`:
-
-```env
-NEXT_PUBLIC_STRIPE_ENV=development|production
-NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID=price_xxx
-NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID=price_xxx
-NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID=price_xxx
-```
-
-Development environment uses test payment links and price IDs, while production environment uses live ones. To switch between environments, set the `NEXT_PUBLIC_STRIPE_ENV` environment variable.
-
-Example configuration structure:
-```typescript
-interface StripeConfig {
-  checkoutLinks: {
-    starter: string;
-    growth: string;
-    scale: string;
-  };
-  productIds: {
-    starter: string;
-    growth: string;
-    scale: string;
-  };
-}
-```
-
 ## Stripe Subscription Flow
 
 ### Overview
-The application uses Stripe for handling subscriptions and payments. Here's the complete flow from checkout to feature access:
+The application uses Stripe Payment Links for handling subscriptions and payments. This provides a simple, secure, and maintainable approach to subscription management.
 
-1. **Checkout Initiation**
-   - User clicks a subscription plan button on the dashboard
-   - Frontend sends request to `/api/stripe/checkout` with:
-     - `priceId`: The selected plan's price ID
-     - `userId`: The authenticated user's ID
+### Payment Links
+Payment links are configured in the Stripe Dashboard for each subscription tier:
+- Starter: Basic features
+- Growth: Enhanced features
+- Scale: Full feature set
 
-2. **Checkout Session Creation**
-   - Backend checks if user has an existing subscription
-     - If active subscription exists, redirects to Stripe billing portal
-     - If no subscription, creates new Stripe checkout session
-   - Session is created with:
-     - User's email (from Supabase)
-     - Plan details and pricing
-     - Success/cancel URLs
-     - Metadata containing userId for tracking
+Each payment link is configured with:
+- Success URL: `${NEXT_PUBLIC_TEST_APP_URL}/dashboard?success=true`
+- Cancel URL: `${NEXT_PUBLIC_TEST_APP_URL}/dashboard?canceled=true`
+- Customer email collection enabled
+- Automatic tax handling (optional)
 
-3. **Payment Process**
-   - User is redirected to Stripe's hosted checkout page
-   - Enters payment information
-   - Completes payment
+### Subscription Flow
+1. **User Initiates Subscription**
+   - Clicks payment link for desired plan
+   - Redirected to Stripe's hosted checkout page
 
-4. **Webhook Processing**
-   The following Stripe webhooks update the subscription status:
-   - `checkout.session.completed`: Initial checkout success
-     - Creates customer in Stripe
-     - Stores userId in customer metadata
-     - Creates subscription record in database
-   - `customer.subscription.created`: Subscription activation
-     - Updates subscription status to active
-     - Records subscription period dates
+2. **Payment Processing**
+   - User enters payment information
+   - Stripe handles payment processing
+   - Success/failure handled by Stripe
+
+3. **Webhook Processing**
+   The following Stripe webhooks manage subscription state:
+   - `checkout.session.completed`: Initial subscription creation
+     - Matches user by email
+     - Creates subscription record
+     - Stores metadata for tracking
    - `invoice.paid`: Recurring payments
-     - Updates subscription period end date
-     - Maintains active status
+     - Updates subscription period
    - `customer.subscription.deleted`: Cancellation
-     - Updates subscription status to canceled
-     - Removes access to premium features
+     - Updates subscription status
 
-5. **Database Updates**
+4. **Database Updates**
    The `subscriptions` table tracks:
    - `user_id`: Link to Supabase user
    - `stripe_customer_id`: Stripe customer reference
@@ -193,23 +160,31 @@ The application uses Stripe for handling subscriptions and payments. Here's the 
    - `status`: Subscription status
    - `current_period_end`: Access expiration date
 
-6. **Feature Access**
-   - Application checks subscription status before allowing access to premium features
-   - Middleware validates subscription status on protected routes
-   - UI dynamically updates based on subscription status
-   - Users can manage their subscription through the Stripe billing portal
+### Testing
+For development testing:
+1. Use test payment links (prefixed with NEXT_PUBLIC_STRIPE_TEST_)
+2. Test card: 4242 4242 4242 4242
+3. Any future expiry date and CVC
+4. Use your email to receive test receipts
 
-### Error Handling
-- Failed payments trigger Stripe's automatic retry system
-- Webhook failures are logged for debugging
-- Users are notified of payment issues through Stripe's communication
-- Application gracefully handles subscription status changes
+### Environment Variables
+```bash
+# Stripe Configuration
+NEXT_PUBLIC_STRIPE_ENV=development # or 'production'
+STRIPE_TEST_SECRET_KEY=sk_test_... # Stripe test secret key
+STRIPE_SECRET_KEY=sk_live_... # Stripe live secret key
+STRIPE_TEST_WEBHOOK_SECRET=whsec_... # Webhook signing secret
 
-### Testing Subscriptions
-For testing in development:
-1. Use Stripe test card: 4242 4242 4242 4242
-2. Set future expiry date and any CVC
-3. Use any email to receive test receipts
+# Payment Links
+NEXT_PUBLIC_STRIPE_TEST_STARTER_LINK=https://buy.stripe.com/test_...
+NEXT_PUBLIC_STRIPE_TEST_GROWTH_LINK=https://buy.stripe.com/test_...
+NEXT_PUBLIC_STRIPE_TEST_SCALE_LINK=https://buy.stripe.com/test_...
+
+# Production Payment Links
+NEXT_PUBLIC_STRIPE_STARTER_LINK=https://buy.stripe.com/...
+NEXT_PUBLIC_STRIPE_GROWTH_LINK=https://buy.stripe.com/...
+NEXT_PUBLIC_STRIPE_SCALE_LINK=https://buy.stripe.com/...
+```
 
 ## Instructions
 
