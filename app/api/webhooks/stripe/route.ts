@@ -3,11 +3,13 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 
-// Configure Stripe for Edge Runtime
+// Edge Runtime configuration
+export const runtime = 'edge'
+
+// Configure Stripe with minimal options for Edge
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
-  httpClient: Stripe.createFetchHttpClient(), // Use fetch-based HTTP client
-  cryptoProvider: Stripe.createSubtleCryptoProvider() // Use SubtleCrypto for Edge
+  typescript: true
 })
 
 // Create a Supabase client with the service role key
@@ -157,11 +159,6 @@ async function handleStripeWebhook(event) {
   return { message: 'Webhook processed' }
 }
 
-// Define allowed HTTP methods
-export const runtime = 'edge'
-export const dynamic = 'force-dynamic'
-export const allowedMethods = ['POST']
-
 export async function POST(req: Request) {
   console.log('Webhook received:', req.url);
   const body = await req.text()
@@ -199,7 +196,7 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error('Error processing webhook:', err);
     return new NextResponse(
-      JSON.stringify({ error: 'Webhook error' }),
+      JSON.stringify({ error: 'Webhook error', details: err instanceof Error ? err.message : 'Unknown error' }), 
       { 
         status: 400,
         headers: {
