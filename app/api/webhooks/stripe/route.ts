@@ -7,7 +7,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
 })
 
-// Create a Supabase client with the service role key
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -32,18 +31,15 @@ async function handleStripeWebhook(event) {
         return { error: 'No client_reference_id' }
       }
 
-      // Validate UUID format
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
       if (!uuidRegex.test(userId)) {
         console.error('Invalid client_reference_id format:', userId)
         return { error: 'Invalid client_reference_id format' }
       }
 
-      // Get the subscription details
       const subscription = await stripe.subscriptions.retrieve(subscriptionId)
       const priceId = subscription.items.data[0].price.id
 
-      // Get current user metadata
       const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
       
       if (userError) {
@@ -51,7 +47,6 @@ async function handleStripeWebhook(event) {
         return { error: 'Error getting user' }
       }
 
-      // Map price ID to plan name
       let planName = 'starter'
       if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID) {
         planName = 'growth'
@@ -59,12 +54,11 @@ async function handleStripeWebhook(event) {
         planName = 'scale'
       }
 
-      // Update the user's metadata in Supabase, preserving existing metadata
       const { error } = await supabaseAdmin.auth.admin.updateUserById(
         userId,
         {
           user_metadata: {
-            ...user?.user_metadata, // Preserve existing metadata
+            ...user?.user_metadata, 
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId,
             stripe_subscription_status: subscription.status,
@@ -85,7 +79,6 @@ async function handleStripeWebhook(event) {
       const subscription = event.data.object as Stripe.Subscription
       const customerId = subscription.customer as string
 
-      // Get the user with this stripe_customer_id
       const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers()
       const user = users?.users.find(
         (u) => u.user_metadata?.stripe_customer_id === customerId
@@ -96,12 +89,11 @@ async function handleStripeWebhook(event) {
         return { error: 'Error finding user' }
       }
 
-      // Update the user's metadata
       const { error } = await supabaseAdmin.auth.admin.updateUserById(
         user.id,
         {
           user_metadata: {
-            ...user.user_metadata, // Preserve existing metadata
+            ...user.user_metadata, 
             stripe_subscription_status: subscription.status,
             stripe_price_id: subscription.items.data[0].price.id
           }
@@ -119,7 +111,6 @@ async function handleStripeWebhook(event) {
       const subscription = event.data.object as Stripe.Subscription
       const customerId = subscription.customer as string
 
-      // Get the user with this stripe_customer_id
       const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers()
       const user = users?.users.find(
         (u) => u.user_metadata?.stripe_customer_id === customerId
@@ -130,12 +121,11 @@ async function handleStripeWebhook(event) {
         return { error: 'Error finding user' }
       }
 
-      // Update the user's metadata
       const { error } = await supabaseAdmin.auth.admin.updateUserById(
         user.id,
         {
           user_metadata: {
-            ...user.user_metadata, // Preserve existing metadata
+            ...user.user_metadata, 
             stripe_subscription_status: 'canceled',
             stripe_price_id: null,
             stripe_plan_name: null
@@ -155,48 +145,47 @@ async function handleStripeWebhook(event) {
 }
 
 export async function POST(req: Request) {
-  console.log('Webhook received:', req.url);
-  const body = await req.text()
-  const signature = headers().get('stripe-signature')
-
-  if (!signature) {
-    console.log('No signature found');
+  if (!process.env.STRIPE_TEST_WEBHOOK_SECRET) {
+    console.error('Missing STRIPE_TEST_WEBHOOK_SECRET');
     return new NextResponse(
-      JSON.stringify({ error: 'No signature' }), 
-      { 
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
+      JSON.stringify({ error: 'Server configuration error' }), 
+      { status: 500 }
     )
   }
 
   try {
-    console.log('Constructing event with signature:', signature.substring(0, 10) + '...');
+    const text = await req.text()
+    const sig = headers().get('stripe-signature')
+
+    if (!sig) {
+      console.error('No stripe-signature header')
+      return new NextResponse(
+        JSON.stringify({ error: 'No stripe-signature header' }), 
+        { status: 400 }
+      )
+    }
+
+    console.log('Headers:', JSON.stringify(Object.fromEntries(headers().entries()), null, 2))
+    console.log('Signature:', sig)
+    console.log('Body length:', text.length)
+    console.log('First 100 chars of body:', text.substring(0, 100))
+
     const event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_TEST_WEBHOOK_SECRET!
+      text,
+      sig,
+      process.env.STRIPE_TEST_WEBHOOK_SECRET
     )
 
     const response = await handleStripeWebhook(event)
-    return new NextResponse(JSON.stringify(response), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+    return new NextResponse(JSON.stringify(response), { status: 200 })
   } catch (err) {
-    console.error('Error processing webhook:', err);
+    console.error('Webhook Error:', err instanceof Error ? err.message : err)
     return new NextResponse(
-      JSON.stringify({ error: 'Webhook error', details: err instanceof Error ? err.message : 'Unknown error' }), 
-      { 
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
+      JSON.stringify({ 
+        error: 'Webhook error', 
+        details: err instanceof Error ? err.message : 'Unknown error'
+      }), 
+      { status: 400 }
     )
   }
 }

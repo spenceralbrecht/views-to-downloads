@@ -1,6 +1,8 @@
 This project uses Bun.
 
-This project is deployed in production to the url https://viewstodownloads.com
+This project is deployed in production to the url https://viewstodownloads.com.
+
+Do everything you can to avoid unnecessary complexity. 
 
 These are the keys in the .env.local file but in the real file they all have a value assigned to them.
 
