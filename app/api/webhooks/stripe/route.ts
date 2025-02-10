@@ -154,6 +154,11 @@ async function handleStripeWebhook(event) {
   return { message: 'Webhook processed' }
 }
 
+// Define allowed HTTP methods
+export const runtime = 'edge'
+export const dynamic = 'force-dynamic'
+export const allowedMethods = ['POST']
+
 export async function POST(req: Request) {
   console.log('Webhook received:', req.url);
   const body = await req.text()
@@ -161,12 +166,15 @@ export async function POST(req: Request) {
 
   if (!signature) {
     console.log('No signature found');
-    return new NextResponse('No signature', { 
-      status: 400,
-      headers: {
-        'Content-Type': 'application/json'
+    return new NextResponse(
+      JSON.stringify({ error: 'No signature' }), 
+      { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json'
+        }
       }
-    })
+    )
   }
 
   try {
