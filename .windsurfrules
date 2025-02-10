@@ -1,5 +1,7 @@
 This project uses Bun.
 
+This project is deployed in production to the url https://viewstodownloads.com
+
 These are the keys in the .env.local file but in the real file they all have a value assigned to them.
 
 Keep the readme up to date with the project structure and how the files are organized.
