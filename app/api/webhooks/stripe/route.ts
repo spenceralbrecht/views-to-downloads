@@ -3,13 +3,8 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 
-// Edge Runtime configuration
-export const runtime = 'edge'
-
-// Configure Stripe with minimal options for Edge
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
-  typescript: true
+  apiVersion: '2024-12-18.acacia'
 })
 
 // Create a Supabase client with the service role key
@@ -179,13 +174,12 @@ export async function POST(req: Request) {
 
   try {
     console.log('Constructing event with signature:', signature.substring(0, 10) + '...');
-    const event = await stripe.webhooks.constructEventAsync(
+    const event = stripe.webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_TEST_WEBHOOK_SECRET!
     )
 
-    // Add response headers to prevent redirects
     const response = await handleStripeWebhook(event)
     return new NextResponse(JSON.stringify(response), {
       status: 200,
