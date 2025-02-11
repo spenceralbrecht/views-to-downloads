@@ -31,6 +31,34 @@ export default function CreateAd() {
 
   // State for app selection
   const [selectedAppId, setSelectedAppId] = useState<string>('')
+  const [apps, setApps] = useState<{ id: string; app_store_url: string; app_name: string; app_logo_url: string; created_at: string }[]>([])
+  const [loadingApps, setLoadingApps] = useState(true)
+
+  // Fetch apps
+  useEffect(() => {
+    async function fetchApps() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from('apps')
+        .select('id, app_store_url, app_name, app_logo_url, created_at')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching apps:', error)
+      } else if (data && data.length > 0) {
+        setApps(data)
+        // Set the first app as default if no app is selected
+        if (!selectedAppId) {
+          setSelectedAppId(data[0].id)
+        }
+      }
+      setLoadingApps(false)
+    }
+    fetchApps()
+  }, [supabase, selectedAppId])
 
   // State for hooks
   const [hooks, setHooks] = useState<Hook[]>([])
@@ -122,10 +150,15 @@ export default function CreateAd() {
 
       // Get public URLs for the output videos
       const outputVideosWithUrls = await Promise.all((videos || []).map(async (video) => {
+        // Ensure we're using just the relative path
+        const videoPath = video.url.includes('output-content/') 
+          ? video.url.split('output-content/')[1] 
+          : video.url
+          
         const { data: publicData } = supabase
           .storage
           .from('output-content')
-          .getPublicUrl(video.url)
+          .getPublicUrl(videoPath)
         return { ...video, url: publicData.publicUrl }
       }))
 
@@ -317,226 +350,243 @@ export default function CreateAd() {
     setOutputVideos(videos => videos.filter(video => video.id !== id))
   }
 
+  // Effect for setting default selections
+  useEffect(() => {
+    // Set default video selection (first video)
+    if (!selectedInfluencerVideo && videosToShow.length > 0) {
+      setSelectedVideo(videosToShow[0])
+      setSelectedInfluencerVideo(`/videos/${videosToShow[0]}.mp4`)
+    }
+
+    // Set default demo video (first demo)
+    if (!selectedDemoVideo && demoVideos.length > 0 && !loadingDemos) {
+      setSelectedDemo(demoVideos[0].id)
+      setSelectedDemoVideo(demoVideos[0].publicUrl)
+    }
+  }, [demoVideos, loadingDemos, selectedDemoVideo, selectedInfluencerVideo, videosToShow])
+
   return (
     <div className="p-8">
       <h1 className="text-2xl font-semibold mb-6">Create UGC ads</h1>
       
       <Card className="p-6 bg-gray-50">
-        <div className="space-y-8">
-          {/* App Selection Section */}
-          <div>
-            <h2 className="font-medium mb-2">1. Select App</h2>
-            <AppSelect
-              selectedAppId={selectedAppId}
-              onSelect={setSelectedAppId}
-            />
-          </div>
-
-          {/* Hook Section */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <h2 className="font-medium">2. Hook</h2>
-              <span className="text-gray-500">
-                {hooks.length > 0 && `Hook ${currentHookIndex + 1} of ${hooks.length}`}
-              </span>
+        <SubscriptionGuard>
+          <div className="space-y-8">
+            {/* App Selection Section */}
+            <div>
+              <h2 className="font-medium mb-2">1. Select App</h2>
+              <AppSelect
+                apps={apps}
+                loadingApps={loadingApps}
+                selectedAppId={selectedAppId}
+                onSelect={setSelectedAppId}
+              />
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentHookIndex(currentHookIndex - 1)}
-                disabled={currentHookIndex === 0 || hooks.length === 0 || loadingHooks}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              
-              <div className="flex-1 relative">
-                <Input
-                  value={hook}
-                  onChange={(e) => setHook(e.target.value)}
-                  maxLength={100}
-                  className="pr-24 bg-white"
-                  placeholder={loadingHooks ? "Loading hooks..." : hooks.length === 0 ? "No hooks found for this app" : "Enter your hook text..."}
-                  disabled={loadingHooks}
-                />
-                <div className="absolute inset-y-0 right-2 flex items-center gap-1">
-                  <Button
-                    variant={textPosition === 'top' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setTextPosition('top')}
-                  >
-                    Top
-                  </Button>
-                  <Button
-                    variant={textPosition === 'middle' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setTextPosition('middle')}
-                  >
-                    Middle
-                  </Button>
-                  <Button
-                    variant={textPosition === 'bottom' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setTextPosition('bottom')}
-                  >
-                    Bottom
-                  </Button>
-                </div>
-              </div>
 
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentHookIndex(currentHookIndex + 1)}
-                disabled={currentHookIndex === hooks.length - 1 || hooks.length === 0 || loadingHooks}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          
-          {/* UGC Video Section */}
-          <div className="flex">
-            <div className="flex-1">
+            {/* Hook Section */}
+            <div>
               <div className="flex justify-between mb-2">
-                <h2 className="font-medium">3. UGC video</h2>
+                <h2 className="font-medium">2. Hook</h2>
                 <span className="text-gray-500">
-                  Page {currentPage} of {totalPages}
+                  {hooks.length > 0 && `Hook ${currentHookIndex + 1} of ${hooks.length}`}
                 </span>
               </div>
-              <div className="grid grid-cols-8 gap-2">
-                {videosToShow.map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => handleUGCVideoSelect(num)}
-                    className={`relative aspect-square rounded-lg overflow-hidden border-2 ${
-                      selectedVideo === num
-                        ? 'border-blue-500'
-                        : 'border-gray-200'
-                    }`}
-                  >
-                    <img
-                      src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/thumbnail-${num}.png`}
-                      alt={`UGC Video ${num}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-              <div className="flex justify-end mt-4 gap-2">
-                <Button variant="outline" onClick={handlePrev} disabled={currentPage === 1}>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentHookIndex(currentHookIndex - 1)}
+                  disabled={currentHookIndex === 0 || hooks.length === 0 || loadingHooks}
+                >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" onClick={handleNext} disabled={currentPage === totalPages}>
+                
+                <div className="flex-1 relative">
+                  <Input
+                    value={hook}
+                    onChange={(e) => setHook(e.target.value)}
+                    maxLength={100}
+                    className="pr-24 bg-white"
+                    placeholder={loadingHooks ? "Loading hooks..." : hooks.length === 0 ? "No hooks found for this app" : "Enter your hook text..."}
+                    disabled={loadingHooks}
+                  />
+                  <div className="absolute inset-y-0 right-2 flex items-center gap-1">
+                    <Button
+                      variant={textPosition === 'top' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTextPosition('top')}
+                    >
+                      Top
+                    </Button>
+                    <Button
+                      variant={textPosition === 'middle' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTextPosition('middle')}
+                    >
+                      Middle
+                    </Button>
+                    <Button
+                      variant={textPosition === 'bottom' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTextPosition('bottom')}
+                    >
+                      Bottom
+                    </Button>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentHookIndex(currentHookIndex + 1)}
+                  disabled={currentHookIndex === hooks.length - 1 || hooks.length === 0 || loadingHooks}
+                >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
             
-            {/* Video Preview Section */}
-            <div className="flex-1 ml-4">
-              {selectedVideo !== null && (
-                <div className="relative w-1/2">
-                  <video
-                    src={getUGCVideoUrl(selectedVideo)}
-                    autoPlay
-                    playsInline
-                    loop
-                    muted
-                    className="w-full h-auto object-cover rounded-lg"
-                  />
-                  {hook && (
-                    <div className={`absolute inset-0 flex ${
-                      textPosition === 'top' ? 'items-start pt-4' : 
-                      textPosition === 'bottom' ? 'items-end pb-4' : 'items-center'
-                    } justify-center p-2 text-center`}>
-                      <p className="text-white text-xl font-semibold drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)] whitespace-pre-wrap">
-                        {hook}
-                      </p>
-                    </div>
-                  )}
+            {/* UGC Video Section */}
+            <div className="flex">
+              <div className="flex-1">
+                <div className="flex justify-between mb-2">
+                  <h2 className="font-medium">3. UGC video</h2>
+                  <span className="text-gray-500">
+                    Page {currentPage} of {totalPages}
+                  </span>
                 </div>
-              )}
-            </div>
-          </div>
-          
-          {/* Demos Section */}
-          <div>
-            <h2 className="font-medium mb-2">4. Demos</h2>
-            <div className="flex gap-2 items-center">
-              {/* New upload form for a demo video */}
-              <form action={uploadDemoVideo}>
-                <label
-                  htmlFor="demoVideo"
-                  className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 cursor-pointer"
-                >
-                  {isUploadingDemo ? (
-                    <Loader2 className="animate-spin h-6 w-6" />
-                  ) : (
-                    '+'
-                  )}
-                </label>
-                <input
-                  id="demoVideo"
-                  name="videoFile"
-                  type="file"
-                  accept="video/mp4"
-                  className="sr-only"
-                  onChange={(e) => {
-                    const file = e.currentTarget.files?.[0];
-                    if (file) {
-                      if (!file.type.includes('mp4')) {
-                        e.currentTarget.value = '';
-                        return;
-                      }
-                      startDemoUpload(() => {
-                        e.currentTarget.form?.requestSubmit()
-                      })
-                    }
-                  }}
-                />
-              </form>
-              {/* Display uploaded demo videos */}
-              <div className="flex gap-2 overflow-x-auto">
-                {loadingDemos ? (
-                  <Loader2 className="animate-spin h-6 w-6" />
-                ) : demoVideos.length > 0 ? (
-                  demoVideos.map((video) => (
-                    <div
-                      key={video.id}
-                      onClick={() => handleDemoVideoSelect(video.publicUrl)}
-                      className={`relative w-48 h-48 rounded-lg overflow-hidden border ${selectedDemoVideo === video.publicUrl ? 'outline outline-2 outline-blue-500' : ''}`}
+                <div className="grid grid-cols-8 gap-2">
+                  {videosToShow.map((num) => (
+                    <button
+                      key={num}
+                      onClick={() => handleUGCVideoSelect(num)}
+                      className={`relative aspect-square rounded-lg overflow-hidden border-2 ${
+                        selectedVideo === num
+                          ? 'border-blue-500'
+                          : 'border-gray-200'
+                      }`}
                     >
-                      <video
-                        key={video.publicUrl}
-                        src={video.publicUrl}
-                        preload="auto"
-                        muted
-                        loop
-                        playsInline
+                      <img
+                        src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/thumbnail-${num}.png`}
+                        alt={`UGC Video ${num}`}
                         className="w-full h-full object-cover"
                       />
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500">No demos uploaded yet</p>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-end mt-4 gap-2">
+                  <Button variant="outline" onClick={handlePrev} disabled={currentPage === 1}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" onClick={handleNext} disabled={currentPage === totalPages}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Video Preview Section */}
+              <div className="flex-1 ml-4">
+                {selectedVideo !== null && (
+                  <div className="relative w-1/2">
+                    <video
+                      src={getUGCVideoUrl(selectedVideo)}
+                      autoPlay
+                      playsInline
+                      loop
+                      muted
+                      className="w-full h-auto object-cover rounded-lg"
+                    />
+                    {hook && (
+                      <div className={`absolute inset-0 flex ${
+                        textPosition === 'top' ? 'items-start pt-4' : 
+                        textPosition === 'bottom' ? 'items-end pb-4' : 'items-center'
+                      } justify-center p-2 text-center`}>
+                        <p className="text-white text-xl font-semibold drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)] whitespace-pre-wrap">
+                          {hook}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
+            
+            {/* Demos Section */}
+            <div>
+              <h2 className="font-medium mb-2">4. Demos</h2>
+              <div className="flex gap-2 items-center">
+                {/* New upload form for a demo video */}
+                <form action={uploadDemoVideo}>
+                  <label
+                    htmlFor="demoVideo"
+                    className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 cursor-pointer"
+                  >
+                    {isUploadingDemo ? (
+                      <Loader2 className="animate-spin h-6 w-6" />
+                    ) : (
+                      '+'
+                    )}
+                  </label>
+                  <input
+                    id="demoVideo"
+                    name="videoFile"
+                    type="file"
+                    accept="video/mp4"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.currentTarget.files?.[0];
+                      if (file) {
+                        if (!file.type.includes('mp4')) {
+                          e.currentTarget.value = '';
+                          return;
+                        }
+                        startDemoUpload(() => {
+                          e.currentTarget.form?.requestSubmit()
+                        })
+                      }
+                    }}
+                  />
+                </form>
+                {/* Display uploaded demo videos */}
+                <div className="flex gap-2 overflow-x-auto">
+                  {loadingDemos ? (
+                    <Loader2 className="animate-spin h-6 w-6" />
+                  ) : demoVideos.length > 0 ? (
+                    demoVideos.map((video) => (
+                      <div
+                        key={video.id}
+                        onClick={() => handleDemoVideoSelect(video.publicUrl)}
+                        className={`relative w-48 h-48 rounded-lg overflow-hidden border ${selectedDemoVideo === video.publicUrl ? 'outline outline-2 outline-blue-500' : ''}`}
+                      >
+                        <video
+                          key={video.publicUrl}
+                          src={video.publicUrl}
+                          preload="auto"
+                          muted
+                          loop
+                          playsInline
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No demos uploaded yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        
-        <div className="mt-8 flex justify-end">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" className="gap-2" type="button">
-              <img
-                src="/placeholder.svg?height=24&width=24"
-                alt="Sound"
-                className="w-6 h-6 rounded"
-              />
-              Sound
-            </Button>
-            <SubscriptionGuard>
+          
+          <div className="mt-8 flex justify-end">
+            <div className="flex items-center gap-4">
+              <Button variant="outline" className="gap-2" type="button">
+                <img
+                  src="/placeholder.svg?height=24&width=24"
+                  alt="Sound"
+                  className="w-6 h-6 rounded"
+                />
+                Sound
+              </Button>
               <ContentLimitGuard>
                 <Button 
                   type="button" 
@@ -554,9 +604,9 @@ export default function CreateAd() {
                   )}
                 </Button>
               </ContentLimitGuard>
-            </SubscriptionGuard>
+            </div>
           </div>
-        </div>
+        </SubscriptionGuard>
       </Card>
       
       {/* My Videos Section */}

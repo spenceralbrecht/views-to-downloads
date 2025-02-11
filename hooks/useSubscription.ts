@@ -38,6 +38,7 @@ export function useSubscription(user: User | null) {
 
     async function getSubscription() {
       try {
+        console.log('Fetching subscription for user:', user.id)
         const { data, error } = await supabase
           .from('subscriptions')
           .select('*')
@@ -49,6 +50,7 @@ export function useSubscription(user: User | null) {
           console.error('Error fetching subscription:', error)
           setSubscription(null)
         } else {
+          console.log('Subscription data:', data)
           setSubscription(data)
         }
       } catch (error) {
@@ -74,6 +76,7 @@ export function useSubscription(user: User | null) {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
+          console.log('Subscription change:', payload)
           if (payload.eventType === 'DELETE') {
             setSubscription(null)
           } else {
@@ -92,11 +95,18 @@ export function useSubscription(user: User | null) {
     ? CONTENT_LIMITS[subscription.plan_name] - (subscription.content_used_this_month || 0)
     : 0 // No content allowed without subscription
 
+  console.log('Content remaining calculation:', {
+    planName: subscription?.plan_name,
+    planLimit: subscription?.plan_name ? CONTENT_LIMITS[subscription.plan_name] : 0,
+    usedThisMonth: subscription?.content_used_this_month || 0,
+    remaining: contentRemaining
+  })
+
   return {
     subscription,
     loading,
     isSubscribed: subscription !== null,
-    plan: subscription?.plan_name || null, // No default plan without subscription
+    plan: subscription?.plan_name || null,
     contentUsed: subscription?.content_used_this_month || 0,
     contentRemaining,
     contentLimit: subscription?.plan_name ? CONTENT_LIMITS[subscription.plan_name] : 0

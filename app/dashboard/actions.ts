@@ -361,11 +361,13 @@ export async function createVideo({
 
       const result = await response.json()
 
+      console.log('Video creation result:', result) // Add logging
+
       // Update the existing record with the video URL and status
       const { error: updateError } = await supabase
         .from('output_content')
         .update({
-          url: result.video_url,
+          url: result.video_url.split('/output-content/')[1], // Store only the relative path
           status: 'completed'
         })
         .eq('id', outputContent.id)

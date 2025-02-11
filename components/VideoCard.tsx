@@ -1,13 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import type { OutputContent } from '@/types/video'
-import { Trash2, Download, Loader2 } from 'lucide-react'
-import { deleteVideo } from '@/app/dashboard/actions'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Download, Trash2, Loader2 } from 'lucide-react'
+import { VideoCardSkeleton } from './VideoCardSkeleton'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { formatDistanceToNow, isWithinInterval, subHours } from 'date-fns'
+import ReactPlayer from 'react-player'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,158 +20,147 @@ import {
 } from "@/components/ui/alert-dialog"
 
 interface VideoCardProps {
-  video: OutputContent
-  isPending?: boolean
-  onDelete?: (id: string) => void
+  video: {
+    id: string
+    status: string
+    created_at: string
+    url?: string
+  }
+  onDelete: (videoId: string) => void
 }
 
-export function VideoCard({ video, isPending = false, onDelete }: VideoCardProps) {
+export function VideoCard({ video, onDelete }: VideoCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
-  const isLoading = video.status === 'in_progress'
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
+  const [playError, setPlayError] = useState(false)
   const supabase = createClientComponentClient()
 
-  // Format the date - show relative time if within 24 hours
-  const formatDate = (date: string) => {
-    const createdDate = new Date(date)
-    const now = new Date()
-    
-    const isWithin24Hours = isWithinInterval(createdDate, {
-      start: subHours(now, 24),
-      end: now
-    })
-
-    if (isWithin24Hours) {
-      return formatDistanceToNow(createdDate, { addSuffix: true })
-    }
-
-    return createdDate.toLocaleDateString()
+  if (video.status === 'pending') {
+    return <VideoCardSkeleton />
   }
 
-  if (isPending) {
-    return (
-      <Card className="relative aspect-video bg-gray-100 animate-pulse">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-        </div>
-      </Card>
-    )
-  }
-
-  // Clean the URL by removing any query parameters
-  const cleanVideoUrl = (url: string) => {
-    try {
-      // Remove everything after the last question mark
-      const cleanUrl = url.split('?')[0]
-      console.log('Original URL:', url, 'Cleaned URL:', cleanUrl)
-      return cleanUrl
-    } catch (e) {
-      console.error('Invalid URL:', url, 'Error:', e)
-      return url
-    }
-  }
-
-  const videoUrl = cleanVideoUrl(video.url)
+  const videoUrl = video.url || ''
 
   const handleDelete = async () => {
-    try {
-      setIsDeleting(true)
-      await deleteVideo(video.id)
-      // Call the onDelete callback if provided
-      onDelete?.(video.id)
-    } catch (error) {
-      console.error('Failed to delete video:', error)
-    } finally {
-      setIsDeleting(false)
-    }
+    setIsDeleting(true)
+    await onDelete(video.id)
+    setIsDeleting(false)
   }
 
-  const handleDownload = () => {
-    // Create an anchor element and trigger download
-    const link = document.createElement('a')
-    link.href = videoUrl
-    // Extract filename from the URL
-    const filename = videoUrl.split('/').pop() || `video-${video.id}.mp4`
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  const handleDownload = async () => {
+    setIsDownloading(true)
+    try {
+      const response = await fetch(videoUrl)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `video-${video.id}.mp4`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Error downloading video:', error)
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   return (
-    <Card className="overflow-hidden">
-      {isLoading ? (
-        <div className="flex items-center justify-center h-48 bg-gray-200 animate-pulse">
-          <div className="text-gray-400">Processing...</div>
-        </div>
-      ) : (
-        <div className="relative aspect-video bg-black">
-          <video 
-            className="absolute inset-0 w-full h-full object-contain"
-            controls
-            playsInline
-            preload="metadata"
-            controlsList="nodownload"
+    <Card className="relative overflow-hidden">
+      <div
+        className="relative aspect-[9/16]"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {playError ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <p className="text-sm text-gray-500">Error loading video</p>
+          </div>
+        ) : (
+          <ReactPlayer
+            url={videoUrl}
+            width="100%"
+            height="100%"
+            controls={true}
+            playing={isHovered}
+            onError={() => setPlayError(true)}
+            style={{ aspectRatio: '9/16', objectFit: 'cover' }}
+            playsinline
+            config={{
+              file: {
+                attributes: {
+                  controlsList: 'nodownload',
+                  disablePictureInPicture: true
+                }
+              }
+            }}
+          />
+        )}
+        
+        {/* Overlay controls */}
+        <div 
+          className={`absolute top-2 right-2 flex items-start gap-2 transition-opacity duration-200 ${
+            isHovered ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <Button
+            variant="secondary"
+            size="icon"
+            className="bg-black/50 hover:bg-black/70 text-white"
+            onClick={handleDownload}
+            disabled={isDownloading}
           >
-            <source src={videoUrl} type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
+            {isDownloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+          </Button>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="secondary"
+                size="icon"
+                className="bg-black/50 hover:bg-black/70 text-white"
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Video</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this video? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-500 hover:bg-red-600 text-white"
+                  onClick={handleDelete}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
-      )}
+      </div>
+
       <div className="p-4">
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500">
-            {formatDate(video.created_at)}
+            {new Date(video.created_at).toLocaleDateString()}
           </span>
-          <div className="flex gap-2">
-            {isLoading ? (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                Processing
-              </span>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleDownload}
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-500 hover:text-red-600"
-                      disabled={isDeleting}
-                    >
-                      {isDeleting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Video</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete this video? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-red-500 hover:bg-red-600 text-white"
-                        onClick={handleDelete}
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </>
-            )}
-          </div>
         </div>
       </div>
     </Card>

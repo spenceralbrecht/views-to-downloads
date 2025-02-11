@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useEffect } from 'react'
 import { useSubscription } from '@/hooks/useSubscription'
 import { useUser } from '@supabase/auth-helpers-react'
 import {
@@ -19,8 +19,19 @@ interface ContentLimitGuardProps {
 
 export function ContentLimitGuard({ children }: ContentLimitGuardProps) {
   const user = useUser()
-  const { contentRemaining, plan, isSubscribed } = useSubscription(user)
+  const { contentRemaining, plan, isSubscribed, loading } = useSubscription(user)
   const [showDialog, setShowDialog] = useState(false)
+
+  // Debug logging
+  useEffect(() => {
+    console.log('ContentLimitGuard state:', {
+      contentRemaining,
+      plan,
+      isSubscribed,
+      loading,
+      showDialog
+    })
+  }, [contentRemaining, plan, isSubscribed, loading, showDialog])
 
   // Only check limits for subscribed users
   // Unsubscribed users will be blocked by SubscriptionGuard
@@ -28,18 +39,32 @@ export function ContentLimitGuard({ children }: ContentLimitGuardProps) {
     return <>{children}</>
   }
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    console.log('ContentLimitGuard: Opening dialog')
+    setShowDialog(true)
+  }
+
   // Show limit reached dialog for subscribed users with no remaining content
   return (
     <>
-      <div onClick={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        setShowDialog(true)
-      }}>
-        {children}
+      <div 
+        className="relative cursor-not-allowed"
+        onClick={handleClick}
+      >
+        <div className="pointer-events-none opacity-50">
+          {children}
+        </div>
       </div>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog 
+        open={showDialog} 
+        onOpenChange={(open) => {
+          console.log('Dialog onOpenChange:', open)
+          setShowDialog(open)
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Monthly Limit Reached</DialogTitle>

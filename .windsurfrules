@@ -8,6 +8,8 @@ These are the keys in the .env.local file but in the real file they all have a v
 
 Keep the readme up to date with how this project works.
 
+When I correct you or you learn something from our interactions, suggest a new .windsurfrules rule so that you can be reminded so you don't make the same mistake twice.
+
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=

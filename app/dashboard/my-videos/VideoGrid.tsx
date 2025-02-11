@@ -11,6 +11,7 @@ interface VideoGridProps {
 
 export function VideoGrid({ initialVideos }: VideoGridProps) {
   const [videos, setVideos] = useState<OutputContent[]>(initialVideos)
+  const [pendingVideos, setPendingVideos] = useState<string[]>([])
   const supabase = createClientComponentClient()
 
   useEffect(() => {
@@ -30,8 +31,16 @@ export function VideoGrid({ initialVideos }: VideoGridProps) {
                 video.id === payload.new.id ? { ...video, ...payload.new } : video
               )
             )
+            // Remove from pending if status is no longer in_progress
+            if (payload.new.status !== 'in_progress') {
+              setPendingVideos(current => current.filter(id => id !== payload.new.id))
+            }
           } else if (payload.eventType === 'INSERT') {
-            setVideos(currentVideos => [payload.new as OutputContent, ...currentVideos])
+            const newVideo = payload.new as OutputContent
+            setVideos(currentVideos => [newVideo, ...currentVideos])
+            if (newVideo.status === 'in_progress') {
+              setPendingVideos(current => [...current, newVideo.id])
+            }
           }
         }
       )
@@ -43,9 +52,17 @@ export function VideoGrid({ initialVideos }: VideoGridProps) {
   }, [supabase])
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {videos.map((video) => (
-        <VideoCard key={video.id} video={video} />
+        <VideoCard 
+          key={video.id} 
+          video={video} 
+          isPending={pendingVideos.includes(video.id)}
+          onDelete={(id) => {
+            setVideos(current => current.filter(v => v.id !== id))
+            setPendingVideos(current => current.filter(pendingId => pendingId !== id))
+          }}
+        />
       ))}
     </div>
   )

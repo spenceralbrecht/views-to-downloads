@@ -15,35 +15,14 @@ interface App {
 interface AppSelectProps {
   selectedAppId: string | null
   onSelect: (appId: string) => void
+  apps: App[]
+  loadingApps: boolean
 }
 
-export function AppSelect({ selectedAppId, onSelect }: AppSelectProps) {
-  const [apps, setApps] = useState<App[]>([])
-  const [loading, setLoading] = useState(true)
+export function AppSelect({ selectedAppId, onSelect, apps, loadingApps }: AppSelectProps) {
   const supabase = createClientComponentClient()
 
-  useEffect(() => {
-    async function fetchApps() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data, error } = await supabase
-        .from('apps')
-        .select('id, app_store_url, app_name, app_logo_url, created_at')
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching apps:', error)
-      } else if (data) {
-        setApps(data)
-      }
-      setLoading(false)
-    }
-    fetchApps()
-  }, [supabase])
-
-  if (loading) {
+  if (loadingApps) {
     return (
       <div className="flex justify-center items-center h-24">
         <Loader2 className="animate-spin h-6 w-6" />
