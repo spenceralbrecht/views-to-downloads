@@ -67,6 +67,13 @@ export default function CreateAd() {
   const [hook, setHook] = useState('')
   const [textPosition, setTextPosition] = useState<'top' | 'middle' | 'bottom'>('bottom')
 
+  // Update hook text when index changes
+  useEffect(() => {
+    if (hooks.length > 0 && currentHookIndex >= 0 && currentHookIndex < hooks.length) {
+      setHook(hooks[currentHookIndex].hook_text)
+    }
+  }, [currentHookIndex, hooks])
+
   // State for video selection
   const [selectedVideo, setSelectedVideo] = useState<number | null>(null)
   const [selectedInfluencerVideo, setSelectedInfluencerVideo] = useState('')
