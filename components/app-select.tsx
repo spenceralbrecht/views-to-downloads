@@ -30,7 +30,7 @@ export function AppSelect({ selectedAppId, onSelect, apps, loadingApps }: AppSel
     )
   }
 
-  if (apps.length === 0) {
+  if (!apps || apps.length === 0) {
     return (
       <p className="text-gray-500 text-center">No apps found. Please add an app first.</p>
     )

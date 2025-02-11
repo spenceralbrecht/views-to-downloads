@@ -28,6 +28,7 @@ export default function HooksPage() {
   const [apps, setApps] = useState<App[]>([])
   const [hooks, setHooks] = useState<Hook[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
+  const [loadingApps, setLoadingApps] = useState(true)
   const { toast } = useToast()
   const supabase = createClientComponentClient()
   const user = useUser()
@@ -35,12 +36,16 @@ export default function HooksPage() {
 
   useEffect(() => {
     const fetchApps = async () => {
+      setLoadingApps(true)
       try {
         const result = await getApps()
         if (result.error) {
           throw new Error(result.error)
         }
-        setApps(result.data)
+        setApps(result.data || [])
+        if (result.data && result.data.length > 0 && !selectedAppId) {
+          setSelectedAppId(result.data[0].id)
+        }
       } catch (error) {
         console.error('Error fetching apps:', error)
         toast({
@@ -48,6 +53,8 @@ export default function HooksPage() {
           description: "Please try again later",
           variant: "destructive"
         })
+      } finally {
+        setLoadingApps(false)
       }
     }
 
@@ -146,10 +153,16 @@ export default function HooksPage() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-semibold">Generate Hooks</h1>
         <div className="flex items-center gap-4">
-          <AppSelect
-            selectedAppId={selectedAppId}
-            onSelect={setSelectedAppId}
-          />
+          {loadingApps ? (
+            <div>Loading apps...</div>
+          ) : (
+            <AppSelect
+              selectedAppId={selectedAppId}
+              onSelect={setSelectedAppId}
+              apps={apps}
+              loadingApps={loadingApps}
+            />
+          )}
           <SubscriptionGuard>
             <ContentLimitGuard>
               <Button
@@ -177,9 +190,8 @@ export default function HooksPage() {
             {hooks.map((hook) => (
               <HookItem
                 key={hook.id}
-                id={hook.id}
-                text={hook.hook_text}
-                onDelete={() => handleDeleteHook(hook.id)}
+                hook={hook}
+                onDelete={handleDeleteHook}
               />
             ))}
           </div>
