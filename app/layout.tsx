@@ -21,6 +21,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <head>
+        <script defer src="https://feedback.fish/ff.js?pid=8ce000788096e9"></script>
         {/* <Script id="microsoft-clarity" strategy="beforeInteractive">
           {`
             (function(c,l,a,r,i,t,y){

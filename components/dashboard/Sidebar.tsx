@@ -29,7 +29,15 @@ export function Sidebar({ user }: SidebarProps) {
   ]
 
   const bottomNav = [
-    { name: 'Support', href: '/dashboard/support', icon: HelpCircle },
+    { 
+      name: 'Support', 
+      href: '#',
+      icon: HelpCircle,
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault()
+        // The widget will be triggered by the data-feedback-fish attribute
+      }
+    },
     { 
       name: 'Billing', 
       href: stripeConfig.customerBillingLink || '/dashboard/billing', 
@@ -84,62 +92,41 @@ export function Sidebar({ user }: SidebarProps) {
             )
           })}
         </nav>
-
-        {/* Subscription Usage */}
-        <div className="px-4 py-4 border-t border-gray-200">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Content Usage</span>
-              <span className="font-medium">
-                {contentUsed} / {contentLimit}
-              </span>
-            </div>
-            <Progress value={progressPercentage} className="h-2" />
-            <div className="flex justify-between items-center">
-              <Badge variant="outline" className="capitalize">
-                {plan || 'No Plan'}
-              </Badge>
-              <span className="text-xs text-gray-500">
-                {contentRemaining} remaining
-              </span>
-            </div>
-            {subscription?.content_reset_date && (
-              <div className="text-xs text-gray-500 text-right">
-                Resets {new Date(subscription.content_reset_date).toLocaleDateString()}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="px-4 mt-8">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">{contentRemaining} videos remaining</span>
-              {subscription?.current_period_end && (
-                <span className="text-gray-500">
-                  Resets {new Date(subscription.current_period_end).toLocaleDateString()}
-                </span>
-              )}
-            </div>
-            <Progress value={progressPercentage} className="h-1" />
-          </div>
-        </div>
       </div>
 
       <div className="border-t">
         <nav className="space-y-1 px-2 py-4">
-          {bottomNav.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              target={item.external ? "_blank" : undefined}
-              rel={item.external ? "noopener noreferrer" : undefined}
-              className="flex items-center px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
-            >
-              <item.icon className="mr-3 h-5 w-5 text-gray-400" />
-              {item.name}
-            </Link>
-          ))}
+          {bottomNav.map((item) => {
+            const isActive = pathname === item.href
+            
+            const linkProps = {
+              key: item.name,
+              href: item.href,
+              onClick: item.onClick,
+              ...(item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
+              ...(item.name === 'Support' ? {
+                'data-feedback-fish': true,
+                'data-feedback-fish-userid': user?.email,
+              } : {}),
+              className: `flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                isActive
+                  ? 'bg-gray-100 text-gray-900'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`
+            }
+            
+            return (
+              <Link {...linkProps}>
+                <item.icon
+                  className={`mr-3 h-5 w-5 ${
+                    isActive ? 'text-gray-500' : 'text-gray-400'
+                  }`}
+                  aria-hidden="true"
+                />
+                {item.name}
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="px-4 py-4 border-t">
@@ -150,6 +137,28 @@ export function Sidebar({ user }: SidebarProps) {
               </Badge>
             </div>
           )}
+          
+          {/* Content Usage Section */}
+          <div className="space-y-2 mb-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Content Usage</span>
+              <span className="font-medium">
+                {contentUsed} / {contentLimit}
+              </span>
+            </div>
+            <Progress value={progressPercentage} className="h-2" />
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-500">
+                {contentRemaining} remaining
+              </span>
+              {subscription?.content_reset_date && (
+                <span className="text-xs text-gray-500">
+                  Resets {new Date(subscription.content_reset_date).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+          </div>
+
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <UserIcon className="h-8 w-8 text-gray-400" />

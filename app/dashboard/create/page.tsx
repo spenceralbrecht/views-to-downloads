@@ -555,7 +555,7 @@ export default function CreateAd() {
                   />
                 </form>
                 {/* Display uploaded demo videos */}
-                <div className="flex gap-2 overflow-x-auto">
+                <div className="flex gap-4 overflow-x-auto pb-2">
                   {loadingDemos ? (
                     <Loader2 className="animate-spin h-6 w-6" />
                   ) : demoVideos.length > 0 ? (
@@ -563,17 +563,29 @@ export default function CreateAd() {
                       <div
                         key={video.id}
                         onClick={() => handleDemoVideoSelect(video.publicUrl)}
-                        className={`relative w-48 h-48 rounded-lg overflow-hidden border ${selectedDemoVideo === video.publicUrl ? 'outline outline-2 outline-blue-500' : ''}`}
+                        className={`relative flex-shrink-0 cursor-pointer group ${
+                          selectedDemoVideo === video.publicUrl 
+                            ? 'ring-2 ring-blue-500 ring-offset-2' 
+                            : 'hover:ring-2 hover:ring-blue-500/50 hover:ring-offset-1'
+                        }`}
+                        style={{ width: '160px' }}
                       >
-                        <video
-                          key={video.publicUrl}
-                          src={video.publicUrl}
-                          preload="auto"
-                          muted
-                          loop
-                          playsInline
-                          className="w-full h-full object-cover"
-                        />
+                        <div className="aspect-[9/16] w-full">
+                          <video
+                            key={video.publicUrl}
+                            src={video.publicUrl}
+                            className="w-full h-full object-cover rounded-lg"
+                            preload="auto"
+                            muted
+                            loop
+                            playsInline
+                            onMouseEnter={(e) => e.currentTarget.play()}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.pause()
+                              e.currentTarget.currentTime = 0
+                            }}
+                          />
+                        </div>
                       </div>
                     ))
                   ) : (
