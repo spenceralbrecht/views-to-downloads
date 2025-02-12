@@ -40,48 +40,11 @@ export default async function Dashboard() {
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8 text-foreground">Dashboard</h1>
         
-        {/* Progress Steps */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-foreground">Subscription</CardTitle>
-                <CardDescription>Sign up for a subscription</CardDescription>
-              </div>
-              {hasSubscription ? (
-                <Check className="h-6 w-6 text-green-500" />
-              ) : (
-                <X className="h-6 w-6 text-red-500" />
-              )}
-            </CardHeader>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-foreground">Add First App</CardTitle>
-                <CardDescription>Add your first app to create content</CardDescription>
-              </div>
-              {hasApp ? (
-                <Check className="h-6 w-6 text-green-500" />
-              ) : (
-                <X className="h-6 w-6 text-red-500" />
-              )}
-            </CardHeader>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-foreground">Upload Demo Video</CardTitle>
-                <CardDescription>Upload your first demo video</CardDescription>
-              </div>
-              {hasDemoVideo ? (
-                <Check className="h-6 w-6 text-green-500" />
-              ) : (
-                <X className="h-6 w-6 text-red-500" />
-              )}
-            </CardHeader>
-          </Card>
-        </div>
+        <OnboardingChecklist 
+          hasSubscription={hasSubscription}
+          hasApp={hasApp}
+          hasDemoVideo={hasDemoVideo}
+        />
 
         {/* Feature Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -99,14 +62,11 @@ export default async function Dashboard() {
           <Card className="relative bg-card border-border">
             <CardHeader>
               <ImageIcon className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle className="text-foreground">Create slideshow videos</CardTitle>
+              <CardTitle className="text-foreground">Coming Soon</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Create & publish image slideshow videos to TikTok</p>
+              <p className="text-muted-foreground">More features coming soon!</p>
             </CardContent>
-            <div className="absolute top-4 right-4 px-3 py-1 bg-accent rounded-full text-sm text-muted-foreground">
-              Not Available Yet
-            </div>
           </Card>
           <Card className="relative bg-card border-border">
             <CardHeader>
@@ -132,9 +92,6 @@ export default async function Dashboard() {
             </Card>
           </Link>
         </div>
-
-        {/* Onboarding Checklist */}
-        <OnboardingChecklist />
       </div>
     </div>
   )

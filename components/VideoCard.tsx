@@ -26,17 +26,18 @@ interface VideoCardProps {
     created_at: string
     url?: string
   }
+  isPending: boolean
   onDelete: (videoId: string) => void
 }
 
-export function VideoCard({ video, onDelete }: VideoCardProps) {
+export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [playError, setPlayError] = useState(false)
   const supabase = createClientComponentClient()
 
-  if (video.status === 'pending') {
+  if (isPending) {
     return <VideoCardSkeleton />
   }
 
@@ -44,8 +45,13 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
 
   const handleDelete = async () => {
     setIsDeleting(true)
-    await onDelete(video.id)
-    setIsDeleting(false)
+    try {
+      await onDelete(video.id)
+    } catch (error) {
+      console.error('Error deleting video:', error)
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleDownload = async () => {
@@ -69,7 +75,7 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
   }
 
   return (
-    <Card className="relative overflow-hidden bg-card border-border max-w-[200px] mx-auto">
+    <Card className="relative overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow duration-200">
       <div
         className="relative aspect-[9/16]"
         onMouseEnter={() => setIsHovered(true)}
@@ -100,32 +106,14 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
           />
         )}
         
-        {/* Overlay controls */}
-        <div 
-          className={`absolute top-2 right-2 flex items-start gap-2 transition-opacity duration-200 ${
-            isHovered ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
-          <Button
-            variant="secondary"
-            size="icon"
-            className="bg-background/50 hover:bg-background/70 text-foreground"
-            onClick={handleDownload}
-            disabled={isDownloading}
-          >
-            {isDownloading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-          </Button>
-
+        {/* Delete button overlay - always visible */}
+        <div className="absolute top-2 left-2">
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
-                variant="secondary"
+                variant="destructive"
                 size="icon"
-                className="bg-background/50 hover:bg-background/70 text-foreground"
+                className="bg-destructive/80 hover:bg-destructive"
                 disabled={isDeleting}
               >
                 {isDeleting ? (
@@ -153,6 +141,27 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+        </div>
+
+        {/* Download button overlay - visible on hover */}
+        <div 
+          className={`absolute top-2 right-2 transition-opacity duration-200 ${
+            isHovered ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <Button
+            variant="secondary"
+            size="icon"
+            className="bg-background/50 hover:bg-background/70 text-foreground"
+            onClick={handleDownload}
+            disabled={isDownloading}
+          >
+            {isDownloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+          </Button>
         </div>
       </div>
 

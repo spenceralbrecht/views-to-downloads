@@ -1,37 +1,51 @@
-import { Check } from "lucide-react"
+import { Check, X } from "lucide-react"
 
-export function OnboardingChecklist() {
+interface OnboardingChecklistProps {
+  hasSubscription: boolean
+  hasApp: boolean
+  hasDemoVideo: boolean
+}
+
+export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo }: OnboardingChecklistProps) {
   return (
-    <div className="space-y-4 mt-8">
+    <div className="space-y-4 mb-8">
       <div className="flex items-center justify-between p-4 bg-card border border-border rounded-lg">
         <div className="flex items-center gap-4">
-          <div className="bg-primary/10 p-2 rounded-lg">
-            <span className="text-primary text-xl">S</span>
+          <div className={`${hasSubscription ? 'bg-primary/10' : 'bg-muted'} p-2 rounded-lg`}>
+            <span className={`text-xl ${hasSubscription ? 'text-primary' : 'text-muted-foreground'}`}>S</span>
           </div>
           <div>
             <h3 className="font-medium text-foreground">Subscription required</h3>
             <p className="text-muted-foreground text-sm">Estimated 2-3 minutes</p>
           </div>
         </div>
-        <Check className="text-primary h-5 w-5" />
+        {hasSubscription ? (
+          <Check className="text-green-500 h-5 w-5" />
+        ) : (
+          <X className="text-red-500 h-5 w-5" />
+        )}
       </div>
 
       <div className="flex items-center justify-between p-4 bg-card border border-border rounded-lg">
         <div className="flex items-center gap-4">
-          <div className="bg-muted p-2 rounded-lg flex items-center justify-center">
-            <span className="text-muted-foreground text-xl">+</span>
+          <div className={`${hasApp ? 'bg-primary/10' : 'bg-muted'} p-2 rounded-lg flex items-center justify-center`}>
+            <span className={`text-xl ${hasApp ? 'text-primary' : 'text-muted-foreground'}`}>+</span>
           </div>
           <div>
             <h3 className="font-medium text-foreground">Add your first app</h3>
             <p className="text-muted-foreground text-sm">Estimated 30 seconds</p>
           </div>
         </div>
-        <Check className="text-primary h-5 w-5" />
+        {hasApp ? (
+          <Check className="text-green-500 h-5 w-5" />
+        ) : (
+          <X className="text-red-500 h-5 w-5" />
+        )}
       </div>
 
       <div className="flex items-center justify-between p-4 bg-card border border-border rounded-lg">
         <div className="flex items-center gap-4">
-          <div className="bg-muted p-2 rounded-lg">
+          <div className={`${hasDemoVideo ? 'bg-primary/10' : 'bg-muted'} p-2 rounded-lg`}>
             <span className="text-xl">📹</span>
           </div>
           <div>
@@ -39,7 +53,11 @@ export function OnboardingChecklist() {
             <p className="text-muted-foreground text-sm">Estimated 30 seconds</p>
           </div>
         </div>
-        <Check className="text-primary h-5 w-5" />
+        {hasDemoVideo ? (
+          <Check className="text-green-500 h-5 w-5" />
+        ) : (
+          <X className="text-red-500 h-5 w-5" />
+        )}
       </div>
     </div>
   )
