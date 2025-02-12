@@ -16,6 +16,7 @@ import { SubscriptionGuard } from '@/components/SubscriptionGuard'
 import { ContentLimitGuard } from '@/components/ContentLimitGuard'
 import { incrementContentUsage } from '@/utils/subscription'
 import { useToast } from "@/components/ui/use-toast"
+import { UpgradeModal } from '@/components/upgrade-modal'
 
 interface Hook {
   id: string
@@ -26,8 +27,9 @@ export default function CreateAd() {
   const supabase = createClientComponentClient()
   const [isPending, startTransition] = useTransition()
   const user = useUser()
-  const { isSubscribed } = useSubscription(user)
+  const { isSubscribed, contentRemaining } = useSubscription(user)
   const { toast } = useToast()
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   // State for app selection
   const [selectedAppId, setSelectedAppId] = useState<string>('')
@@ -73,6 +75,14 @@ export default function CreateAd() {
       setHook(hooks[currentHookIndex].hook_text)
     }
   }, [currentHookIndex, hooks])
+
+  const handlePrevHook = () => {
+    setCurrentHookIndex((i) => (i > 0 ? i - 1 : hooks.length - 1))
+  }
+
+  const handleNextHook = () => {
+    setCurrentHookIndex((i) => (i < hooks.length - 1 ? i + 1 : 0))
+  }
 
   // State for video selection
   const [selectedVideo, setSelectedVideo] = useState<number | null>(null)
@@ -274,7 +284,9 @@ export default function CreateAd() {
       return
     }
 
-    if (!selectedAppId) {
+    // Check content remaining
+    if (contentRemaining <= 0) {
+      setShowUpgradeModal(true)
       return
     }
 
@@ -410,7 +422,7 @@ export default function CreateAd() {
                                 <img
                                   src={app.app_logo_url}
                                   alt={app.app_name}
-                                  className="object-cover"
+                                  className="object-cover w-full h-full"
                                 />
                               </div>
                             ) : (
@@ -446,7 +458,7 @@ export default function CreateAd() {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => setCurrentHookIndex((i) => (i > 0 ? i - 1 : hooks.length - 1))}
+                        onClick={handlePrevHook}
                         className="hover:bg-primary/5"
                       >
                         <ChevronLeft className="h-4 w-4" />
@@ -462,36 +474,10 @@ export default function CreateAd() {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => setCurrentHookIndex((i) => (i < hooks.length - 1 ? i + 1 : 0))}
+                        onClick={handleNextHook}
                         className="hover:bg-primary/5"
                       >
                         <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex justify-center gap-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setTextPosition('top')}
-                        className={textPosition === 'top' ? 'bg-primary text-white' : 'hover:bg-primary/5'}
-                      >
-                        Top
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setTextPosition('middle')}
-                        className={textPosition === 'middle' ? 'bg-primary text-white' : 'hover:bg-primary/5'}
-                      >
-                        Middle
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setTextPosition('bottom')}
-                        className={textPosition === 'bottom' ? 'bg-primary text-white' : 'hover:bg-primary/5'}
-                      >
-                        Bottom
                       </Button>
                     </div>
                   </div>
@@ -525,68 +511,103 @@ export default function CreateAd() {
                         >
                           <img
                             src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/thumbnail-${videoNumber}.png`}
-                            alt={`UGC Video ${videoNumber}`}
+                            alt={`Video ${videoNumber}`}
                             className="w-full h-full object-cover"
                           />
-                          <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
-                            <p className="text-xs text-white font-medium">UGC {videoNumber}</p>
-                          </div>
                         </div>
                       ))}
+                    </div>
+                    <div className="flex justify-center mt-4 gap-2 w-3/4">
+                      <Button 
+                        variant="outline" 
+                        onClick={handlePrev} 
+                        disabled={currentPage === 1}
+                        className="hover:bg-primary/5"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={handleNext} 
+                        disabled={currentPage === totalPages}
+                        className="hover:bg-primary/5"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
 
                   {/* Video Preview */}
                   <div className="w-1/4">
                     {selectedVideo !== null && (
-                      <div className="relative rounded-lg overflow-hidden border-4 border-white/10 bg-white/5">
-                        <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
-                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        </div>
-                        <video
-                          key={selectedVideo}
-                          src={getUGCVideoUrl(selectedVideo)}
-                          autoPlay
-                          playsInline
-                          loop
-                          muted
-                          className="w-full h-full object-cover relative z-20"
-                          onLoadedData={(e) => {
-                            const target = e.target as HTMLVideoElement;
-                            target.previousElementSibling?.remove();
-                          }}
-                        />
-                        {hook && (
-                          <div className={`absolute inset-0 flex ${
-                            textPosition === 'top' ? 'items-start pt-4' : 
-                            textPosition === 'bottom' ? 'items-end pb-4' : 'items-center'
-                          } justify-center p-2 text-center bg-gradient-to-t from-black/40 to-transparent`}>
-                            <p className="text-white text-sm font-medium drop-shadow-lg whitespace-pre-wrap" style={{ fontFamily: 'TikTokDisplay' }}>
-                              {hook}
-                            </p>
+                      <div>
+                        <div className="relative rounded-lg overflow-hidden border-4 border-white/10 bg-white/5">
+                          <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                           </div>
-                        )}
+                          <video
+                            key={selectedVideo}
+                            src={getUGCVideoUrl(selectedVideo)}
+                            autoPlay
+                            playsInline
+                            loop
+                            muted
+                            className="w-full h-full object-cover relative z-20"
+                            onLoadedData={(e) => {
+                              const target = e.target as HTMLVideoElement;
+                              target.previousElementSibling?.remove();
+                            }}
+                          />
+                          {hook && (
+                            <div 
+                              className={`absolute inset-x-0 z-30 p-4 text-center ${
+                                textPosition === 'top' ? 'top-0' : 
+                                textPosition === 'middle' ? 'top-1/2 -translate-y-1/2' : 
+                                'bottom-0'
+                              }`}
+                              style={{
+                                background: textPosition === 'top' ? 
+                                  'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%)' :
+                                  textPosition === 'bottom' ? 
+                                  'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%)' :
+                                  'rgba(0,0,0,0.5)'
+                              }}
+                            >
+                              <p className="text-white text-sm font-medium drop-shadow-lg whitespace-pre-wrap" style={{ fontFamily: 'TikTokDisplay' }}>
+                                {hook}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex justify-center gap-4 mt-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setTextPosition('top')}
+                            className={textPosition === 'top' ? 'bg-primary text-white' : 'hover:bg-primary/5'}
+                          >
+                            Top
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setTextPosition('middle')}
+                            className={textPosition === 'middle' ? 'bg-primary text-white' : 'hover:bg-primary/5'}
+                          >
+                            Middle
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setTextPosition('bottom')}
+                            className={textPosition === 'bottom' ? 'bg-primary text-white' : 'hover:bg-primary/5'}
+                          >
+                            Bottom
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
-                </div>
-                <div className="flex justify-end mt-4 gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={handlePrev} 
-                    disabled={currentPage === 1}
-                    className="hover:bg-primary/5"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={handleNext} 
-                    disabled={currentPage === totalPages}
-                    className="hover:bg-primary/5"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
               
@@ -680,7 +701,7 @@ export default function CreateAd() {
         {/* My Videos Section */}
         <div className="mt-12">
           <h2 className="text-lg font-semibold text-foreground mb-4">My Videos</h2>
-          <div className="flex flex-wrap gap-2 justify-start">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {loadingOutputs ? (
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             ) : outputVideos.length === 0 ? (
@@ -696,6 +717,12 @@ export default function CreateAd() {
             )}
           </div>
         </div>
+
+        {/* Upgrade Modal */}
+        <UpgradeModal 
+          open={showUpgradeModal} 
+          onOpenChange={setShowUpgradeModal}
+        />
       </div>
     </div>
   )

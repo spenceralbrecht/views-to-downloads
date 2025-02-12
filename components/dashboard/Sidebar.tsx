@@ -44,7 +44,6 @@ export function Sidebar({ user }: SidebarProps) {
       icon: CreditCard,
       external: true 
     },
-    { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ]
 
   // Calculate progress percentage

@@ -13,6 +13,7 @@ import { SubscriptionGuard } from '@/components/SubscriptionGuard'
 import { ContentLimitGuard } from '@/components/ContentLimitGuard'
 import { Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, Label, Textarea } from "@/components/ui/dialog"
+import { UpgradeModal } from '@/components/upgrade-modal'
 
 type App = {
   id: string
@@ -32,10 +33,11 @@ export default function HooksPage() {
   const [loadingApps, setLoadingApps] = useState(true)
   const [selectedHook, setSelectedHook] = useState<Hook | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const { toast } = useToast()
   const supabase = createClientComponentClient()
   const user = useUser()
-  const { isSubscribed } = useSubscription(user)
+  const { isSubscribed, contentRemaining } = useSubscription(user)
 
   useEffect(() => {
     const fetchApps = async () => {
@@ -107,16 +109,17 @@ export default function HooksPage() {
   }
 
   const handleGenerateHooks = async () => {
-    if (!isSubscribed) {
-      return
-    }
-
     if (!selectedAppId) {
       toast({
         title: "Select an app",
         description: "Please select an app to generate hooks for",
         variant: "destructive"
       })
+      return
+    }
+
+    if (contentRemaining <= 0) {
+      setShowUpgradeModal(true)
       return
     }
 
@@ -267,6 +270,11 @@ export default function HooksPage() {
           </Dialog>
         )}
       </div>
+      {/* Upgrade Modal */}
+      <UpgradeModal 
+        open={showUpgradeModal} 
+        onOpenChange={setShowUpgradeModal}
+      />
     </div>
   )
 }
