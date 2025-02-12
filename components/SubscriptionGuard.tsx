@@ -54,10 +54,10 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
       </div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle>Premium Feature</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-foreground">Premium Feature</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Subscribe to access this feature and more.
             </DialogDescription>
           </DialogHeader>
@@ -65,7 +65,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={() => window.location.href = stripeConfig.checkoutLinks.starter}>
+            <Button className="btn-gradient" onClick={() => window.location.href = stripeConfig.checkoutLinks.starter}>
               Subscribe Now
             </Button>
           </div>

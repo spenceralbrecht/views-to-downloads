@@ -36,30 +36,32 @@ export default function VideosPage() {
   }, [supabase])
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold">My Generated Videos</h2>
-        <span className="text-gray-500">{videos.length} videos</span>
-      </div>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-semibold text-foreground">My Generated Videos</h2>
+          <span className="text-muted-foreground">{videos.length} videos</span>
+        </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin" />
-        </div>
-      ) : videos.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">No videos generated yet</p>
-          <p className="text-sm text-gray-400">
-            Head over to the Create tab to generate your first video!
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {videos.map((video) => (
-            <VideoCard key={video.id} video={video} />
-          ))}
-        </div>
-      )}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : videos.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-4">No videos generated yet</p>
+            <p className="text-sm text-muted-foreground/80">
+              Head over to the Create tab to generate your first video!
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 justify-items-start">
+            {videos.map((video) => (
+              <VideoCard key={video.id} video={video} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

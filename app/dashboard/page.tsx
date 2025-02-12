@@ -15,55 +15,55 @@ export default async function Dashboard() {
   }
 
   return (
-    <div className="dashboard-container">
-      <div>
-        <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8 text-foreground">Dashboard</h1>
         
         {/* Feature Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <Link href="/dashboard/create" className="cursor-pointer">
-            <Card>
+            <Card className="bg-card border-border hover:bg-accent/50 transition-colors">
               <CardHeader>
-                <Video className="h-8 w-8 mb-2 text-blue-500" />
-                <CardTitle>Create UGC videos</CardTitle>
+                <Video className="h-8 w-8 mb-2 text-primary" />
+                <CardTitle className="text-foreground">Create UGC videos</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Create & publish UGC videos promoting your product demo</p>
+                <p className="text-muted-foreground">Create & publish UGC videos promoting your product demo</p>
               </CardContent>
             </Card>
           </Link>
-          <Card className="relative">
+          <Card className="relative bg-card border-border">
             <CardHeader>
-              <ImageIcon className="h-8 w-8 mb-2 text-green-500" />
-              <CardTitle>Create slideshow videos</CardTitle>
+              <ImageIcon className="h-8 w-8 mb-2 text-primary" />
+              <CardTitle className="text-foreground">Create slideshow videos</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">Create & publish image slideshow videos to TikTok</p>
+              <p className="text-muted-foreground">Create & publish image slideshow videos to TikTok</p>
             </CardContent>
-            <div className="absolute top-4 right-4 px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
+            <div className="absolute top-4 right-4 px-3 py-1 bg-accent rounded-full text-sm text-muted-foreground">
               Not Available Yet
             </div>
           </Card>
-          <Card className="relative">
+          <Card className="relative bg-card border-border">
             <CardHeader>
-              <User className="h-8 w-8 mb-2 text-purple-500" />
-              <CardTitle>UGC Avatar Generator</CardTitle>
+              <User className="h-8 w-8 mb-2 text-primary" />
+              <CardTitle className="text-foreground">UGC Avatar Generator</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">Auto-magically generate and save viral hooks for your videos</p>
+              <p className="text-muted-foreground">Auto-magically generate and save viral hooks for your videos</p>
             </CardContent>
-            <div className="absolute top-4 right-4 px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
+            <div className="absolute top-4 right-4 px-3 py-1 bg-accent rounded-full text-sm text-muted-foreground">
               Not Available Yet
             </div>
           </Card>
           <Link href="/dashboard/hooks" className="cursor-pointer">
-            <Card>
+            <Card className="bg-card border-border hover:bg-accent/50 transition-colors">
               <CardHeader>
-                <Sparkles className="h-8 w-8 mb-2 text-amber-500" />
-                <CardTitle>Hook Generator</CardTitle>
+                <Sparkles className="h-8 w-8 mb-2 text-primary" />
+                <CardTitle className="text-foreground">Hook Generator</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Auto-magically generate and save viral hooks for your videos</p>
+                <p className="text-muted-foreground">Auto-magically generate and save viral hooks for your videos</p>
               </CardContent>
             </Card>
           </Link>

@@ -69,15 +69,15 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
   }
 
   return (
-    <Card className="relative overflow-hidden">
+    <Card className="relative overflow-hidden bg-card border-border max-w-[200px] mx-auto">
       <div
         className="relative aspect-[9/16]"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         {playError ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-            <p className="text-sm text-gray-500">Error loading video</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-muted">
+            <p className="text-sm text-muted-foreground">Error loading video</p>
           </div>
         ) : (
           <ReactPlayer
@@ -109,7 +109,7 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
           <Button
             variant="secondary"
             size="icon"
-            className="bg-black/50 hover:bg-black/70 text-white"
+            className="bg-background/50 hover:bg-background/70 text-foreground"
             onClick={handleDownload}
             disabled={isDownloading}
           >
@@ -125,7 +125,7 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
               <Button
                 variant="secondary"
                 size="icon"
-                className="bg-black/50 hover:bg-black/70 text-white"
+                className="bg-background/50 hover:bg-background/70 text-foreground"
                 disabled={isDeleting}
               >
                 {isDeleting ? (
@@ -145,7 +145,7 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  className="bg-red-500 hover:bg-red-600 text-white"
+                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                   onClick={handleDelete}
                 >
                   Delete
@@ -158,7 +158,7 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
 
       <div className="p-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-muted-foreground">
             {new Date(video.created_at).toLocaleDateString()}
           </span>
         </div>

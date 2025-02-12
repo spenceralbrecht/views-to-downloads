@@ -92,58 +92,60 @@ export default function AppsPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-semibold">Your Apps</h1>
-        <Button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-black text-white hover:bg-gray-800"
-        >
-          <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          Add New App
-        </Button>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-semibold text-foreground">Your Apps</h1>
+          <Button 
+            onClick={() => setIsModalOpen(true)}
+            className="btn-gradient"
+          >
+            <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Add New App
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {isLoading ? (
+            // Show 3 skeleton cards while loading
+            Array.from({ length: 3 }).map((_, i) => (
+              <AppCardSkeleton key={i} />
+            ))
+          ) : apps.length > 0 ? (
+            <>
+              {apps.map(app => (
+                <AppCard
+                  key={app.id}
+                  app={app}
+                  onClick={() => setSelectedApp(app)}
+                />
+              ))}
+              {isAddingApp && <AppCardSkeleton />}
+            </>
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-muted-foreground">No apps yet. Click "Add New App" to get started.</p>
+            </div>
+          )}
+        </div>
+
+        <AddAppModal
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          onAddApp={handleAddApp}
+          isLoading={isAddingApp}
+        />
+
+        <AppDetailsModal
+          open={!!selectedApp}
+          onOpenChange={(open) => !open && setSelectedApp(null)}
+          app={selectedApp}
+          onDelete={() => handleDeleteApp(selectedApp?.id)}
+          isDeleting={isDeletingApp}
+        />
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {isLoading ? (
-          // Show 3 skeleton cards while loading
-          Array.from({ length: 3 }).map((_, i) => (
-            <AppCardSkeleton key={i} />
-          ))
-        ) : apps.length > 0 ? (
-          <>
-            {apps.map(app => (
-              <AppCard
-                key={app.id}
-                app={app}
-                onClick={() => setSelectedApp(app)}
-              />
-            ))}
-            {isAddingApp && <AppCardSkeleton />}
-          </>
-        ) : (
-          <div className="col-span-full text-center py-12">
-            <p className="text-gray-500">No apps yet. Click "Add New App" to get started.</p>
-          </div>
-        )}
-      </div>
-
-      <AddAppModal
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        onAddApp={handleAddApp}
-        isLoading={isAddingApp}
-      />
-
-      <AppDetailsModal
-        open={!!selectedApp}
-        onOpenChange={(open) => !open && setSelectedApp(null)}
-        app={selectedApp}
-        onDelete={() => handleDeleteApp(selectedApp?.id)}
-        isDeleting={isDeletingApp}
-      />
     </div>
   )
 }

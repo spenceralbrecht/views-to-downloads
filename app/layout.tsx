@@ -19,7 +19,7 @@ export default async function RootLayout({
   const { data: { session } } = await supabase.auth.getSession()
 
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <head>
         <script defer src="https://feedback.fish/ff.js?pid=8ce000788096e9"></script>
         {/* <Script id="microsoft-clarity" strategy="beforeInteractive">
@@ -32,15 +32,15 @@ export default async function RootLayout({
           `}
         </Script> */}
       </head>
-      <body>
-        {children}
+      <body className="min-h-screen bg-background font-sans antialiased">
+        <div className="relative flex min-h-screen flex-col">
+          <main className="flex-1">{children}</main>
+        </div>
         <Toaster />
         <Analytics />
       </body>
     </html>
   )
 }
-
-
 
 import './globals.css'

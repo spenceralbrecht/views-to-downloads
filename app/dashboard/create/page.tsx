@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { uploadDemoVideo, createVideo } from '../actions'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { VideoCard } from '@/components/VideoCard'
@@ -90,8 +90,9 @@ export default function CreateAd() {
   const [loadingOutputs, setLoadingOutputs] = useState(true)
   const [pendingVideo, setPendingVideo] = useState<any>(null)
 
-  // Generate an array of 69 videos
+  // Generate an array of 69 videos and shuffle them
   const allVideos = Array.from({ length: 69 }, (_, i) => i + 1)
+    .sort(() => Math.random() - 0.5)
 
   // Pagination setup for the UGC videos
   const [currentPage, setCurrentPage] = useState(1)
@@ -373,243 +374,292 @@ export default function CreateAd() {
   }, [demoVideos, loadingDemos, selectedDemoVideo, selectedInfluencerVideo, videosToShow])
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold mb-6">Create UGC ads</h1>
-      
-      <Card className="p-6 bg-gray-50">
-        <SubscriptionGuard>
-          <div className="space-y-8">
-            {/* App Selection Section */}
-            <div>
-              <h2 className="font-medium mb-2">1. Select App</h2>
-              <AppSelect
-                apps={apps}
-                loadingApps={loadingApps}
-                selectedAppId={selectedAppId}
-                onSelect={setSelectedAppId}
-              />
-            </div>
-
-            {/* Hook Section */}
-            <div>
-              <div className="flex justify-between mb-2">
-                <h2 className="font-medium">2. Hook</h2>
-                <span className="text-gray-500">
-                  {hooks.length > 0 && `Hook ${currentHookIndex + 1} of ${hooks.length}`}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentHookIndex(currentHookIndex - 1)}
-                  disabled={currentHookIndex === 0 || hooks.length === 0 || loadingHooks}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <div className="flex-1 relative">
-                  <Input
-                    value={hook}
-                    onChange={(e) => setHook(e.target.value)}
-                    maxLength={100}
-                    className="pr-24 bg-white"
-                    placeholder={loadingHooks ? "Loading hooks..." : hooks.length === 0 ? "No hooks found for this app" : "Enter your hook text..."}
-                    disabled={loadingHooks}
-                  />
-                  <div className="absolute inset-y-0 right-2 flex items-center gap-1">
-                    <Button
-                      variant={textPosition === 'top' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTextPosition('top')}
-                    >
-                      Top
-                    </Button>
-                    <Button
-                      variant={textPosition === 'middle' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTextPosition('middle')}
-                    >
-                      Middle
-                    </Button>
-                    <Button
-                      variant={textPosition === 'bottom' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTextPosition('bottom')}
-                    >
-                      Bottom
-                    </Button>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        <Card className="p-6 bg-card border-border">
+          <SubscriptionGuard>
+            <div className="space-y-8">
+              {/* App Selection */}
+              <Card className="p-6">
+                <CardHeader>
+                  <CardTitle>1. Select your app</CardTitle>
+                  <CardDescription>Choose the app you want to create content for</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-muted">
+                    {loadingApps ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading apps...
+                      </div>
+                    ) : apps.length > 0 ? (
+                      apps.map((app) => (
+                        <div
+                          key={app.id}
+                          onClick={() => setSelectedAppId(app.id)}
+                          className={`flex-shrink-0 p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
+                            selectedAppId === app.id
+                              ? 'bg-primary/10 border-primary'
+                              : 'bg-card border-border hover:border-primary/50'
+                          }`}
+                          style={{ minWidth: '200px' }}
+                        >
+                          <div className="flex items-center gap-3">
+                            {app.app_logo_url ? (
+                              <div className="h-12 w-12 relative rounded-lg overflow-hidden flex-shrink-0">
+                                <img
+                                  src={app.app_logo_url}
+                                  alt={app.app_name}
+                                  className="object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                                <span className="text-muted-foreground text-xl">?</span>
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-foreground truncate">
+                                {app.app_name}
+                              </h3>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">No apps found. Please add an app first.</p>
+                    )}
                   </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentHookIndex(currentHookIndex + 1)}
-                  disabled={currentHookIndex === hooks.length - 1 || hooks.length === 0 || loadingHooks}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+              {/* Hook Selection */}
+              <div>
+                <h2 className="text-lg font-semibold text-foreground mb-4">2. Choose a Hook</h2>
+                {loadingHooks ? (
+                  <div className="flex justify-center items-center h-24">
+                    <Loader2 className="animate-spin h-6 w-6 text-primary" />
+                  </div>
+                ) : hooks.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setCurrentHookIndex((i) => (i > 0 ? i - 1 : hooks.length - 1))}
+                        className="hover:bg-primary/5"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <div className="flex-1">
+                        <Input
+                          value={hook}
+                          onChange={(e) => setHook(e.target.value)}
+                          className="input-dark w-full"
+                          placeholder="Enter hook text..."
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setCurrentHookIndex((i) => (i < hooks.length - 1 ? i + 1 : 0))}
+                        className="hover:bg-primary/5"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex justify-center gap-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTextPosition('top')}
+                        className={textPosition === 'top' ? 'bg-primary text-white' : 'hover:bg-primary/5'}
+                      >
+                        Top
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTextPosition('middle')}
+                        className={textPosition === 'middle' ? 'bg-primary text-white' : 'hover:bg-primary/5'}
+                      >
+                        Middle
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTextPosition('bottom')}
+                        className={textPosition === 'bottom' ? 'bg-primary text-white' : 'hover:bg-primary/5'}
+                      >
+                        Bottom
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center">No hooks available. Add hooks in the Hooks section.</p>
+                )}
               </div>
-            </div>
-            
-            {/* UGC Video Section */}
-            <div className="flex">
-              <div className="flex-1">
+
+              {/* Video Selection */}
+              <div>
                 <div className="flex justify-between mb-2">
-                  <h2 className="font-medium">3. UGC video</h2>
-                  <span className="text-gray-500">
+                  <h2 className="text-lg font-semibold text-foreground">3. Select a Video</h2>
+                  <span className="text-muted-foreground">
                     Page {currentPage} of {totalPages}
                   </span>
                 </div>
-                <div className="grid grid-cols-8 gap-2">
-                  {videosToShow.map((num) => (
-                    <button
-                      key={num}
-                      onClick={() => handleUGCVideoSelect(num)}
-                      className={`relative aspect-square rounded-lg overflow-hidden border-2 ${
-                        selectedVideo === num
-                          ? 'border-blue-500'
-                          : 'border-gray-200'
-                      }`}
-                    >
-                      <img
-                        src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/thumbnail-${num}.png`}
-                        alt={`UGC Video ${num}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ))}
+                <div className="flex gap-6">
+                  {/* Video Grid */}
+                  <div className="w-3/4">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+                      {videosToShow.map((videoNumber) => (
+                        <div
+                          key={videoNumber}
+                          onClick={() => handleUGCVideoSelect(videoNumber)}
+                          className={`relative flex-shrink-0 cursor-pointer group transition-all duration-200 rounded-lg overflow-hidden ${
+                            selectedVideo === videoNumber
+                              ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg'
+                              : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
+                          }`}
+                          style={{ width: '100px', height: '177px' }}
+                        >
+                          <img
+                            src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/thumbnail-${videoNumber}.png`}
+                            alt={`UGC Video ${videoNumber}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
+                            <p className="text-xs text-white font-medium">UGC {videoNumber}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Video Preview */}
+                  <div className="w-1/4">
+                    {selectedVideo !== null && (
+                      <div className="relative rounded-lg overflow-hidden border-4 border-white/10 bg-white/5">
+                        <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                        <video
+                          key={selectedVideo}
+                          src={getUGCVideoUrl(selectedVideo)}
+                          autoPlay
+                          playsInline
+                          loop
+                          muted
+                          className="w-full h-full object-cover relative z-20"
+                          onLoadedData={(e) => {
+                            const target = e.target as HTMLVideoElement;
+                            target.previousElementSibling?.remove();
+                          }}
+                        />
+                        {hook && (
+                          <div className={`absolute inset-0 flex ${
+                            textPosition === 'top' ? 'items-start pt-4' : 
+                            textPosition === 'bottom' ? 'items-end pb-4' : 'items-center'
+                          } justify-center p-2 text-center bg-gradient-to-t from-black/40 to-transparent`}>
+                            <p className="text-white text-sm font-medium drop-shadow-lg whitespace-pre-wrap" style={{ fontFamily: 'TikTokDisplay' }}>
+                              {hook}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex justify-end mt-4 gap-2">
-                  <Button variant="outline" onClick={handlePrev} disabled={currentPage === 1}>
+                  <Button 
+                    variant="outline" 
+                    onClick={handlePrev} 
+                    disabled={currentPage === 1}
+                    className="hover:bg-primary/5"
+                  >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" onClick={handleNext} disabled={currentPage === totalPages}>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleNext} 
+                    disabled={currentPage === totalPages}
+                    className="hover:bg-primary/5"
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
               
-              {/* Video Preview Section */}
-              <div className="flex-1 ml-4">
-                {selectedVideo !== null && (
-                  <div className="relative w-1/2">
-                    <video
-                      src={getUGCVideoUrl(selectedVideo)}
-                      autoPlay
-                      playsInline
-                      loop
-                      muted
-                      className="w-full h-auto object-cover rounded-lg"
-                    />
-                    {hook && (
-                      <div className={`absolute inset-0 flex ${
-                        textPosition === 'top' ? 'items-start pt-4' : 
-                        textPosition === 'bottom' ? 'items-end pb-4' : 'items-center'
-                      } justify-center p-2 text-center`}>
-                        <p className="text-white text-xl font-semibold drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)] whitespace-pre-wrap">
-                          {hook}
-                        </p>
-                      </div>
-                    )}
+              {/* Demos Section */}
+              <Card className="p-6">
+                <CardHeader>
+                  <CardTitle>4. Demos</CardTitle>
+                  <CardDescription>Upload your product demo videos</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-start gap-4">
+                    <label
+                      htmlFor="demoVideo"
+                      className="flex-shrink-0 w-24 h-[170px] rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center bg-card text-muted-foreground hover:text-primary cursor-pointer transition-colors duration-200"
+                    >
+                      {isUploadingDemo ? (
+                        <Loader2 className="animate-spin h-6 w-6" />
+                      ) : (
+                        <div className="text-center">
+                          <span className="text-2xl">+</span>
+                          <p className="text-xs mt-2">Upload demo</p>
+                        </div>
+                      )}
+                    </label>
+
+                    {/* Display uploaded demo videos */}
+                    <div className="flex-1 flex flex-wrap gap-2 items-start">
+                      {loadingDemos ? (
+                        <Loader2 className="animate-spin h-6 w-6 text-primary" />
+                      ) : demoVideos.length > 0 ? (
+                        demoVideos.map((video) => (
+                          <div
+                            key={video.id}
+                            onClick={() => handleDemoVideoSelect(video.publicUrl)}
+                            className={`relative flex-shrink-0 cursor-pointer group transition-all duration-200 rounded-lg overflow-hidden ${
+                              selectedDemoVideo === video.publicUrl 
+                                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg' 
+                                : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
+                            }`}
+                            style={{ width: '100px' }}
+                          >
+                            <div className="aspect-[9/16] w-full rounded-lg overflow-hidden">
+                              <video
+                                key={video.publicUrl}
+                                src={video.publicUrl}
+                                className="w-full h-full object-cover"
+                                preload="auto"
+                                muted
+                                loop
+                                playsInline
+                                onMouseEnter={(e) => e.currentTarget.play()}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.pause()
+                                  e.currentTarget.currentTime = 0
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-muted-foreground">No demos uploaded yet</p>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
+                </CardContent>
+              </Card>
             </div>
             
-            {/* Demos Section */}
-            <div>
-              <h2 className="font-medium mb-2">4. Demos</h2>
-              <div className="flex gap-2 items-center">
-                {/* New upload form for a demo video */}
-                <form action={uploadDemoVideo}>
-                  <label
-                    htmlFor="demoVideo"
-                    className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 cursor-pointer"
-                  >
-                    {isUploadingDemo ? (
-                      <Loader2 className="animate-spin h-6 w-6" />
-                    ) : (
-                      '+'
-                    )}
-                  </label>
-                  <input
-                    id="demoVideo"
-                    name="videoFile"
-                    type="file"
-                    accept="video/mp4"
-                    className="sr-only"
-                    onChange={(e) => {
-                      const file = e.currentTarget.files?.[0];
-                      if (file) {
-                        if (!file.type.includes('mp4')) {
-                          e.currentTarget.value = '';
-                          return;
-                        }
-                        startDemoUpload(() => {
-                          e.currentTarget.form?.requestSubmit()
-                        })
-                      }
-                    }}
-                  />
-                </form>
-                {/* Display uploaded demo videos */}
-                <div className="flex gap-4 overflow-x-auto pb-2">
-                  {loadingDemos ? (
-                    <Loader2 className="animate-spin h-6 w-6" />
-                  ) : demoVideos.length > 0 ? (
-                    demoVideos.map((video) => (
-                      <div
-                        key={video.id}
-                        onClick={() => handleDemoVideoSelect(video.publicUrl)}
-                        className={`relative flex-shrink-0 cursor-pointer group ${
-                          selectedDemoVideo === video.publicUrl 
-                            ? 'ring-2 ring-blue-500 ring-offset-2' 
-                            : 'hover:ring-2 hover:ring-blue-500/50 hover:ring-offset-1'
-                        }`}
-                        style={{ width: '160px' }}
-                      >
-                        <div className="aspect-[9/16] w-full">
-                          <video
-                            key={video.publicUrl}
-                            src={video.publicUrl}
-                            className="w-full h-full object-cover rounded-lg"
-                            preload="auto"
-                            muted
-                            loop
-                            playsInline
-                            onMouseEnter={(e) => e.currentTarget.play()}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.pause()
-                              e.currentTarget.currentTime = 0
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500">No demos uploaded yet</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-8 flex justify-end">
-            <div className="flex items-center gap-4">
-              <Button variant="outline" className="gap-2" type="button">
-                <img
-                  src="/placeholder.svg?height=24&width=24"
-                  alt="Sound"
-                  className="w-6 h-6 rounded"
-                />
-                Sound
-              </Button>
+            <div className="mt-8 flex justify-end">
               <ContentLimitGuard>
                 <Button 
                   type="button" 
-                  className="bg-[#4287f5] hover:bg-[#3270d8] text-white" 
+                  className="btn-gradient" 
                   onClick={handleCreateVideo} 
                   disabled={isPending}
                 >
@@ -624,30 +674,28 @@ export default function CreateAd() {
                 </Button>
               </ContentLimitGuard>
             </div>
+          </SubscriptionGuard>
+        </Card>
+        
+        {/* My Videos Section */}
+        <div className="mt-12">
+          <h2 className="text-lg font-semibold text-foreground mb-4">My Videos</h2>
+          <div className="flex flex-wrap gap-2 justify-start">
+            {loadingOutputs ? (
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            ) : outputVideos.length === 0 ? (
+              <p className="text-muted-foreground text-center">No videos created yet. Create your first video above!</p>
+            ) : (
+              outputVideos.map((video) => (
+                <VideoCard 
+                  key={video.id} 
+                  video={video} 
+                  onDelete={handleDeleteVideo}
+                />
+              ))
+            )}
           </div>
-        </SubscriptionGuard>
-      </Card>
-      
-      {/* My Videos Section */}
-      <div className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">My Videos</h2>
-        {loadingOutputs ? (
-          <div className="flex justify-center items-center h-32">
-            <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
-        ) : outputVideos.length === 0 ? (
-          <p className="text-gray-500 text-center">No videos created yet. Create your first video above!</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {outputVideos.map((video) => (
-              <VideoCard 
-                key={video.id} 
-                video={video} 
-                onDelete={handleDeleteVideo}
-              />
-            ))}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   )

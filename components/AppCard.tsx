@@ -12,7 +12,7 @@ interface AppCardProps {
 export function AppCard({ app, onClick }: AppCardProps) {
   return (
     <Card 
-      className="p-6 bg-white rounded-3xl hover:shadow-md transition-shadow cursor-pointer" 
+      className="p-6 bg-card rounded-3xl border border-border hover:shadow-md transition-shadow cursor-pointer" 
       onClick={onClick}
     >
       <div className="flex gap-4 items-center">
@@ -26,13 +26,13 @@ export function AppCard({ app, onClick }: AppCardProps) {
             />
           </div>
         ) : (
-          <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-gray-400 text-2xl">?</span>
+          <div className="h-16 w-16 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-muted-foreground text-2xl">?</span>
           </div>
         )}
         
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-semibold text-gray-900 truncate">
+          <h2 className="text-lg font-semibold text-foreground truncate">
             {app.app_name || 'Unnamed App'}
           </h2>
         </div>
