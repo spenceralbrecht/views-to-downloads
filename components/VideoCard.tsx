@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Download, Trash2, Loader2 } from 'lucide-react'
+import { Download, Trash2, Loader2, X } from 'lucide-react'
 import { VideoCardSkeleton } from './VideoCardSkeleton'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import ReactPlayer from 'react-player'
@@ -107,21 +107,17 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
         )}
         
         {/* Delete button overlay - only visible on hover */}
-        <div
-          className={`absolute top-2 left-2 p-1 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-black/70`}
-        >
-          <AlertDialog>
+        <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
-                variant="destructive"
+                variant="ghost"
                 size="icon"
-                className="bg-destructive/80 hover:bg-destructive"
-                disabled={isDeleting}
+                className="absolute top-2 left-2 p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-black/50"
               >
                 {isDeleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
                 ) : (
-                  <Trash2 className="h-4 w-4" />
+                  <X className="h-4 w-4 text-white" />
                 )}
               </Button>
             </AlertDialogTrigger>
@@ -143,7 +139,6 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </div>
 
         {/* Download button overlay - visible on hover */}
         <div 
