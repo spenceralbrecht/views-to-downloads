@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { User } from '@supabase/supabase-js'
-import { stripeConfig } from '@/config/stripe'
+import { getStripeConfig } from '@/config/stripe'
 
 interface SubscriptionGuardProps {
   children: ReactNode
@@ -65,7 +65,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Cancel
             </Button>
-            <Button className="btn-gradient" onClick={() => window.location.href = stripeConfig.checkoutLinks.starter}>
+            <Button className="btn-gradient" onClick={() => window.location.href = getStripeConfig().checkoutLinks.starter}>
               Subscribe Now
             </Button>
           </div>

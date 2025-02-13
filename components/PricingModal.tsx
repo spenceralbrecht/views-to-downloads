@@ -2,7 +2,7 @@
 
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
-import { stripeConfig } from '@/config/stripe'
+import { getStripeConfig } from '@/config/stripe'
 
 interface PricingModalProps {
   isOpen: boolean
@@ -30,7 +30,7 @@ const pricingTiers: PricingTier[] = [
       'Email support'
     ],
     buttonText: 'Start with Starter',
-    getLink: () => stripeConfig.checkoutLinks.starter
+    getLink: () => getStripeConfig().checkoutLinks.starter
   },
   {
     name: 'Growth',
@@ -44,7 +44,7 @@ const pricingTiers: PricingTier[] = [
       'Custom branding'
     ],
     buttonText: 'Upgrade to Growth',
-    getLink: () => stripeConfig.checkoutLinks.growth
+    getLink: () => getStripeConfig().checkoutLinks.growth
   },
   {
     name: 'Scale',
@@ -60,7 +60,7 @@ const pricingTiers: PricingTier[] = [
       'Team collaboration'
     ],
     buttonText: 'Scale your content',
-    getLink: () => stripeConfig.checkoutLinks.scale
+    getLink: () => getStripeConfig().checkoutLinks.scale
   }
 ]
 

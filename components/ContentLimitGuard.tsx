@@ -11,7 +11,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from '@/components/ui/button'
-import { stripeConfig } from '@/config/stripe'
+import { getStripeConfig } from '@/config/stripe'
 
 interface ContentLimitGuardProps {
   children: ReactNode
@@ -92,7 +92,7 @@ export function ContentLimitGuard({ children }: ContentLimitGuardProps) {
               Cancel
             </Button>
             {plan !== 'scale' && (
-              <Button onClick={() => window.location.href = stripeConfig.customerBillingLink}>
+              <Button onClick={() => window.location.href = getStripeConfig().customerBillingLink}>
                 Upgrade Plan
               </Button>
             )}

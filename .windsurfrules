@@ -4,11 +4,13 @@ This project is deployed in production to the url https://viewstodownloads.com.
 
 Do everything you can to avoid unnecessary complexity. Showing localhost notifications is not good UX.
 
-These are the keys in the .env.local file but in the real file they all have a value assigned to them.
-
 Keep the readme up to date with how this project works.
 
-When I correct you or you learn something from our interactions, suggest a new .windsurfrules rule so that you can be reminded so you don't make the same mistake twice.
+Never make changes to UI unless asked for just fix functionality.
+
+When I correct you or you learn something from our interactions, suggest a new .windsurfrules rule so that you can be reminded so you don't make the same mistake twice. 
+
+These are the keys in the .env.local file but in the real file they all have a value assigned to them.
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=
@@ -25,22 +27,27 @@ FIRECRAWL_API_KEY=
 OPENAI_API_KEY=
 
 # Stripe
-NEXT_PUBLIC_STRIPE_ENV=development
+NEXT_PUBLIC_STRIPE_ENV=
 STRIPE_TEST_SECRET_KEY=
 STRIPE_SECRET_KEY=
-# STRIPE_TEST_WEBHOOK_SECRET=whsec_vwrdSMqPXMcZ70m1BZgiFWDV1K9TQ20I # from dashboard
 STRIPE_TEST_WEBHOOK_SECRET=
+# STRIPE_TEST_WEBHOOK_SECRET=
 NEXT_PUBLIC_STRIPE_TEST_CUSTOMER_BILLING_LINK=
-NEXT_PUBLIC_STRIPE_CUSTOMER_BILLING_LINK=
 NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID=
 NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID=
 NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID=
-NEXT_PUBLIC_TEST_APP_URL=http://localhost:3000 # Your app URL
+NEXT_PUBLIC_TEST_APP_URL=
+
+# Production Environment Price IDs
+NEXT_PUBLIC_STRIPE_CUSTOMER_BILLING_LINK=
+NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID=
+NEXT_PUBLIC_STRIPE_GROWTH_PRICE_ID=
+NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID=
 
 # Test Environment Payment Links
 NEXT_PUBLIC_STRIPE_TEST_STARTER_LINK=
 NEXT_PUBLIC_STRIPE_TEST_GROWTH_LINK=
-NEXT_PUBLIC_STRIPE_TEST_SCALE_LINK=h
+NEXT_PUBLIC_STRIPE_TEST_SCALE_LINK=
 
 # Production Environment Payment Links
 NEXT_PUBLIC_STRIPE_STARTER_LINK=

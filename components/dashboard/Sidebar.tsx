@@ -9,7 +9,7 @@ import { User } from '@supabase/supabase-js'
 import { signOut } from '@/app/auth/actions'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { ImageIcon, User as UserIcon } from "lucide-react"
-import { stripeConfig } from '@/config/stripe'
+import { getStripeConfig } from '@/config/stripe'
 import { useSubscription, CONTENT_LIMITS } from '@/hooks/useSubscription'
 import { Badge } from '@/components/ui/badge'
 
@@ -40,7 +40,7 @@ export function Sidebar({ user }: SidebarProps) {
     },
     { 
       name: 'Billing', 
-      href: stripeConfig.customerBillingLink || '/dashboard/billing', 
+      href: getStripeConfig().customerBillingLink || '/dashboard/billing', 
       icon: CreditCard,
       external: true 
     },

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from "@/components/ui/button"
 import { AppSelect } from "@/components/app-select"
 import { HookItem } from "@/components/HookItem"
@@ -23,14 +23,14 @@ type App = {
 type Hook = {
   id: string
   hook_text: string
+  app_id: string
+  app_name?: string
+  app_logo_url?: string
 }
 
 export default function HooksPage() {
-  const [selectedAppId, setSelectedAppId] = useState<string>('')
-  const [apps, setApps] = useState<App[]>([])
   const [hooks, setHooks] = useState<Hook[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
-  const [loadingApps, setLoadingApps] = useState(true)
   const [selectedHook, setSelectedHook] = useState<Hook | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
@@ -40,41 +40,36 @@ export default function HooksPage() {
   const { isSubscribed, contentRemaining } = useSubscription(user)
 
   useEffect(() => {
-    const fetchApps = async () => {
-      setLoadingApps(true)
-      try {
-        const result = await getApps()
-        if (result.error) {
-          throw new Error(result.error)
-        }
-        setApps(result.data || [])
-        if (result.data && result.data.length > 0 && !selectedAppId) {
-          setSelectedAppId(result.data[0].id)
-        }
-      } catch (error) {
-        console.error('Error fetching apps:', error)
-        toast({
-          title: "Error fetching apps",
-          description: "Please try again later",
-          variant: "destructive"
-        })
-      } finally {
-        setLoadingApps(false)
-      }
-    }
-
-    fetchApps()
-  }, [])
-
-  useEffect(() => {
     const loadHooks = async () => {
-      if (!selectedAppId) return
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
       try {
-        const result = await getHooks(selectedAppId)
-        if (result.error) {
-          throw new Error(result.error)
-        }
-        setHooks(result.data)
+        const { data: hooks, error } = await supabase
+          .from('hooks')
+          .select(`
+            id,
+            hook_text,
+            app_id,
+            apps (
+              app_name,
+              app_logo_url
+            )
+          `)
+          .eq('apps.owner_id', user.id)
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        const processedHooks = hooks.map(hook => ({
+          id: hook.id,
+          hook_text: hook.hook_text,
+          app_id: hook.app_id,
+          app_name: hook.apps?.app_name,
+          app_logo_url: hook.apps?.app_logo_url
+        }))
+
+        setHooks(processedHooks)
       } catch (error) {
         console.error('Error fetching hooks:', error)
         toast({
@@ -85,7 +80,7 @@ export default function HooksPage() {
       }
     }
     loadHooks()
-  }, [selectedAppId])
+  }, [supabase])
 
   const handleDeleteHook = async (id: string) => {
     try {
@@ -108,16 +103,7 @@ export default function HooksPage() {
     }
   }
 
-  const handleGenerateHooks = async () => {
-    if (!selectedAppId) {
-      toast({
-        title: "Select an app",
-        description: "Please select an app to generate hooks for",
-        variant: "destructive"
-      })
-      return
-    }
-
+  const handleGenerateHooks = async (appId: string) => {
     if (contentRemaining <= 0) {
       setShowUpgradeModal(true)
       return
@@ -126,17 +112,40 @@ export default function HooksPage() {
     setIsGenerating(true)
 
     try {
-      const result = await generateHooks(selectedAppId)
+      const result = await generateHooks(appId)
       if (result.error) {
         throw new Error(result.error)
       }
 
       // Refresh hooks list
-      const hooksResult = await getHooks(selectedAppId)
-      if (hooksResult.error) {
-        throw new Error(hooksResult.error)
-      }
-      setHooks(hooksResult.data)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: hooks, error } = await supabase
+        .from('hooks')
+        .select(`
+          id,
+          hook_text,
+          app_id,
+          apps (
+            app_name,
+            app_logo_url
+          )
+        `)
+        .eq('apps.owner_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      const processedHooks = hooks.map(hook => ({
+        id: hook.id,
+        hook_text: hook.hook_text,
+        app_id: hook.app_id,
+        app_name: hook.apps?.app_name,
+        app_logo_url: hook.apps?.app_logo_url
+      }))
+
+      setHooks(processedHooks)
 
       toast({
         title: "Hooks generated",
@@ -159,14 +168,22 @@ export default function HooksPage() {
     setIsEditing(true)
   }
 
-  const handleUpdateHook = async (hookText: string) => {
+  const handleSaveEdit = async (hookText: string) => {
     if (!selectedHook) return
+
     try {
       const result = await updateHook(selectedHook.id, hookText)
       if (result.error) {
         throw new Error(result.error)
       }
-      setHooks(hooks => hooks.map(hook => hook.id === selectedHook.id ? { ...hook, hook_text: hookText } : hook))
+
+      setHooks(hooks => hooks.map(hook => 
+        hook.id === selectedHook.id ? { ...hook, hook_text: hookText } : hook
+      ))
+
+      setIsEditing(false)
+      setSelectedHook(null)
+
       toast({
         title: "Hook updated",
         description: "The hook has been updated successfully.",
@@ -175,54 +192,28 @@ export default function HooksPage() {
       console.error('Error updating hook:', error)
       toast({
         title: "Error updating hook",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Please try again later",
         variant: "destructive"
       })
-    } finally {
-      setIsEditing(false)
     }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setSelectedHook(null)
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-semibold text-foreground">Hooks</h1>
-          <div className="flex items-center gap-4">
-            {loadingApps ? (
-              <div className="text-muted-foreground">Loading apps...</div>
-            ) : (
-              <AppSelect
-                selectedAppId={selectedAppId}
-                onSelect={setSelectedAppId}
-                apps={apps}
-                loadingApps={loadingApps}
-              />
-            )}
-            <SubscriptionGuard>
-              <ContentLimitGuard>
-                <Button
-                  onClick={handleGenerateHooks}
-                  disabled={!selectedAppId || isGenerating}
-                  className="btn-gradient"
-                >
-                  {isGenerating ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Generating...
-                    </div>
-                  ) : (
-                    "Generate Hooks"
-                  )}
-                </Button>
-              </ContentLimitGuard>
-            </SubscriptionGuard>
-          </div>
-        </div>
+      <div className="container mx-auto py-8">
+        <SubscriptionGuard>
+          <div className="space-y-8">
+            {/* Generate Hooks Button */}
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Hooks</h2>
+            </div>
 
-        {hooks.length > 0 ? (
-          <div className="space-y-4">
-            <h2 className="text-lg font-medium text-foreground">Generated Hooks</h2>
+            {/* Hooks List */}
             <div className="space-y-2">
               {hooks.map((hook) => (
                 <HookItem
@@ -233,48 +224,45 @@ export default function HooksPage() {
                 />
               ))}
             </div>
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">No hooks generated yet. Click "Generate Hooks" to get started.</p>
-          </div>
-        )}
 
-        {isEditing && selectedHook && (
-          <Dialog open={isEditing} onOpenChange={setIsEditing}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Edit Hook</DialogTitle>
-                <DialogDescription>Edit the hook text below.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="hookText">Hook Text</Label>
-                  <Textarea
-                    id="hookText"
-                    defaultValue={selectedHook.hook_text}
-                    className="min-h-[100px]"
-                    onChange={(e) => handleUpdateHook(e.target.value)}
-                  />
+            {/* Edit Dialog */}
+            <Dialog open={isEditing} onOpenChange={setIsEditing}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit Hook</DialogTitle>
+                  <DialogDescription>
+                    Make changes to your hook below.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="hookText">Hook Text</Label>
+                    <Textarea
+                      id="hookText"
+                      defaultValue={selectedHook?.hook_text}
+                      className="min-h-[100px]"
+                    />
+                  </div>
                 </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" onClick={() => handleUpdateHook(selectedHook.hook_text)}>
-                  Save Changes
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditing(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={() => selectedHook && handleSaveEdit(selectedHook.hook_text)}>
+                    Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Upgrade Modal */}
+            <UpgradeModal 
+              open={showUpgradeModal} 
+              onOpenChange={setShowUpgradeModal}
+            />
+          </div>
+        </SubscriptionGuard>
       </div>
-      {/* Upgrade Modal */}
-      <UpgradeModal 
-        open={showUpgradeModal} 
-        onOpenChange={setShowUpgradeModal}
-      />
     </div>
   )
 }

@@ -55,18 +55,21 @@ export default async function Dashboard() {
                 <CardTitle className="text-foreground">Create UGC videos</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">Create & publish UGC videos promoting your product demo</p>
+                <p className="text-muted-foreground">Create & publish UGC videos that get downloads for your app</p>
               </CardContent>
             </Card>
           </Link>
           <Card className="relative bg-card border-border">
             <CardHeader>
               <ImageIcon className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle className="text-foreground">Coming Soon</CardTitle>
+              <CardTitle className="text-foreground">Other viral formats</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">More features coming soon!</p>
+              <p className="text-muted-foreground">More viral formats coming soon!</p>
             </CardContent>
+            <div className="absolute top-4 right-4 px-3 py-1 bg-accent rounded-full text-sm text-muted-foreground">
+              Not Available Yet
+            </div>
           </Card>
           <Card className="relative bg-card border-border">
             <CardHeader>
@@ -74,7 +77,7 @@ export default async function Dashboard() {
               <CardTitle className="text-foreground">UGC Avatar Generator</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Auto-magically generate and save viral hooks for your videos</p>
+              <p className="text-muted-foreground">Auto-magically create UGC avatar videos</p>
             </CardContent>
             <div className="absolute top-4 right-4 px-3 py-1 bg-accent rounded-full text-sm text-muted-foreground">
               Not Available Yet

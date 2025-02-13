@@ -40,4 +40,23 @@ const prodConfig: StripeConfig = {
   customerBillingLink: process.env.NEXT_PUBLIC_STRIPE_CUSTOMER_BILLING_LINK || ''
 }
 
-export const stripeConfig = process.env.NEXT_PUBLIC_STRIPE_ENV === 'production' ? prodConfig : devConfig
+export function getStripeConfig(): StripeConfig {
+  const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV || 'test'
+  const config = stripeEnv === 'live' ? prodConfig : devConfig
+
+  if (!config.checkoutLinks.starter || !config.checkoutLinks.growth || !config.checkoutLinks.scale) {
+    console.warn('Missing Stripe checkout links')
+  }
+
+  if (!config.productIds.starter || !config.productIds.growth || !config.productIds.scale) {
+    console.warn('Missing Stripe product IDs')
+  }
+
+  if (!config.customerBillingLink) {
+    console.warn('Missing Stripe customer billing link')
+  }
+
+  return config
+}
+
+export default getStripeConfig

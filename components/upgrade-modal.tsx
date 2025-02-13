@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { stripeConfig } from '@/config/stripe'
+import { getStripeConfig } from '@/config/stripe'
 import { useSubscription } from '@/hooks/useSubscription'
 import { useUser } from '@supabase/auth-helpers-react'
 
@@ -24,23 +24,24 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
 
   // Get the next tier's payment link
   const getUpgradeLink = () => {
-    if (process.env.NEXT_PUBLIC_STRIPE_ENV === 'development') {
+    const stripeConfig = getStripeConfig()
+    if (stripeConfig.env === 'development') {
       switch (plan) {
         case 'starter':
-          return process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_LINK
+          return stripeConfig.testGrowthLink
         case 'growth':
-          return process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_LINK
+          return stripeConfig.testScaleLink
         default:
-          return process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_LINK
+          return stripeConfig.testStarterLink
       }
     } else {
       switch (plan) {
         case 'starter':
-          return process.env.NEXT_PUBLIC_STRIPE_GROWTH_LINK
+          return stripeConfig.growthLink
         case 'growth':
-          return process.env.NEXT_PUBLIC_STRIPE_SCALE_LINK
+          return stripeConfig.scaleLink
         default:
-          return process.env.NEXT_PUBLIC_STRIPE_STARTER_LINK
+          return stripeConfig.starterLink
       }
     }
   }
