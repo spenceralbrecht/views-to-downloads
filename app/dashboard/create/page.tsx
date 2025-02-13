@@ -366,6 +366,11 @@ export default function CreateAd() {
     setOutputVideos(prev => [pendingVideoObj, ...prev])
     setPendingVideo(pendingVideoObj)
 
+    toast({
+      title: "Creating video...",
+      description: "This should take a few minutes",
+    })
+
     startTransition(async () => {
       try {
         const result = await createVideo({
@@ -392,6 +397,12 @@ export default function CreateAd() {
         }
       } catch (error) {
         console.error('Error creating video:', error)
+        toast({
+          title: "Error creating video",
+          description: error.message,
+          variant: "destructive"
+        })
+
         // Remove the pending video if there was an error
         setOutputVideos(prev => prev.filter(v => v.id !== pendingVideoObj.id))
         setPendingVideo(null)

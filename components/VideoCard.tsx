@@ -77,7 +77,7 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
   return (
     <Card className="relative overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow duration-200">
       <div
-        className="relative aspect-[9/16]"
+        className="relative group"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -106,8 +106,10 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
           />
         )}
         
-        {/* Delete button overlay - always visible */}
-        <div className="absolute top-2 left-2">
+        {/* Delete button overlay - only visible on hover */}
+        <div
+          className={`absolute top-2 left-2 p-1 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-black/70`}
+        >
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button

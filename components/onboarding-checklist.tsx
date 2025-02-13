@@ -1,5 +1,7 @@
-import { Check, X } from "lucide-react"
+import { CreditCard, AppWindow, Video } from "lucide-react"
 import Link from 'next/link'
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
 interface OnboardingChecklistProps {
   hasSubscription: boolean
@@ -10,61 +12,81 @@ interface OnboardingChecklistProps {
 
 export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, billingUrl }: OnboardingChecklistProps) {
   return (
-    <div className="grid gap-8 mb-8">
+    <div className="grid gap-4 mb-8">
       <Link href={hasSubscription ? '#' : billingUrl} className={!hasSubscription ? 'cursor-pointer' : 'cursor-default'}>
-        <div className="flex items-center justify-between p-4 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors">
+        <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors ${!hasSubscription ? 'hover:bg-accent/50' : ''}`}>
           <div className="flex items-center gap-4">
-            <div className={`${hasSubscription ? 'bg-primary/10' : 'bg-muted'} p-2 rounded-lg`}>
-              <span className={`text-xl ${hasSubscription ? 'text-primary' : 'text-muted-foreground'}`}>S</span>
+            <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasSubscription ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+              <CreditCard className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="font-medium text-foreground">Subscription required</h3>
-              <p className="text-muted-foreground text-sm">Estimated 2-3 minutes</p>
+              <h3 className="font-medium">Subscription required</h3>
+              <p className="text-sm text-muted-foreground">Estimated 2-3 minutes</p>
             </div>
           </div>
-          {hasSubscription ? (
-            <Check className="text-green-500 h-5 w-5" />
-          ) : (
-            <X className="text-red-500 h-5 w-5" />
-          )}
+          <div className="flex items-center gap-2">
+            {hasSubscription ? (
+              <Badge variant="outline" className="bg-primary/20 text-primary border-0">
+                Complete
+              </Badge>
+            ) : (
+              <Button variant="ghost" size="sm" className="text-primary">
+                Start →
+              </Button>
+            )}
+          </div>
         </div>
       </Link>
 
       <Link href={hasApp ? '#' : '/dashboard/apps'} className={!hasApp ? 'cursor-pointer' : 'cursor-default'}>
-        <div className="flex items-center justify-between p-4 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors">
+        <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors ${!hasApp ? 'hover:bg-accent/50' : ''}`}>
           <div className="flex items-center gap-4">
-            <div className={`${hasApp ? 'bg-primary/10' : 'bg-muted'} p-2 rounded-lg flex items-center justify-center`}>
-              <span className={`text-xl ${hasApp ? 'text-primary' : 'text-muted-foreground'}`}>+</span>
+            <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasApp ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+              <AppWindow className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="font-medium text-foreground">Add your first app</h3>
-              <p className="text-muted-foreground text-sm">Estimated 30 seconds</p>
+              <h3 className="font-medium">Add your first app</h3>
+              <p className="text-sm text-muted-foreground">Estimated 30 seconds</p>
             </div>
           </div>
-          {hasApp ? (
-            <Check className="text-green-500 h-5 w-5" />
-          ) : (
-            <X className="text-red-500 h-5 w-5" />
-          )}
+          <div className="flex items-center gap-2">
+            {hasApp ? (
+              <Badge variant="outline" className="bg-primary/20 text-primary border-0">
+                Complete
+              </Badge>
+            ) : (
+              <Button variant="ghost" size="sm" className="text-primary">
+                Start →
+              </Button>
+            )}
+          </div>
         </div>
       </Link>
 
-      <div className="flex items-center justify-between p-4 bg-card border border-border rounded-lg">
-        <div className="flex items-center gap-4">
-          <div className={`${hasDemoVideo ? 'bg-primary/10' : 'bg-muted'} p-2 rounded-lg`}>
-            <span className="text-xl">📹</span>
+      <Link href={hasDemoVideo ? '#' : '/dashboard/videos'} className={!hasDemoVideo ? 'cursor-pointer' : 'cursor-default'}>
+        <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors ${!hasDemoVideo ? 'hover:bg-accent/50' : ''}`}>
+          <div className="flex items-center gap-4">
+            <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasDemoVideo ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+              <Video className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="font-medium">Upload demo video</h3>
+              <p className="text-sm text-muted-foreground">Estimated 1 minute</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-medium text-foreground">Upload demo video</h3>
-            <p className="text-muted-foreground text-sm">Estimated 30 seconds</p>
+          <div className="flex items-center gap-2">
+            {hasDemoVideo ? (
+              <Badge variant="outline" className="bg-primary/20 text-primary border-0">
+                Complete
+              </Badge>
+            ) : (
+              <Button variant="ghost" size="sm" className="text-primary">
+                Start →
+              </Button>
+            )}
           </div>
         </div>
-        {hasDemoVideo ? (
-          <Check className="text-green-500 h-5 w-5" />
-        ) : (
-          <X className="text-red-500 h-5 w-5" />
-        )}
-      </div>
+      </Link>
     </div>
   )
 }
