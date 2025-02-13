@@ -35,6 +35,8 @@ export default async function Dashboard() {
   const hasApp = apps && apps.length > 0
   const hasDemoVideo = demoVideos && demoVideos.length > 0
 
+  const billingUrl = process.env.NEXT_PUBLIC_STRIPE_CUSTOMER_BILLING_LINK || ''
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -44,6 +46,7 @@ export default async function Dashboard() {
           hasSubscription={hasSubscription}
           hasApp={hasApp}
           hasDemoVideo={hasDemoVideo}
+          billingUrl={billingUrl}
         />
 
         {/* Feature Cards */}

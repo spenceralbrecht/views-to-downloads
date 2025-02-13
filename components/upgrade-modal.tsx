@@ -50,6 +50,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     const upgradeLink = getUpgradeLink()
     if (upgradeLink) {
       window.location.href = upgradeLink
+      onOpenChange(false)
     }
   }
 

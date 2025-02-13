@@ -17,6 +17,7 @@ import { ContentLimitGuard } from '@/components/ContentLimitGuard'
 import { incrementContentUsage } from '@/utils/subscription'
 import { useToast } from "@/components/ui/use-toast"
 import { UpgradeModal } from '@/components/upgrade-modal'
+import Link from 'next/link'
 
 interface Hook {
   id: string
@@ -522,7 +523,9 @@ export default function CreateAd() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-center">No hooks available. Add hooks in the Hooks section.</p>
+                  <p className="text-muted-foreground text-center">
+                    No hooks found for this app. <Link href="/dashboard/hooks" className="text-primary hover:underline">Generate some now!</Link>
+                  </p>
                 )}
               </div>
 

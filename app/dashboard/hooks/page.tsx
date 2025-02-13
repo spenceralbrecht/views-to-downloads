@@ -12,12 +12,16 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { SubscriptionGuard } from '@/components/SubscriptionGuard'
 import { ContentLimitGuard } from '@/components/ContentLimitGuard'
 import { Loader2 } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, Label, Textarea } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { UpgradeModal } from '@/components/upgrade-modal'
+import Link from 'next/link'
 
 type App = {
   id: string
   app_name: string
+  app_logo_url: string
 }
 
 type Hook = {
@@ -30,14 +34,42 @@ type Hook = {
 
 export default function HooksPage() {
   const [hooks, setHooks] = useState<Hook[]>([])
+  const [apps, setApps] = useState<App[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [selectedHook, setSelectedHook] = useState<Hook | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showAppPicker, setShowAppPicker] = useState(false)
+  const [selectedAppForGeneration, setSelectedAppForGeneration] = useState<string>('')
   const { toast } = useToast()
   const supabase = createClientComponentClient()
   const user = useUser()
   const { isSubscribed, contentRemaining } = useSubscription(user)
+
+  useEffect(() => {
+    const fetchApps = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from('apps')
+        .select('id, app_name, app_logo_url')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching apps:', error)
+        toast({
+          title: "Error fetching apps",
+          description: "Please try again later",
+          variant: "destructive"
+        })
+      } else if (data) {
+        setApps(data)
+      }
+    }
+    fetchApps()
+  }, [supabase])
 
   useEffect(() => {
     const loadHooks = async () => {
@@ -110,6 +142,7 @@ export default function HooksPage() {
     }
 
     setIsGenerating(true)
+    setShowAppPicker(false)
 
     try {
       const result = await generateHooks(appId)
@@ -168,17 +201,23 @@ export default function HooksPage() {
     setIsEditing(true)
   }
 
-  const handleSaveEdit = async (hookText: string) => {
+  const handleSaveEdit = async (newText: string) => {
     if (!selectedHook) return
 
     try {
-      const result = await updateHook(selectedHook.id, hookText)
-      if (result.error) {
-        throw new Error(result.error)
-      }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from('hooks')
+        .update({ hook_text: newText })
+        .eq('id', selectedHook.id)
+        .select()
+
+      if (error) throw error
 
       setHooks(hooks => hooks.map(hook => 
-        hook.id === selectedHook.id ? { ...hook, hook_text: hookText } : hook
+        hook.id === selectedHook.id ? { ...hook, hook_text: newText } : hook
       ))
 
       setIsEditing(false)
@@ -186,13 +225,13 @@ export default function HooksPage() {
 
       toast({
         title: "Hook updated",
-        description: "The hook has been updated successfully.",
+        description: "The hook has been updated successfully."
       })
     } catch (error) {
       console.error('Error updating hook:', error)
       toast({
         title: "Error updating hook",
-        description: error instanceof Error ? error.message : "Please try again later",
+        description: error.message,
         variant: "destructive"
       })
     }
@@ -205,12 +244,38 @@ export default function HooksPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8">
+      <div className="container mx-auto py-8 px-4">
         <SubscriptionGuard>
-          <div className="space-y-8">
-            {/* Generate Hooks Button */}
+          <div className="space-y-8 max-w-5xl mx-auto">
+            {/* Header with Generate Button */}
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Hooks</h2>
+              <ContentLimitGuard>
+                <Button
+                  onClick={() => {
+                    if (apps.length === 0) {
+                      toast({
+                        title: "No apps found",
+                        description: "Please add an app first before generating hooks",
+                        variant: "destructive"
+                      })
+                    } else {
+                      setShowAppPicker(true)
+                    }
+                  }}
+                  disabled={isGenerating}
+                  className="btn-gradient"
+                >
+                  {isGenerating ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Generating...
+                    </div>
+                  ) : (
+                    "Generate More Hooks"
+                  )}
+                </Button>
+              </ContentLimitGuard>
             </div>
 
             {/* Hooks List */}
@@ -224,6 +289,73 @@ export default function HooksPage() {
                 />
               ))}
             </div>
+
+            {/* App Picker Modal */}
+            <Dialog open={showAppPicker} onOpenChange={setShowAppPicker}>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>Select App for Hook Generation</DialogTitle>
+                  <DialogDescription>
+                    Choose which app you want to generate hooks for.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    {apps.map((app) => (
+                      <div
+                        key={app.id}
+                        onClick={() => setSelectedAppForGeneration(app.id)}
+                        className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
+                          selectedAppForGeneration === app.id
+                            ? 'bg-primary/10 border-primary'
+                            : 'bg-card border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {app.app_logo_url ? (
+                            <div className="h-12 w-12 relative rounded-lg overflow-hidden flex-shrink-0">
+                              <img
+                                src={app.app_logo_url}
+                                alt={app.app_name}
+                                className="object-cover w-full h-full"
+                              />
+                            </div>
+                          ) : (
+                            <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                              <span className="text-muted-foreground text-xl">?</span>
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-foreground truncate">
+                              {app.app_name}
+                            </h3>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowAppPicker(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => handleGenerateHooks(selectedAppForGeneration)}
+                    disabled={!selectedAppForGeneration || isGenerating}
+                    className="btn-gradient"
+                  >
+                    {isGenerating ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </div>
+                    ) : (
+                      "Generate Hooks"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             {/* Edit Dialog */}
             <Dialog open={isEditing} onOpenChange={setIsEditing}>

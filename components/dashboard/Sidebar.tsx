@@ -153,7 +153,7 @@ export function Sidebar({ user }: SidebarProps) {
               }`
             }
             return (
-              <Link {...linkProps}>
+              <Link key={item.name} {...linkProps}>
                 <item.icon
                   className={`mr-3 h-5 w-5 ${
                     isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
