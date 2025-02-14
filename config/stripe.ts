@@ -41,8 +41,11 @@ const prodConfig: StripeConfig = {
 }
 
 export function getStripeConfig(): StripeConfig {
-  const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV || 'test'
-  const config = stripeEnv === 'live' ? prodConfig : devConfig
+  const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV || 'development'
+  console.log('🔧 Stripe Environment:', stripeEnv)
+  console.log('🔧 Using config:', stripeEnv === 'development' ? 'development (test mode)' : 'production (live mode)')
+  
+  const config = stripeEnv === 'development' ? devConfig : prodConfig
 
   if (!config.checkoutLinks.starter || !config.checkoutLinks.growth || !config.checkoutLinks.scale) {
     console.warn('Missing Stripe checkout links')

@@ -26,61 +26,15 @@ export function UpgradeModal({ open, onOpenChange, subscription, loading }: Upgr
 
   // Get the next tier's payment link
   const getUpgradeLink = () => {
-    const stripeConfig = getStripeConfig() as any;
+    const stripeConfig = getStripeConfig();
     console.log('Stripe config in getUpgradeLink:', stripeConfig);
-    if (!plan) {
-      console.error('No active subscription plan found');
+    
+    if (!stripeConfig.customerBillingLink) {
+      console.error('Customer billing link not defined in stripeConfig');
       return;
     }
-    if (stripeConfig.env === 'development') {
-      switch (plan) {
-        case 'starter': {
-          if (!stripeConfig.testGrowthLink) {
-            console.error('testGrowthLink not defined in stripeConfig');
-            return;
-          }
-          return stripeConfig.testGrowthLink;
-        }
-        case 'growth': {
-          if (!stripeConfig.testScaleLink) {
-            console.error('testScaleLink not defined in stripeConfig');
-            return;
-          }
-          return stripeConfig.testScaleLink;
-        }
-        case 'scale':
-          console.error('No upgrade available for scale plan in development');
-          return;
-        default:
-          console.error('Unknown plan in development:', plan);
-          return;
-      }
-    } else {
-      switch (plan) {
-        case 'starter': {
-          const nextTierLink = stripeConfig.growthLink || process.env.NEXT_PUBLIC_STRIPE_GROWTH_LINK;
-          if (!nextTierLink) {
-            console.error('growthLink not defined in stripeConfig or env vars');
-            return;
-          }
-          return nextTierLink;
-        }
-        case 'growth': {
-          const nextTierLink = stripeConfig.scaleLink || process.env.NEXT_PUBLIC_STRIPE_SCALE_LINK;
-          if (!nextTierLink) {
-            console.error('scaleLink not defined in stripeConfig or env vars');
-            return;
-          }
-          return nextTierLink;
-        }
-        case 'scale':
-          console.error('No upgrade available for scale plan in production');
-          return;
-        default:
-          console.error('Unknown plan in production:', plan);
-          return;
-      }
-    }
+    
+    return stripeConfig.customerBillingLink;
   }
 
   const handleUpgrade = () => {
