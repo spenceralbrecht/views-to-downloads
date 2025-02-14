@@ -22,7 +22,7 @@ export default async function RootLayout({
     <html lang="en" className="dark">
       <head>
         <script defer src="https://feedback.fish/ff.js?pid=8ce000788096e9"></script>
-        {/* <Script id="microsoft-clarity" strategy="beforeInteractive">
+        <Script id="microsoft-clarity" strategy="beforeInteractive">
           {`
             (function(c,l,a,r,i,t,y){
                 c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -30,7 +30,7 @@ export default async function RootLayout({
                 y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
             })(window, document, "clarity", "script", "pqvyzv5zkm");
           `}
-        </Script> */}
+        </Script>
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
         <div className="relative flex min-h-screen flex-col">
