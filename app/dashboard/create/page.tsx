@@ -769,7 +769,7 @@ export default function CreateAd() {
                               'bottom-0'
                             }`}
                           >
-                            <p className="text-white text-base md:text-lg font-medium drop-shadow-lg whitespace-pre-wrap" style={{ fontFamily: 'TikTokDisplay' }}>
+                            <p className="text-white text-base md:text-lg font-medium whitespace-pre-wrap [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#000,_-1px_1px_0_#000,_1px_1px_0_#000]" style={{ fontFamily: 'TikTokDisplay' }}>
                               {hook}
                             </p>
                           </div>
