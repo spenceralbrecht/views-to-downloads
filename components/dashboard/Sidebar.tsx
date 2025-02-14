@@ -12,6 +12,8 @@ import { ImageIcon, User as UserIcon } from "lucide-react"
 import { getStripeConfig } from '@/config/stripe'
 import { useSubscription, CONTENT_LIMITS } from '@/hooks/useSubscription'
 import { Badge } from '@/components/ui/badge'
+import { useState } from 'react'
+import PricingModal from '@/components/PricingModal'
 
 interface SidebarProps {
   user: User | null;
@@ -20,6 +22,7 @@ interface SidebarProps {
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
   const { subscription, loading } = useSubscription(user)
+  const [showPricingModal, setShowPricingModal] = useState(false)
   const planName = subscription?.plan_name || 'starter'
   const contentUsed = subscription ? subscription.content_used_this_month : 0
   const contentLimit = subscription ? CONTENT_LIMITS[subscription.plan_name] : CONTENT_LIMITS['starter']
@@ -101,18 +104,18 @@ export function Sidebar({ user }: SidebarProps) {
 
         {!loading && (
           <div className="px-4 mt-6">
-            <div className="rounded-md bg-muted p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-muted-foreground">Content Usage</span>
-                <span className="text-sm font-medium text-primary">
-                  {contentUsed}/{contentLimit}
-                </span>
-              </div>
-              <Progress 
-                value={progressPercentage} 
-                className="bg-background"
-              />
-              {subscription ? (
+            {subscription ? (
+              <div className="rounded-md bg-muted p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-muted-foreground">Content Usage</span>
+                  <span className="text-sm font-medium text-primary">
+                    {contentUsed}/{contentLimit}
+                  </span>
+                </div>
+                <Progress 
+                  value={progressPercentage} 
+                  className="bg-background"
+                />
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
                     {(planName.charAt(0).toUpperCase() + planName.slice(1)) + ' Plan'}
@@ -121,18 +124,22 @@ export function Sidebar({ user }: SidebarProps) {
                     Active
                   </Badge>
                 </div>
-              ) : (
+              </div>
+            ) : (
+              <>
                 <Button 
-                  className="w-full mt-2 btn-gradient" 
-                  size="sm" 
-                  asChild
+                  className="w-full btn-gradient" 
+                  size="sm"
+                  onClick={() => setShowPricingModal(true)}
                 >
-                  <Link href="/pricing">
-                    Upgrade
-                  </Link>
+                  Upgrade
                 </Button>
-              )}
-            </div>
+                <PricingModal 
+                  isOpen={showPricingModal} 
+                  onClose={() => setShowPricingModal(false)} 
+                />
+              </>
+            )}
           </div>
         )}
       </div>

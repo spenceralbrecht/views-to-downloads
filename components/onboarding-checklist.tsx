@@ -1,7 +1,11 @@
+'use client'
+
 import { CreditCard, AppWindow, Video } from "lucide-react"
 import Link from 'next/link'
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useState } from 'react'
+import PricingModal from '@/components/PricingModal'
 
 interface OnboardingChecklistProps {
   hasSubscription: boolean
@@ -11,9 +15,14 @@ interface OnboardingChecklistProps {
 }
 
 export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, billingUrl }: OnboardingChecklistProps) {
+  const [showPricingModal, setShowPricingModal] = useState(false)
+
   return (
     <div className="grid gap-4 mb-8">
-      <Link href={hasSubscription ? '#' : billingUrl} className={!hasSubscription ? 'cursor-pointer' : 'cursor-default'}>
+      <div 
+        onClick={() => !hasSubscription && setShowPricingModal(true)} 
+        className={!hasSubscription ? 'cursor-pointer' : 'cursor-default'}
+      >
         <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors ${!hasSubscription ? 'hover:bg-accent/50' : ''}`}>
           <div className="flex items-center gap-4">
             <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasSubscription ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
@@ -36,7 +45,7 @@ export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, bil
             )}
           </div>
         </div>
-      </Link>
+      </div>
 
       <Link href={hasApp ? '#' : '/dashboard/apps'} className={!hasApp ? 'cursor-pointer' : 'cursor-default'}>
         <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors ${!hasApp ? 'hover:bg-accent/50' : ''}`}>
@@ -87,6 +96,11 @@ export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, bil
           </div>
         </div>
       </Link>
+
+      <PricingModal 
+        isOpen={showPricingModal} 
+        onClose={() => setShowPricingModal(false)} 
+      />
     </div>
   )
 }

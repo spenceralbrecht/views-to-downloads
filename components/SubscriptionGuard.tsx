@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { User } from '@supabase/supabase-js'
-import { getStripeConfig } from '@/config/stripe'
+import PricingModal from '@/components/PricingModal'
 
 interface SubscriptionGuardProps {
   children: ReactNode
@@ -20,6 +20,7 @@ interface SubscriptionGuardProps {
 
 export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   const [showDialog, setShowDialog] = useState(false)
+  const [showPricingModal, setShowPricingModal] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const supabase = createClientComponentClient()
   const { isSubscribed, loading } = useSubscription(user)
@@ -65,12 +66,23 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Cancel
             </Button>
-            <Button className="btn-gradient" onClick={() => window.location.href = getStripeConfig().checkoutLinks.starter}>
+            <Button 
+              className="btn-gradient" 
+              onClick={() => {
+                setShowDialog(false)
+                setShowPricingModal(true)
+              }}
+            >
               Subscribe Now
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      <PricingModal 
+        isOpen={showPricingModal} 
+        onClose={() => setShowPricingModal(false)} 
+      />
     </>
   )
 }
