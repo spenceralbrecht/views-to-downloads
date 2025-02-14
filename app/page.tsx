@@ -7,6 +7,7 @@ import AuthButton from '@/components/AuthButton'
 import Features from '@/components/Features'
 import Pricing from '@/components/Pricing'
 import Alternatives from '@/components/Alternatives'
+import FAQ from '@/components/FAQ'
 import { useState } from 'react'
 
 export default function LandingPage({
@@ -79,6 +80,9 @@ export default function LandingPage({
         <Alternatives />
         <Features />
         <Pricing />
+        <div className="mb-24">
+          <FAQ />
+        </div>
       </main>
       <Footer />
     </div>

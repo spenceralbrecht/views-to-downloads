@@ -40,7 +40,7 @@ const pricingTiers: PricingTier[] = [
     description: 'Perfect for getting started with video creation',
     features: [
       'Create up to 10 videos per month',
-      'Basic video editing features',
+      'Auto Generate Engaging Hooks',
       'Standard quality exports',
       'Email support'
     ],
@@ -51,10 +51,8 @@ const pricingTiers: PricingTier[] = [
     description: 'Ideal for growing creators',
     features: [
       'Create up to 50 videos per month',
-      'Advanced video editing features',
-      'HD quality exports',
-      'Priority email support',
-      'Custom branding'
+      'Auto Generate Engaging Hooks',
+      'Early access to new viral formats',
     ],
     getLink: () => getStripeConfig().checkoutLinks.growth
   },
@@ -62,13 +60,10 @@ const pricingTiers: PricingTier[] = [
     name: 'Scale',
     description: 'For professional content creators',
     features: [
-      'Unlimited video creation',
-      'Premium video editing features',
-      '4K quality exports',
-      '24/7 priority support',
-      'Custom branding',
-      'API access',
-      'Team collaboration'
+      'Create up to 100 videos per month',
+      'Auto Generate Engaging Hooks',
+      'Early access to new viral formats',
+      'Priority support',
     ],
     getLink: () => getStripeConfig().checkoutLinks.scale
   }
