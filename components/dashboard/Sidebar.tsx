@@ -19,7 +19,11 @@ interface SidebarProps {
 
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
-  const { subscription, isSubscribed, plan, contentUsed, contentRemaining, contentLimit, loading } = useSubscription(user)
+  const { subscription, loading } = useSubscription(user)
+  const planName = subscription?.plan_name || 'starter'
+  const contentUsed = subscription ? subscription.content_used_this_month : 0
+  const contentLimit = subscription ? CONTENT_LIMITS[subscription.plan_name] : CONTENT_LIMITS['starter']
+  const contentRemaining = subscription ? Math.max(0, contentLimit - contentUsed) : 0
   
   const navigation = [
     { name: 'Home', href: '/dashboard', icon: Home },
@@ -107,12 +111,11 @@ export function Sidebar({ user }: SidebarProps) {
               <Progress 
                 value={progressPercentage} 
                 className="bg-background"
-                indicatorClassName="bg-gradient-to-r from-[#8D69F5] to-[#FF5D9F]"
               />
-              {isSubscribed ? (
+              {subscription ? (
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    {plan.charAt(0).toUpperCase() + plan.slice(1)} Plan
+                    {(planName.charAt(0).toUpperCase() + planName.slice(1)) + ' Plan'}
                   </span>
                   <Badge className="bg-primary/20 text-primary hover:bg-primary/30">
                     Active

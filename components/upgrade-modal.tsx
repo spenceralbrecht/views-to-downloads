@@ -10,53 +10,96 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { getStripeConfig } from '@/config/stripe'
-import { useSubscription } from '@/hooks/useSubscription'
-import { useUser } from '@supabase/auth-helpers-react'
 
-interface UpgradeModalProps {
+export interface UpgradeModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  subscription?: { plan_name?: string } | null
+  loading: boolean
 }
 
-export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
-  const user = useUser()
-  const { plan } = useSubscription(user)
+export function UpgradeModal({ open, onOpenChange, subscription, loading }: UpgradeModalProps) {
+  console.log('UpgradeModal open:', open);
+  // Derive the plan from the subscription prop
+  const plan = subscription?.plan_name || null;
+  console.log('UpgradeModal subscription prop:', subscription, 'derived plan:', plan);
 
   // Get the next tier's payment link
   const getUpgradeLink = () => {
-    const stripeConfig = getStripeConfig()
+    const stripeConfig = getStripeConfig() as any;
+    console.log('Stripe config in getUpgradeLink:', stripeConfig);
+    if (!plan) {
+      console.error('No active subscription plan found');
+      return;
+    }
     if (stripeConfig.env === 'development') {
       switch (plan) {
-        case 'starter':
-          return stripeConfig.testGrowthLink
-        case 'growth':
-          return stripeConfig.testScaleLink
+        case 'starter': {
+          if (!stripeConfig.testGrowthLink) {
+            console.error('testGrowthLink not defined in stripeConfig');
+            return;
+          }
+          return stripeConfig.testGrowthLink;
+        }
+        case 'growth': {
+          if (!stripeConfig.testScaleLink) {
+            console.error('testScaleLink not defined in stripeConfig');
+            return;
+          }
+          return stripeConfig.testScaleLink;
+        }
+        case 'scale':
+          console.error('No upgrade available for scale plan in development');
+          return;
         default:
-          return stripeConfig.testStarterLink
+          console.error('Unknown plan in development:', plan);
+          return;
       }
     } else {
       switch (plan) {
-        case 'starter':
-          return stripeConfig.growthLink
-        case 'growth':
-          return stripeConfig.scaleLink
+        case 'starter': {
+          const nextTierLink = stripeConfig.growthLink || process.env.NEXT_PUBLIC_STRIPE_GROWTH_LINK;
+          if (!nextTierLink) {
+            console.error('growthLink not defined in stripeConfig or env vars');
+            return;
+          }
+          return nextTierLink;
+        }
+        case 'growth': {
+          const nextTierLink = stripeConfig.scaleLink || process.env.NEXT_PUBLIC_STRIPE_SCALE_LINK;
+          if (!nextTierLink) {
+            console.error('scaleLink not defined in stripeConfig or env vars');
+            return;
+          }
+          return nextTierLink;
+        }
+        case 'scale':
+          console.error('No upgrade available for scale plan in production');
+          return;
         default:
-          return stripeConfig.starterLink
+          console.error('Unknown plan in production:', plan);
+          return;
       }
     }
   }
 
   const handleUpgrade = () => {
-    const upgradeLink = getUpgradeLink()
+    console.log('Upgrade modal: Upgrade Now button clicked.');
+    console.log('Current plan:', plan);
+    const upgradeLink = getUpgradeLink();
+    console.log('Retrieved upgrade link:', upgradeLink);
     if (upgradeLink) {
-      window.location.href = upgradeLink
-      onOpenChange(false)
+      console.log('Redirecting to upgrade link:', upgradeLink);
+      window.location.href = upgradeLink;
+      onOpenChange(false);
+    } else {
+      console.error('No upgrade link available for current plan:', plan);
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] z-[9999]">
         <DialogHeader>
           <DialogTitle>Upgrade Your Plan</DialogTitle>
           <DialogDescription>
@@ -78,8 +121,8 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleUpgrade} className="btn-gradient">
-            Upgrade Now
+          <Button onClick={handleUpgrade} className="btn-gradient" disabled={loading}>
+            {loading ? 'Loading...' : 'Upgrade Now'}
           </Button>
         </DialogFooter>
       </DialogContent>

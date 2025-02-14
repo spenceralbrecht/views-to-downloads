@@ -5,7 +5,6 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { User } from '@supabase/supabase-js'
 
 export const CONTENT_LIMITS = {
-  free: 5,
   starter: 10,
   growth: 50,
   scale: 150
@@ -17,7 +16,7 @@ export type Subscription = {
   stripe_customer_id: string
   stripe_subscription_id: string
   stripe_price_id: string
-  plan_name: 'free' | 'starter' | 'growth' | 'scale'
+  plan_name: 'starter' | 'growth' | 'scale'
   status: string
   current_period_start: string
   current_period_end: string
@@ -39,38 +38,21 @@ export function useSubscription(user: User | null) {
 
     async function getSubscription() {
       try {
-        console.log('Fetching subscription for user:', user.id)
+        console.log('Fetching subscription for user:', user!.id)
         const { data, error } = await supabase
           .from('subscriptions')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', user!.id)
           .eq('status', 'active')
           .single()
 
         if (error) {
-          if (error.code === 'PGRST116') {
-            // No subscription found, set to free tier
-            console.log('No active subscription found, using free tier')
-            setSubscription({
-              id: '',
-              user_id: user.id,
-              stripe_customer_id: '',
-              stripe_subscription_id: '',
-              stripe_price_id: '',
-              plan_name: 'free',
-              status: 'active',
-              current_period_start: new Date().toISOString(),
-              current_period_end: new Date().toISOString(),
-              content_used_this_month: 0,
-              content_reset_date: new Date().toISOString()
-            })
-          } else {
-            console.error('Error fetching subscription:', error)
-            setSubscription(null)
-          }
-        } else {
-          console.log('Subscription data:', data)
-          setSubscription(data)
+          console.error('Error fetching subscription:', error)
+          setSubscription(null)
+        } else if (data) {
+          console.log('Subscription data:', data);
+          const sub = { ...data, plan_name: data.plan_name || 'starter' };
+          setSubscription(sub);
         }
       } catch (error) {
         console.error('Error in subscription fetch:', error)
@@ -92,7 +74,7 @@ export function useSubscription(user: User | null) {
           event: '*',
           schema: 'public',
           table: 'subscriptions',
-          filter: `user_id=eq.${user.id}`
+          filter: `user_id=eq.${user!.id}`
         },
         (payload) => {
           console.log('Subscription change:', payload)
@@ -100,19 +82,21 @@ export function useSubscription(user: User | null) {
             // Reset to free tier on deletion
             setSubscription({
               id: '',
-              user_id: user.id,
+              user_id: user!.id,
               stripe_customer_id: '',
               stripe_subscription_id: '',
               stripe_price_id: '',
-              plan_name: 'free',
+              plan_name: 'starter',
               status: 'active',
               current_period_start: new Date().toISOString(),
               current_period_end: new Date().toISOString(),
               content_used_this_month: 0,
               content_reset_date: new Date().toISOString()
             })
-          } else {
+          } else if (payload.new && payload.new.plan_name) {
             setSubscription(payload.new as Subscription)
+          } else {
+            console.warn('Received subscription update with invalid data:', payload)
           }
         }
       )
@@ -123,24 +107,27 @@ export function useSubscription(user: User | null) {
     }
   }, [user, supabase])
 
-  // Get the current plan name, defaulting to 'free' if no subscription
-  const plan = subscription?.plan_name || 'free'
-  
-  // Calculate content limits
-  const contentLimit = CONTENT_LIMITS[plan]
-  const contentUsed = subscription?.content_used_this_month || 0
-  const contentRemaining = Math.max(0, contentLimit - contentUsed)
+  // Get the current plan name; if no subscription, then user is not subscribed
+  const plan = subscription ? subscription.plan_name : null;
 
-  // Check if user has an active paid subscription
-  const isSubscribed = subscription?.plan_name !== 'free' && subscription?.status === 'active'
+  // Calculate content limits only if a valid plan exists
+  const contentUsed = subscription ? subscription.content_used_this_month : 0;
+  const contentLimit = plan ? CONTENT_LIMITS[plan] : 0;
+  const contentRemaining = plan ? Math.max(0, contentLimit - contentUsed) : 0;
+
+  // Check if user has an active paid subscription (no free plan available)
+  const isSubscribed = subscription ? subscription.status === 'active' : false;
+
+  const monthlyLimit = 100;
+  const contentRemainingMonthly = subscription ? monthlyLimit - subscription.content_used_this_month : 0;
 
   return {
     subscription,
-    isSubscribed,
+    loading,
+    isSubscribed: subscription ? subscription.status === 'active' : false,
     plan,
     contentUsed,
-    contentRemaining,
     contentLimit,
-    loading
+    contentRemaining
   }
 }

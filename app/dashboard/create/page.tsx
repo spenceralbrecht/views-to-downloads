@@ -71,7 +71,7 @@ export default function CreateAd() {
   const supabase = createClientComponentClient()
   const [isPending, startTransition] = useTransition()
   const user = useUser()
-  const { isSubscribed, contentRemaining } = useSubscription(user)
+  const { isSubscribed, contentRemaining, subscription, loading } = useSubscription(user)
   const { toast } = useToast()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
@@ -201,44 +201,37 @@ export default function CreateAd() {
     fetchDemoVideos()
   }, [supabase])
 
-  // Fetch output videos
-  useEffect(() => {
-    const fetchOutputVideos = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data: videos, error } = await supabase
-        .from('output_content')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching output videos:', error)
-        return
-      }
-
-      // Get public URLs for the output videos
-      const outputVideosWithUrls = await Promise.all((videos || []).map(async (video) => {
-        // Ensure we're using just the relative path
-        const videoPath = video.url.includes('output-content/') 
-          ? video.url.split('output-content/')[1] 
-          : video.url
-          
-        const { data: publicData } = supabase
-          .storage
-          .from('output-content')
-          .getPublicUrl(videoPath)
-        return { ...video, url: publicData.publicUrl }
-      }))
-
-      setOutputVideos(outputVideosWithUrls)
-      setLoadingOutputs(false)
+  // Function to fetch output videos
+  const fetchOutputVideos = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: videos, error } = await supabase
+      .from('output_content')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error fetching output videos:', error);
+      return;
     }
+    const outputVideosWithUrls = (videos || []).map((video) => {
+      const videoPath = video.url.includes('output-content/')
+        ? video.url.split('output-content/')[1]
+        : video.url;
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('output-content')
+        .getPublicUrl(videoPath);
+      return { ...video, url: publicUrl };
+    });
+    setOutputVideos(outputVideosWithUrls);
+    setLoadingOutputs(false);
+  };
 
-    fetchOutputVideos()
-  }, [supabase])
+  useEffect(() => {
+    fetchOutputVideos();
+  }, [supabase]);
 
   // Fetch hooks when app is selected
   useEffect(() => {
@@ -293,13 +286,15 @@ export default function CreateAd() {
   // Handle video creation
   const [showNoHooksDialog, setShowNoHooksDialog] = useState(false)
   const handleCreateVideo = async () => {
+    console.log('DEBUG: handleCreateVideo triggered', { selectedAppId, hook, selectedInfluencerVideo, selectedDemoVideo, contentRemaining, isPending });
     if (!selectedAppId) {
+      console.log('DEBUG: No selectedAppId');
       toast({
         title: "App Required",
         description: "Please select an app for your video",
         variant: "destructive"
-      })
-      return
+      });
+      return;
     }
 
     // Check if hooks exist for the selected app
@@ -307,137 +302,166 @@ export default function CreateAd() {
       .from('hooks')
       .select('id')
       .eq('app_id', selectedAppId)
-      .limit(1)
-
+      .limit(1);
+    console.log('DEBUG: hooksData fetched', { hooksData, hooksError });
     if (hooksError) {
-      console.error('Error checking hooks:', hooksError)
-      return
+      console.log('DEBUG: Error fetching hooks', hooksError);
+      return;
     }
-
     if (!hooksData || hooksData.length === 0) {
-      setShowNoHooksDialog(true)
-      return
+      console.log('DEBUG: No hooks available for app', selectedAppId);
+      setShowNoHooksDialog(true);
+      return;
     }
 
     if (!hook) {
+      console.log('DEBUG: No hook provided');
       toast({
         title: "Hook Required",
         description: "Please select or generate a hook for your video",
         variant: "destructive"
-      })
-      return
+      });
+      return;
     }
 
     if (!selectedInfluencerVideo) {
+      console.log('DEBUG: No influencer video selected');
       toast({
         title: "UGC Video Required",
         description: "Please select an influencer video from the grid",
         variant: "destructive"
-      })
-      return
+      });
+      return;
     }
 
     if (!selectedDemoVideo) {
+      console.log('DEBUG: No demo video selected');
       toast({
         title: "Demo Video Required",
         description: "Please upload or select a demo video",
         variant: "destructive"
-      })
-      return
+      });
+      return;
     }
 
     if (isPending) {
-      return
+      console.log('DEBUG: Operation is pending');
+      return;
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      return
+      console.log('DEBUG: Error fetching user', { userError, user });
+      return;
     }
+    console.log('DEBUG: User fetched', user);
 
-    // Check content remaining
-    if (contentRemaining <= 0) {
-      setShowUpgradeModal(true)
-      return
+    console.log('DEBUG: Checking contentRemaining value', contentRemaining);
+    if (loading) {
+      console.log('DEBUG: Subscription is still loading, aborting video creation');
+      return;
+    }
+    if (subscription && contentRemaining <= 0) {
+      console.log('DEBUG: Content limit reached. Triggering upgrade modal');
+      setShowUpgradeModal(true);
+      return;
     }
 
     // Validate required fields
-    const missingFields = []
-    if (!selectedInfluencerVideo) missingFields.push('influencer video')
-    if (!selectedDemoVideo) missingFields.push('demo video')
-    if (!hook) missingFields.push('caption text')
-
+    const missingFields = [];
+    if (!selectedInfluencerVideo) missingFields.push('influencer video');
+    if (!selectedDemoVideo) missingFields.push('demo video');
+    if (!hook) missingFields.push('caption text');
     if (missingFields.length > 0) {
-      return
+      console.log('DEBUG: Missing required fields', missingFields);
+      return;
     }
 
     // Check and increment content usage
-    const canCreate = await incrementContentUsage(user.id)
+    const canCreate = await incrementContentUsage(user.id);
+    console.log('DEBUG: Result of incrementContentUsage', canCreate);
     if (!canCreate) {
-      toast({
-        title: "Monthly limit reached",
-        description: "You've reached your monthly content creation limit. Please upgrade your plan to create more content.",
-        variant: "destructive"
-      })
-      return
+      console.log('DEBUG: Monthly limit reached during incrementContentUsage. Triggering upgrade modal.');
+      setShowUpgradeModal(true);
+      return;
     }
 
+    // Use the selected influencer video URL directly
+    const influencerVideoUrl = selectedInfluencerVideo;
+    console.log('Final influencerVideoUrl for payload:', influencerVideoUrl);
+
+    const payload = {
+      influencerVideoUrl,
+      demoFootageUrl: selectedDemoVideo,
+      captionText: hook,
+      captionPosition: textPosition,
+      userUuid: user.id,
+      app_id: selectedAppId
+    };
+    console.log('Video creation request body:', JSON.stringify(payload));
+
     // Create a pending video object
+    console.log('DEBUG: Creating pending video object');
     const pendingVideoObj = {
       id: crypto.randomUUID(),
       status: 'pending',
       created_at: new Date().toISOString(),
       app_id: selectedAppId,
-      user_id: user.id
-    }
-    
+      user_id: user.id,
+      url: ''
+    };
+
     // Add the pending video to the list
-    setOutputVideos(prev => [pendingVideoObj, ...prev])
-    setPendingVideo(pendingVideoObj)
+    setOutputVideos(prev => [pendingVideoObj, ...prev]);
+    setPendingVideo(pendingVideoObj);
+    console.log('DEBUG: Pending video object added', pendingVideoObj);
 
     toast({
       title: "Creating video...",
       description: "This should take a few minutes",
-    })
+    });
 
     startTransition(async () => {
       try {
-        const result = await createVideo({
-          influencerVideoUrl: selectedInfluencerVideo,
-          demoFootageUrl: selectedDemoVideo,
-          captionText: hook,
-          captionPosition: textPosition,
-          userUuid: user.id,
-          app_id: selectedAppId
-        })
+        console.log('DEBUG: Calling createVideo with', payload);
+        const result = await createVideo(payload);
+        console.log('DEBUG: createVideo result', result);
 
         if ('error' in result) {
-          // Remove the pending video if there was an error
-          setOutputVideos(prev => prev.filter(v => v.id !== pendingVideoObj.id))
-          setPendingVideo(null)
-          return
+          console.log('DEBUG: Error creating video', result.error);
+          setOutputVideos(prev => prev.filter(v => v.id !== pendingVideoObj.id));
+          setPendingVideo(null);
+          return;
         } else {
-          setSelectedVideo(null)
-          setSelectedDemoVideo('')
-          setHook('')
-          setPendingVideo(null)
-          // Fetch the updated video list
-          fetchOutputVideos()
+          console.log('DEBUG: Video created successfully, resetting state');
+          setSelectedVideo(null);
+          setSelectedDemoVideo('');
+          setHook('');
+          setPendingVideo(null);
+          console.log('DEBUG: Attempting to fetch updated videos');
+          if (typeof fetchOutputVideos === 'function') {
+            fetchOutputVideos();
+          } else {
+            console.log('DEBUG: fetchOutputVideos is not defined');
+          }
+
+          if (result.output_id) {
+            pollForVideoCompletion(result.output_id);
+          }
         }
-      } catch (error) {
-        console.error('Error creating video:', error)
+      } catch (error: any) {
+        console.error('DEBUG: Exception in createVideo', error);
         toast({
           title: "Error creating video",
           description: error.message,
           variant: "destructive"
-        })
+        });
 
-        // Remove the pending video if there was an error
-        setOutputVideos(prev => prev.filter(v => v.id !== pendingVideoObj.id))
-        setPendingVideo(null)
+        setOutputVideos(prev => prev.filter(video => video.id !== pendingVideoObj.id));
+        setPendingVideo(null);
       }
-    })
-  }
+    });
+  };
 
   const handleUGCVideoSelect = (num: number) => {
     setSelectedVideo(num)
@@ -528,16 +552,41 @@ export default function CreateAd() {
   useEffect(() => {
     // Set default video selection (first video)
     if (!selectedInfluencerVideo && videosToShow.length > 0) {
-      setSelectedVideo(videosToShow[0])
-      setSelectedInfluencerVideo(`/videos/${videosToShow[0]}.mp4`)
+      setSelectedVideo(videosToShow[0]);
+      setSelectedInfluencerVideo(getUGCVideoUrl(videosToShow[0]));
     }
 
     // Set default demo video (first demo)
     if (!selectedDemoVideo && demoVideos.length > 0 && !loadingDemos) {
-      setSelectedDemo(demoVideos[0].id)
-      setSelectedDemoVideo(demoVideos[0].publicUrl)
+      setSelectedDemo(demoVideos[0].id ?? '');
+      setSelectedDemoVideo(demoVideos[0].publicUrl ?? '');
     }
   }, [demoVideos, loadingDemos, selectedDemoVideo, selectedInfluencerVideo, videosToShow])
+
+  console.log('CreateAd subscription:', subscription);
+
+  // Insert this function inside CreateAd (e.g., after other hooks/state declarations and before handleDeleteDemo)
+  async function pollForVideoCompletion(outputId: string) {
+    const pollInterval = 5000; // Poll every 5 seconds
+    const intervalId = setInterval(async () => {
+      const { data, error } = await supabase
+        .from('output_content')
+        .select('*')
+        .eq('id', outputId)
+        .single();
+      if (error) {
+        console.error('Error polling video completion:', error);
+        return;
+      }
+      if (data && data.status === 'completed') {
+        clearInterval(intervalId);
+        console.log('Video processing completed for output_id', outputId);
+        if (typeof fetchOutputVideos === 'function') {
+          fetchOutputVideos();
+        }
+      }
+    }, pollInterval);
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -804,11 +853,11 @@ export default function CreateAd() {
                         </button>
                         <div 
                           className="aspect-[9/16] w-full rounded-lg overflow-hidden"
-                          onClick={() => handleDemoVideoSelect(video.publicUrl)}
+                          onClick={() => handleDemoVideoSelect(video.publicUrl || '')}
                         >
                           <video
-                            key={video.publicUrl}
-                            src={video.publicUrl}
+                            key={video.publicUrl || ''}
+                            src={video.publicUrl || ''}
                             className="w-full h-full object-cover"
                             preload="auto"
                             muted
@@ -861,13 +910,25 @@ export default function CreateAd() {
             ) : outputVideos.length === 0 ? (
               <p className="text-muted-foreground text-center">No videos created yet. Create your first video above!</p>
             ) : (
-              outputVideos.map((video) => (
-                <VideoCard 
-                  key={video.id} 
-                  video={video} 
-                  onDelete={handleDeleteVideo}
-                />
-              ))
+              outputVideos.map((video) => {
+                if (video.status === 'pending') {
+                  return (
+                    <div key={video.id} className="border border-dashed p-4 flex flex-col items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <span className="text-sm text-muted-foreground">Processing video...</span>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <VideoCard 
+                      key={video.id} 
+                      video={video} 
+                      onDelete={handleDeleteVideo}
+                      isPending={false}
+                    />
+                  );
+                }
+              })
             )}
           </div>
         </div>
@@ -876,6 +937,8 @@ export default function CreateAd() {
         <UpgradeModal 
           open={showUpgradeModal} 
           onOpenChange={setShowUpgradeModal}
+          subscription={subscription || { plan_name: 'starter' }}
+          loading={loading}
         />
       </div>
     </div>
