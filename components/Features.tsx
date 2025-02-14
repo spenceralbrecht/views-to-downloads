@@ -10,47 +10,55 @@ export default function Features() {
       <h2 className="text-4xl md:text-5xl font-bold text-center mb-12">Features</h2>
       <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6">
         <Link href="/dashboard/create" className="cursor-pointer">
-          <Card>
+          <Card className="h-full transition-all duration-200 hover:shadow-xl dark:bg-gray-900/40 hover:border-primary/50 group">
             <CardHeader>
-              <Video className="h-8 w-8 mb-2 text-blue-500" />
-              <CardTitle>Create UGC videos</CardTitle>
+              <div className="rounded-full w-12 h-12 bg-blue-500/10 flex items-center justify-center mb-4 group-hover:bg-blue-500/20 transition-colors">
+                <Video className="h-6 w-6 text-blue-500" />
+              </div>
+              <CardTitle className="text-xl text-foreground">Create UGC videos</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">Create & publish UGC videos promoting your product demo</p>
+              <p className="text-muted-foreground">Create & publish UGC videos promoting your product demo</p>
             </CardContent>
           </Card>
         </Link>
-        <Card className="relative">
+        <Card className="relative h-full transition-all duration-200 hover:shadow-xl dark:bg-gray-900/40 hover:border-primary/50 group">
           <CardHeader>
-            <ImageIcon className="h-8 w-8 mb-2 text-green-500" />
-            <CardTitle>Create slideshow videos</CardTitle>
+            <div className="rounded-full w-12 h-12 bg-green-500/10 flex items-center justify-center mb-4 group-hover:bg-green-500/20 transition-colors">
+              <ImageIcon className="h-6 w-6 text-green-500" />
+            </div>
+            <CardTitle className="text-xl text-foreground">Create slideshow videos</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600">Create & publish image slideshow videos to TikTok</p>
+            <p className="text-muted-foreground">Create & publish image slideshow videos to TikTok</p>
           </CardContent>
-          <div className="absolute top-4 right-4 px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
-            Not Available Yet
+          <div className="absolute top-4 right-4 px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-xs font-medium text-muted-foreground">
+            Coming Soon
           </div>
         </Card>
-        <Card className="relative">
+        <Card className="relative h-full transition-all duration-200 hover:shadow-xl dark:bg-gray-900/40 hover:border-primary/50 group">
           <CardHeader>
-            <User className="h-8 w-8 mb-2 text-purple-500" />
-            <CardTitle>UGC Avatar Generator</CardTitle>
+            <div className="rounded-full w-12 h-12 bg-purple-500/10 flex items-center justify-center mb-4 group-hover:bg-purple-500/20 transition-colors">
+              <User className="h-6 w-6 text-purple-500" />
+            </div>
+            <CardTitle className="text-xl text-foreground">UGC Avatar Generator</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600">Auto-magically generate and save viral hooks for your videos</p>
+            <p className="text-muted-foreground">Auto-magically generate and save viral hooks for your videos</p>
           </CardContent>
-          <div className="absolute top-4 right-4 px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
-            Not Available Yet
+          <div className="absolute top-4 right-4 px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-xs font-medium text-muted-foreground">
+            Coming Soon
           </div>
         </Card>
-        <Card>
+        <Card className="h-full transition-all duration-200 hover:shadow-xl dark:bg-gray-900/40 hover:border-primary/50 group">
           <CardHeader>
-            <Sparkles className="h-8 w-8 mb-2 text-amber-500" />
-            <CardTitle>Hook Generator</CardTitle>
+            <div className="rounded-full w-12 h-12 bg-amber-500/10 flex items-center justify-center mb-4 group-hover:bg-amber-500/20 transition-colors">
+              <Sparkles className="h-6 w-6 text-amber-500" />
+            </div>
+            <CardTitle className="text-xl text-foreground">Hook Generator</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600">Auto-magically generate and save viral hooks for your videos</p>
+            <p className="text-muted-foreground">Auto-magically generate and save viral hooks for your videos</p>
           </CardContent>
         </Card>
       </div>

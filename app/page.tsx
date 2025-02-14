@@ -9,6 +9,7 @@ import Pricing from '@/components/Pricing'
 import Alternatives from '@/components/Alternatives'
 import FAQ from '@/components/FAQ'
 import { useState } from 'react'
+import { Video, Camera, Sparkles } from 'lucide-react'
 
 export default function LandingPage({
   searchParams,
@@ -37,7 +38,7 @@ export default function LandingPage({
             Create UGC content that gets downloads
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 mb-10">
-            it&apos;s like a gen z marketing team, but way cheaper
+            Save thousands on your marketing budget and drive real revenue
           </p>
           <div className="flex justify-center">
             <AuthButton />

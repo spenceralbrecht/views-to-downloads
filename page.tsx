@@ -231,8 +231,6 @@ export default function LandingPage() {
                   { text: "10 videos per month", icon: Video, enabled: true },
                   { text: "5 UGC avatars", icon: Camera, enabled: true },
                   { text: "Generate unlimited viral hooks", icon: Sparkles, enabled: true },
-                  { text: "Publish to TikTok", icon: Share2, enabled: false },
-                  { text: "Schedule/automate videos", icon: Clock, enabled: false },
                 ],
               },
               {
@@ -244,8 +242,6 @@ export default function LandingPage() {
                   { text: "50 videos per month", icon: Video, enabled: true },
                   { text: "All 50+ UGC avatars", icon: Camera, enabled: true },
                   { text: "Generate unlimited viral hooks", icon: Sparkles, enabled: true },
-                  { text: "Publish to TikTok", icon: Share2, enabled: true },
-                  { text: "Schedule/automate videos", icon: Clock, enabled: true },
                 ],
               },
               {
@@ -257,8 +253,6 @@ export default function LandingPage() {
                   { text: "150 videos per month", icon: Video, enabled: true },
                   { text: "All 50+ UGC avatars", icon: Camera, enabled: true },
                   { text: "Generate unlimited viral hooks", icon: Sparkles, enabled: true },
-                  { text: "Publish to TikTok", icon: Share2, enabled: true },
-                  { text: "Schedule/automate videos", icon: Clock, enabled: true },
                 ],
               },
             ].map((plan) => (
