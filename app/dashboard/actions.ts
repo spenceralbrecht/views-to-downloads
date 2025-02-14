@@ -463,31 +463,40 @@ export async function generateHooks(appId: string) {
       messages: [
         {
           role: 'system',
-          content: `You are a creative content marketer tasked with generating catchy TikTok video hooks for a product. The hooks should be informal, engaging, and use the following six unique formats. For each format, generate two different examples that incorporate the product (replace [PRODUCT NAME] and [PRODUCT DESCRIPTION] with the actual details):
-	1.	Direct Call-to-Action (Addressing a Problem):
+          content: `You are a creative content marketer tasked with generating catchy TikTok video hooks for a product. The hooks should be informal, engaging, and use the following six unique formats. For each format, generate two different examples that incorporate the product (replace [PRODUCT NAME] and [PRODUCT DESCRIPTION] with the actual details).
+
+Please provide your response in JSON format with an array of hooks like this:
+{
+  "hooks": [
+    "hook1",
+    "hook2",
+    ...
+  ]
+}
+
+Use these formats for the hooks:
+1.	Direct Call-to-Action (Addressing a Problem):
 Start with a relatable problem or scenario that the viewer might be facing, then directly introduce the product as the solution.
-Example structure: “If you’re struggling with [problem related to the product], you need to check out [PRODUCT NAME]!”
-	2.	Discovery/Excitement (“Just Found…”):
+Example structure: "If you're struggling with [problem related to the product], you need to check out [PRODUCT NAME]!"
+	2.	Discovery/Excitement ("Just Found…"):
 Express excitement about having just discovered the product or a new way it solves a problem.
-Example structure: “I just found the ultimate way to [solve a problem/achieve a goal] with [PRODUCT NAME]!”
+Example structure: "I just found the ultimate way to [solve a problem/achieve a goal] with [PRODUCT NAME]!"
 	3.	After/FOMO Reactive (Realizing After the Fact):
 Share a moment of realization where you or someone else missed out until now, and then reveal the product as the game changer.
-Example structure: “I only just realized that after [negative experience], [PRODUCT NAME] is exactly what you need to [benefit]!”
+Example structure: "I only just realized that after [negative experience], [PRODUCT NAME] is exactly what you need to [benefit]!"
 	4.	Casual Commentary (Conversational Tone):
 Use a relaxed, off-the-cuff style to casually talk about the benefits or features of the product.
-Example structure: “So, I was chatting about [PRODUCT NAME] and how it [solves a problem], and you won’t believe what it does!”
+Example structure: "So, I was chatting about [PRODUCT NAME] and how it [solves a problem], and you won't believe what it does!"
 	5.	Personal/Testimonial Narrative:
-Share a brief personal story or a friend’s testimony that highlights how the product has made a difference.
-Example structure: “My friend just swears by [PRODUCT NAME] for [benefit], and honestly, it’s a total game changer!”
+Share a brief personal story or a friend's testimony that highlights how the product has made a difference.
+Example structure: "My friend just swears by [PRODUCT NAME] for [benefit], and honestly, it's a total game changer!"
 	6.	Provocative Hot Take/Challenge:
 Offer a bold opinion or challenge a common belief, then introduce the product as the solution to the issue.
-Example structure: “Hot take: [common belief] is holding you back. [PRODUCT NAME] is here to flip the script!”
-
-Now, generate two TikTok hook examples for each of these six formats using [PRODUCT NAME] and [PRODUCT DESCRIPTION] as placeholders. Ensure the language is lively, relatable, and tailored to grab the attention of TikTok viewers.`
+Example structure: "Hot take: [common belief] is holding you back. [PRODUCT NAME] is here to flip the script!"`
         },
         {
           role: 'user',
-          content: `Generate 12 hooks for TikTok videos based on this app description: ${app.app_description}`
+          content: `Generate 12 hooks for TikTok videos based on this app description and return them in JSON format: ${app.app_description}`
         }
       ],
       response_format: { type: "json_object" }
