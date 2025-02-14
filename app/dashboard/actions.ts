@@ -463,7 +463,55 @@ export async function generateHooks(appId: string) {
       messages: [
         {
           role: 'system',
-          content: 'You are a social media expert who creates engaging hooks for TikTok videos. Return your response as a JSON array of strings, with each string being a hook.'
+          content: `You are a social media expert who creates engaging hooks for TikTok videos. Return your response as a JSON array of strings, with each string being a hook. Here are some high performing sample hooks as examples: when you ignore my notifications
+end your streak and i'll end you
+My son is 2 years old and already knows ABC😍👏
+Brushing my teeth bc my virtual self care pet told me to 😂
+Feel like giving up?
+Inhale lung test
+123 Last chance! 123 Save your streak! 123 Don't let it break! 123 Last chance!
+do you believe in love at first sight? i do now. idk 🤷‍♀️ do you?
+EXPLORING SHAME - "The Shadow Work Journal"
+3D Scanning
+finding friends on noplacelike this sound >>
+Secrets your teachers don't want you to know
+This Stamina Breath will increase your lungs capacity Bigger Lungs
+Asked Al about my future kids, and the video... I CAN'T EVEN 😱 (App: Cloneai)
+do your duolingo
+POV: Everyone told you to download this cute lil selfcare app and it's actually improved your productivity
+Making my bed to make my self care pet happy 😂
+Me My Boyfriend Ai Video Little me just met little him😊
+pov: you can't stop making cute party invites for your friends
+What's the longest you've ever been in love?
+when you’ve been bottling your emotions up all day long and finally get the chance to let it out on noplace
+This felt amazing I feel so calm
+How to make a velocity edit in 10 seconds?👍
+EFFECTS FILTERS TRIM MUSIC BEATSYNC FACETRACK
+SLEEP OCCURS IN CYCLES
+Secrets your teachers don't want you to know
+oh so NOW you’re learning mandarin
+Study hack
+Folding my stupid laundry so my Finch can finish her stupid adventure
+I did this in PowerPoint in 50 seconds 😏
+from "trying to learn a language by studying hard with grammar books and dictionary"
+Spot the difference
+We need tutorial 🔥 How to make your own edits using Dizzi's Beatcut mode
+My 2020 self-care secret
+How to finish a 5 page essay 10x faster 😳
+Language Challenge
+Me: Telling my friends and family that I quit my 9-5 🕒 Pump the beat for income streams 💰
+SUMO SQUAT
+How to get a live Ronaldo SIUUUU wallpaper
+3 signs your vocab is WEAK
+POV: you use Superlocal to see the percent of the earth you've uncovered
+Your daily reminder that you deserve better than your ex
+i'm looking for a man in
+Music AI Chainsaw Someone Like You (AI Cover)
+Me younger self Hugging my younger self bc she never gave up on me (app:cloneai)
+create an avatar FAST
+a new relationship
+somw to remind everyone to do their spanish lessons
+easy breathing tip`
         },
         {
           role: 'user',
