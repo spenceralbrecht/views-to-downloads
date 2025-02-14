@@ -311,19 +311,6 @@ export async function createVideo({
       throw new Error('Active subscription required')
     }
 
-    // Create a pending record in output_content
-    const { data: outputContent, error: insertError } = await supabase
-      .from('output_content')
-      .insert({
-        app_id: appId,
-        user_id: user.id,
-        status: 'pending',
-      })
-      .select()
-      .single()
-
-    if (insertError) throw insertError
-
     try {
       // Call the external API to create the video
       const response = await fetch('https://content-creation-api-python.onrender.com/api/create-video', {
@@ -338,7 +325,6 @@ export async function createVideo({
           captionPosition,
           userUuid: user.id,
           appId,
-          outputId: outputContent.id
         })
       })
 
@@ -350,12 +336,6 @@ export async function createVideo({
           body: errorData
         })
         
-        // Update the record to failed status
-        await supabase
-          .from('output_content')
-          .update({ status: 'failed' })
-          .eq('id', outputContent.id)
-        
         throw new Error(`Failed to create video: ${response.status} ${response.statusText}`)
       }
 
@@ -363,24 +343,8 @@ export async function createVideo({
 
       console.log('Video creation result:', result) // Add logging
 
-      // Update the existing record with the video URL and status
-      const { error: updateError } = await supabase
-        .from('output_content')
-        .update({
-          url: result.video_url.split('/output-content/')[1], // Store only the relative path
-          status: 'completed'
-        })
-        .eq('id', outputContent.id)
-
-      if (updateError) throw updateError
-
-      return { success: true, video: { ...outputContent, url: result.video_url, status: 'completed' } }
+      return { success: true, video: { ...result, status: 'completed' } }
     } catch (error) {
-      // Ensure we update the record status if anything fails
-      await supabase
-        .from('output_content')
-        .update({ status: 'failed' })
-        .eq('id', outputContent.id)
       throw error
     }
   } catch (error) {
