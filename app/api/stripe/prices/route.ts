@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { getStripeConfig } from '@/config/stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16'
@@ -11,10 +12,11 @@ const PRICE_IDS = [
   process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID,
 ]
 
+const stripeConfig = getStripeConfig()
 const CHECKOUT_LINKS = {
-  [process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID!]: process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_LINK,
-  [process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID!]: process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_LINK,
-  [process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID!]: process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_LINK,
+  [process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID!]: stripeConfig.checkoutLinks.starter,
+  [process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID!]: stripeConfig.checkoutLinks.growth,
+  [process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID!]: stripeConfig.checkoutLinks.scale,
 }
 
 export async function GET() {
@@ -26,9 +28,7 @@ export async function GET() {
           expand: ['product']
         })
         const product = price.product as Stripe.Product
-        const checkoutUrl = process.env.NEXT_PUBLIC_STRIPE_ENV === 'production'
-          ? CHECKOUT_LINKS[price.id]?.replace('test_', '') // Remove test_ prefix for production
-          : CHECKOUT_LINKS[price.id]
+        const checkoutUrl = CHECKOUT_LINKS[price.id]
 
         return {
           id: price.id,

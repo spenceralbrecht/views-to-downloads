@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Video, ImageIcon, User, Sparkles, Check, X } from "lucide-react"
 import { OnboardingChecklist } from '@/components/onboarding-checklist'
+import { getStripeConfig } from '@/config/stripe'
 
 export default async function Dashboard() {
   const supabase = createServerComponentClient({ cookies })
@@ -35,7 +36,7 @@ export default async function Dashboard() {
   const hasApp = apps && apps.length > 0
   const hasDemoVideo = demoVideos && demoVideos.length > 0
 
-  const billingUrl = process.env.NEXT_PUBLIC_STRIPE_CUSTOMER_BILLING_LINK || ''
+  const billingUrl = getStripeConfig().customerBillingLink
 
   return (
     <div className="min-h-screen bg-background">
