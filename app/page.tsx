@@ -72,9 +72,6 @@ export default function LandingPage({
               <VideoThumbnail key={index} video={src.video} thumbnail={src.thumbnail} index={index} />
             ))}
           </div>
-          {/* Gradient Fade Edges */}
-          <div className="absolute left-0 top-0 bottom-8 w-12 bg-gradient-to-r from-[#fafafa] to-transparent pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-8 w-12 bg-gradient-to-l from-[#fafafa] to-transparent pointer-events-none" />
         </div>
 
         <Alternatives />
