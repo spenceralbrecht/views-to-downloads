@@ -463,7 +463,7 @@ export async function generateHooks(appId: string) {
       messages: [
         {
           role: 'system',
-          content: `You are a creative content marketer tasked with generating catchy TikTok video hooks for a product. The hooks should be informal, engaging, and use the following six unique formats. For each format, generate two different examples that incorporate the product (replace [PRODUCT NAME] and [PRODUCT DESCRIPTION] with the actual details).
+          content: `You are a creative content marketer tasked with generating catchy TikTok video hooks for a product. The hooks should be informal, engaging, and use the following six unique formats. Use mostly lower case letters for the hooks. For each format, generate two different examples that incorporate the product (replace [PRODUCT NAME] and [PRODUCT DESCRIPTION] with the actual details).
 
 Please provide your response in JSON format with an array of hooks like this:
 {

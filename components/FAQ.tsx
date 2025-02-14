@@ -4,6 +4,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { cn } from "@/lib/utils"
+
+const tiktokTextStyle = "text-white [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#000,_-1px_1px_0_#000,_1px_1px_0_#000]"
 
 const faqs = [
   {
@@ -49,7 +52,9 @@ export default function FAQ() {
               {faq.question}
             </AccordionTrigger>
             <AccordionContent>
-              {faq.answer}
+              <div className={cn("p-2 rounded", tiktokTextStyle)}>
+                {faq.answer}
+              </div>
             </AccordionContent>
           </AccordionItem>
         ))}

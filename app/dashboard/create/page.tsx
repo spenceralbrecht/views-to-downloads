@@ -149,7 +149,7 @@ export default function CreateAd() {
 
   // Initialize videos once on mount
   useEffect(() => {
-    const videos = Array.from({ length: 69 }, (_, i) => i + 1)
+    const videos = Array.from({ length: 59 }, (_, i) => i + 1)
       .sort(() => Math.random() - 0.5)
     setAllVideos(videos)
   }, []) // Empty dependency array means this runs once on mount
