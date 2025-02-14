@@ -463,59 +463,31 @@ export async function generateHooks(appId: string) {
       messages: [
         {
           role: 'system',
-          content: `You are a social media expert who creates engaging hooks for TikTok videos. Return your response as a JSON array of strings, with each string being a hook. Here are some high performing sample hooks as examples: when you ignore my notifications
-end your streak and i'll end you
-My son is 2 years old and already knows ABC😍👏
-Brushing my teeth bc my virtual self care pet told me to 😂
-Feel like giving up?
-Inhale lung test
-123 Last chance! 123 Save your streak! 123 Don't let it break! 123 Last chance!
-do you believe in love at first sight? i do now. idk 🤷‍♀️ do you?
-EXPLORING SHAME - "The Shadow Work Journal"
-3D Scanning
-finding friends on noplacelike this sound >>
-Secrets your teachers don't want you to know
-This Stamina Breath will increase your lungs capacity Bigger Lungs
-Asked Al about my future kids, and the video... I CAN'T EVEN 😱 (App: Cloneai)
-do your duolingo
-POV: Everyone told you to download this cute lil selfcare app and it's actually improved your productivity
-Making my bed to make my self care pet happy 😂
-Me My Boyfriend Ai Video Little me just met little him😊
-pov: you can't stop making cute party invites for your friends
-What's the longest you've ever been in love?
-when you’ve been bottling your emotions up all day long and finally get the chance to let it out on noplace
-This felt amazing I feel so calm
-How to make a velocity edit in 10 seconds?👍
-EFFECTS FILTERS TRIM MUSIC BEATSYNC FACETRACK
-SLEEP OCCURS IN CYCLES
-Secrets your teachers don't want you to know
-oh so NOW you’re learning mandarin
-Study hack
-Folding my stupid laundry so my Finch can finish her stupid adventure
-I did this in PowerPoint in 50 seconds 😏
-from "trying to learn a language by studying hard with grammar books and dictionary"
-Spot the difference
-We need tutorial 🔥 How to make your own edits using Dizzi's Beatcut mode
-My 2020 self-care secret
-How to finish a 5 page essay 10x faster 😳
-Language Challenge
-Me: Telling my friends and family that I quit my 9-5 🕒 Pump the beat for income streams 💰
-SUMO SQUAT
-How to get a live Ronaldo SIUUUU wallpaper
-3 signs your vocab is WEAK
-POV: you use Superlocal to see the percent of the earth you've uncovered
-Your daily reminder that you deserve better than your ex
-i'm looking for a man in
-Music AI Chainsaw Someone Like You (AI Cover)
-Me younger self Hugging my younger self bc she never gave up on me (app:cloneai)
-create an avatar FAST
-a new relationship
-somw to remind everyone to do their spanish lessons
-easy breathing tip`
+          content: `You are a creative content marketer tasked with generating catchy TikTok video hooks for a product. The hooks should be informal, engaging, and use the following six unique formats. For each format, generate two different examples that incorporate the product (replace [PRODUCT NAME] and [PRODUCT DESCRIPTION] with the actual details):
+	1.	Direct Call-to-Action (Addressing a Problem):
+Start with a relatable problem or scenario that the viewer might be facing, then directly introduce the product as the solution.
+Example structure: “If you’re struggling with [problem related to the product], you need to check out [PRODUCT NAME]!”
+	2.	Discovery/Excitement (“Just Found…”):
+Express excitement about having just discovered the product or a new way it solves a problem.
+Example structure: “I just found the ultimate way to [solve a problem/achieve a goal] with [PRODUCT NAME]!”
+	3.	After/FOMO Reactive (Realizing After the Fact):
+Share a moment of realization where you or someone else missed out until now, and then reveal the product as the game changer.
+Example structure: “I only just realized that after [negative experience], [PRODUCT NAME] is exactly what you need to [benefit]!”
+	4.	Casual Commentary (Conversational Tone):
+Use a relaxed, off-the-cuff style to casually talk about the benefits or features of the product.
+Example structure: “So, I was chatting about [PRODUCT NAME] and how it [solves a problem], and you won’t believe what it does!”
+	5.	Personal/Testimonial Narrative:
+Share a brief personal story or a friend’s testimony that highlights how the product has made a difference.
+Example structure: “My friend just swears by [PRODUCT NAME] for [benefit], and honestly, it’s a total game changer!”
+	6.	Provocative Hot Take/Challenge:
+Offer a bold opinion or challenge a common belief, then introduce the product as the solution to the issue.
+Example structure: “Hot take: [common belief] is holding you back. [PRODUCT NAME] is here to flip the script!”
+
+Now, generate two TikTok hook examples for each of these six formats using [PRODUCT NAME] and [PRODUCT DESCRIPTION] as placeholders. Ensure the language is lively, relatable, and tailored to grab the attention of TikTok viewers.`
         },
         {
           role: 'user',
-          content: `Generate 10 one sentence hooks for TikTok videos based on this app description: ${app.app_description}`
+          content: `Generate 12 hooks for TikTok videos based on this app description: ${app.app_description}`
         }
       ],
       response_format: { type: "json_object" }
@@ -572,33 +544,27 @@ export async function getHooks(appId: string) {
 }
 
 export async function deleteHook(hookId: string) {
-  const supabase = createServerActionClient({ cookies })
+  'use server'
   
-  // Get user
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError) throw userError
-  if (!user) throw new Error('Not authenticated')
+  const supabase = createServerActionClient({ cookies })
+  const { data: { session } } = await supabase.auth.getSession()
 
-  // First verify the hook belongs to the user
-  const { data: hook } = await supabase
-    .from('hooks')
-    .select('user_id')
-    .eq('id', hookId)
-    .single()
-
-  if (!hook || hook.user_id !== user.id) {
-    throw new Error('Hook not found or unauthorized')
+  if (!session) {
+    return { success: false, error: 'Not authenticated' }
   }
 
-  const { error } = await supabase
-    .from('hooks')
-    .delete()
-    .eq('id', hookId)
-    .eq('user_id', user.id)
+  try {
+    const { error } = await supabase
+      .from('hooks')
+      .delete()
+      .match({ id: hookId })
 
-  if (error) {
-    throw new Error('Failed to delete hook')
+    if (error) throw error
+
+    revalidatePath('/dashboard/hooks')
+    return { success: true }
+  } catch (error) {
+    console.error('Error deleting hook:', error)
+    return { success: false, error: 'Failed to delete hook' }
   }
-
-  return { success: true }
 }
