@@ -2,42 +2,52 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getStripeConfig } from '@/config/stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+// Get the appropriate secret key based on environment
+function getStripeSecretKey() {
+  const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV
+  if (stripeEnv === 'development') {
+    return process.env.STRIPE_TEST_SECRET_KEY
+  }
+  return process.env.STRIPE_SECRET_KEY
+}
+
+const stripe = new Stripe(getStripeSecretKey() || '', {
   apiVersion: '2025-01-27.acacia'
 })
 
 // Get the appropriate price IDs based on environment
 function getPriceIds() {
-  const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV
-  if (!stripeEnv) {
-    console.warn('NEXT_PUBLIC_STRIPE_ENV not set, defaulting to production')
-    return [
-      process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID,
-      process.env.NEXT_PUBLIC_STRIPE_GROWTH_PRICE_ID,
-      process.env.NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID,
-    ]
-  }
+  const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV || 'development'
+  console.log('Getting price IDs for environment:', stripeEnv)
 
-  if (stripeEnv === 'development') {
-    return [
-      process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID,
-      process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID,
-      process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID,
-    ]
-  } else {
-    return [
-      process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID,
-      process.env.NEXT_PUBLIC_STRIPE_GROWTH_PRICE_ID,
-      process.env.NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID,
-    ]
-  }
+  const ids = stripeEnv === 'production' 
+    ? {
+        starter: process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID,
+        growth: process.env.NEXT_PUBLIC_STRIPE_GROWTH_PRICE_ID,
+        scale: process.env.NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID
+      }
+    : {
+        starter: process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID,
+        growth: process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID,
+        scale: process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID
+      }
+
+  // Log which IDs are missing
+  Object.entries(ids).forEach(([tier, id]) => {
+    if (!id) {
+      console.error(`Missing ${stripeEnv} price ID for ${tier} tier`)
+    }
+  })
+
+  return [ids.starter, ids.growth, ids.scale]
 }
 
 export async function GET() {
   try {
     // First check if we have a valid Stripe secret key
-    if (!process.env.STRIPE_SECRET_KEY) {
-      console.error('Missing STRIPE_SECRET_KEY');
+    const secretKey = getStripeSecretKey()
+    if (!secretKey) {
+      console.error('Missing Stripe secret key');
       return NextResponse.json(
         { error: 'Stripe configuration error' },
         { status: 500 }
@@ -47,8 +57,9 @@ export async function GET() {
     const stripeConfig = getStripeConfig()
     const priceIds = getPriceIds()
 
-    // Log the environment and price IDs for debugging
+    // Log the environment and configuration for debugging
     console.log('Environment:', process.env.NEXT_PUBLIC_STRIPE_ENV);
+    console.log('Using secret key:', secretKey.slice(0, 8) + '...');
     console.log('Price IDs:', priceIds);
 
     // Validate that we have price IDs

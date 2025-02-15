@@ -8,7 +8,9 @@ This project is deployed in production to the url https://viewstodownloads.com.
 
 Do everything you can to avoid unnecessary complexity. Showing localhost notifications is not good UX.
 
-Keep the readme up to date with how this project works.
+Keep the readme up to date with how this project works. 
+
+Try to fix the root cause of problems.
 
 Never make changes to the UI unless asked for directly. Most of the requests will be for functionality changes. Make the file changes yourself immediately.
 
