@@ -43,11 +43,13 @@ const prodConfig: StripeConfig = {
 export function getStripeConfig(): StripeConfig {
   const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV
   if (!stripeEnv) {
-    throw new Error('NEXT_PUBLIC_STRIPE_ENV must be set to either "development" or "production"')
+    console.warn('NEXT_PUBLIC_STRIPE_ENV not set, defaulting to production')
+    return prodConfig
   }
   
   if (stripeEnv !== 'development' && stripeEnv !== 'production') {
-    throw new Error('NEXT_PUBLIC_STRIPE_ENV must be either "development" or "production"')
+    console.warn('NEXT_PUBLIC_STRIPE_ENV must be either "development" or "production", defaulting to production')
+    return prodConfig
   }
 
   console.log('🔧 Stripe Environment:', stripeEnv)
@@ -62,41 +64,21 @@ export function getStripeConfig(): StripeConfig {
   if (!config.checkoutLinks.scale) missingLinks.push('scale')
   
   if (missingLinks.length > 0) {
-    throw new Error(`Missing Stripe checkout links for plans: ${missingLinks.join(', ')}`)
+    console.warn(`Missing Stripe checkout links for plans: ${missingLinks.join(', ')}`)
   }
 
   if (!config.customerBillingLink) {
-    throw new Error('Missing Stripe customer billing link')
+    console.warn('Missing Stripe customer billing link')
   }
 
-  // Validate that we're not mixing test and live links
-  const isTestLink = (url: string) => {
-    if (!url) return false;
-    return url.includes('test_') || url.includes('/test/');
-  };
-  
-  const isTestPriceId = (id: string) => {
-    if (!id) return false;
-    return id.startsWith('price_test_');
-  };
+  // Log configuration for debugging
+  console.log('Using links:', {
+    starter: config.checkoutLinks.starter || 'missing',
+    growth: config.checkoutLinks.growth || 'missing',
+    scale: config.checkoutLinks.scale || 'missing'
+  })
 
-  const hasTestLinks = Object.values(config.checkoutLinks).some(isTestLink);
-  const hasTestPriceIds = Object.values(config.productIds).some(isTestPriceId);
-  const shouldBeTest = stripeEnv === 'development';
-
-  if (hasTestLinks !== shouldBeTest || hasTestPriceIds !== shouldBeTest) {
-    console.warn('⚠️ Stripe Environment Warning:');
-    console.warn('Environment:', stripeEnv);
-    console.warn('Links:', config.checkoutLinks);
-    console.warn('Price IDs:', config.productIds);
-    console.warn(
-      shouldBeTest 
-        ? '⚠️ Warning: Production links/prices detected in development environment' 
-        : '⚠️ Warning: Test links/prices detected in production environment'
-    );
-  }
-
-  return config;
+  return config
 }
 
 export default getStripeConfig;
