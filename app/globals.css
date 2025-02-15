@@ -23,6 +23,14 @@ body {
   .gradient-text {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-[#8D69F5] to-[#FF5D9F];
   }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
 }
 
 @layer base {

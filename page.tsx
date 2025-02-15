@@ -28,12 +28,7 @@ function VideoThumbnail({ src, index }: { src: string; index: number }) {
   };
 
   return (
-    <div
-      className="relative flex-none w-[180px] snap-center"
-      style={{
-        transform: `rotate(${index % 2 === 0 ? '2deg' : '-2deg'})`,
-      }}
-    >
+    <div className="relative flex-none w-[180px] snap-center">
       <div className="relative aspect-[9/16] rounded-xl overflow-hidden shadow-lg hover:scale-105 transition-transform duration-200">
         <video
           ref={videoRef}
@@ -105,8 +100,8 @@ export default function LandingPage() {
         <div className="relative w-full max-w-5xl mx-auto px-4 mb-24">
           <div className="flex gap-4 overflow-x-auto pb-8 px-6 snap-x snap-mandatory -mx-4">
             {[
-              "https://uwy5fs2ngvq04srq.public.blob.vercel-storage.com/demo-video-1-HpEmzANqyXNgCfTVD8AOGIn2cljwSn.mp4",
-              "https://uwy5fs2ngvq04srq.public.blob.vercel-storage.com/video-demo-2-E906qUmAQkLmvqWY4i0Z5p1DZVSztl.mp4",
+              "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-1.mp4",
+              "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-2.mp4",
               "https://uwy5fs2ngvq04srq.public.blob.vercel-storage.com/video-demo-3-lDp09BTh8jmjQZLS6OkvuMyvL57qKC.mp4",
               "https://uwy5fs2ngvq04srq.public.blob.vercel-storage.com/video-demo-4-mjJaMZCDzgwowGeUH0INn3tsDPwiYk.mp4",
               "https://uwy5fs2ngvq04srq.public.blob.vercel-storage.com/video-demo-5-jKidBLZzEiAbZxhkB0BozsNXKk816Y.mp4"

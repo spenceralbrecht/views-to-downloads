@@ -47,32 +47,20 @@ export default function LandingPage({
 
         {/* Video Grid */}
         <div className="relative w-full max-w-5xl mx-auto px-4 mb-24">
-          <div className="flex gap-4 overflow-x-auto pb-8 px-6 snap-x snap-mandatory -mx-4">
+          <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-8 px-6 snap-x snap-mandatory -mx-4">
             {[
-              {
-                video: "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-1.mp4",
-                thumbnail: "https://views-to-downloads.s3.us-east-2.amazonaws.com/photo-demo-1.png"
-              },
-              {
-                video: "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-2.mp4",
-                thumbnail: "https://views-to-downloads.s3.us-east-2.amazonaws.com/photo-demo-2.png"
-              },
-              {
-                video: "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-3.mp4",
-                thumbnail: "https://views-to-downloads.s3.us-east-2.amazonaws.com/photo-demo-3.png"
-              },
-              {
-                video: "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-4.mp4",
-                thumbnail: "https://views-to-downloads.s3.us-east-2.amazonaws.com/photo-demo-4.png"
-              },
-              {
-                video: "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-5.mp4",
-                thumbnail: "https://views-to-downloads.s3.us-east-2.amazonaws.com/photo-demo-5.png"
-              }
-            ].map((src, index) => (
-              <VideoThumbnail key={index} video={src.video} thumbnail={src.thumbnail} index={index} />
+              "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-1.mp4",
+              "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-2.mp4",
+              "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-3.mp4",
+              "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-4.mp4",
+              "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-5.mp4"
+            ].map((video, index) => (
+              <VideoThumbnail key={index} video={video} index={index} />
             ))}
           </div>
+          {/* Gradient Fade Edges */}
+          <div className="absolute left-0 top-0 bottom-8 w-12 bg-gradient-to-r from-[#fafafa] dark:from-gray-950 to-transparent pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-8 w-12 bg-gradient-to-l from-[#fafafa] dark:from-gray-950 to-transparent pointer-events-none" />
         </div>
 
         <Alternatives />
