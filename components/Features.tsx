@@ -18,7 +18,7 @@ export default function Features() {
               <CardTitle className="text-xl text-foreground">Create UGC videos</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Create & publish UGC videos promoting your product demo</p>
+              <p className="text-muted-foreground">Create UGC videos promoting your app</p>
             </CardContent>
           </Card>
         </Link>
@@ -30,7 +30,7 @@ export default function Features() {
             <CardTitle className="text-xl text-foreground">Create slideshow videos</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">Create & publish image slideshow videos to TikTok</p>
+            <p className="text-muted-foreground">Create image slideshows for your app</p>
           </CardContent>
           <div className="absolute top-4 right-4 px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-xs font-medium text-muted-foreground">
             Coming Soon

@@ -121,7 +121,7 @@ export default function LandingPage() {
 
         {/* Alternatives Section */}
         <section className="max-w-5xl mx-auto mb-24">
-          <h2 className="text-4xl md:text-5xl font-bold text-center mb-12">Alternatives are expensive.</h2>
+          <h2 className="text-4xl md:text-5xl font-bold text-center mb-12">Don't waste another dollar on a failed influencer campaign</h2>
           <div className="grid md:grid-cols-3 gap-6">
             <Card className="bg-red-50 border-red-100">
               <CardHeader>
@@ -169,7 +169,7 @@ export default function LandingPage() {
                 <CardTitle>Create UGC videos</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Create & publish UGC videos promoting your product demo</p>
+                <p className="text-gray-600">Create content that drives downloads for your app</p>
               </CardContent>
             </Card>
             <Card className="relative">
@@ -178,7 +178,7 @@ export default function LandingPage() {
                 <CardTitle>Create slideshow videos</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Create & publish image slideshow videos to TikTok</p>
+                <p className="text-gray-600">Create image slideshow videos for your appk</p>
               </CardContent>
               <div className="absolute top-4 right-4 px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
                 Not Available Yet
@@ -224,18 +224,18 @@ export default function LandingPage() {
             {[
               {
                 name: "Starter",
-                price: "19",
+                price: "15",
                 videos: "10",
                 popular: false,
                 features: [
                   { text: "10 videos per month", icon: Video, enabled: true },
-                  { text: "5 UGC avatars", icon: Camera, enabled: true },
+                  { text: "Limited UGC avatars", icon: Camera, enabled: true },
                   { text: "Generate unlimited viral hooks", icon: Sparkles, enabled: true },
                 ],
               },
               {
                 name: "Growth",
-                price: "49",
+                price: "35",
                 videos: "50",
                 popular: true,
                 features: [
@@ -246,7 +246,7 @@ export default function LandingPage() {
               },
               {
                 name: "Scale",
-                price: "95",
+                price: "65",
                 videos: "150",
                 popular: false,
                 features: [

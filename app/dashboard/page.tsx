@@ -59,7 +59,7 @@ export default async function Dashboard() {
                 <CardTitle className="text-foreground">Create UGC videos</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">Create & publish UGC videos that get downloads for your app</p>
+                <p className="text-muted-foreground">Create UGC content that get downloads for your app</p>
               </CardContent>
             </Card>
           </Link>
