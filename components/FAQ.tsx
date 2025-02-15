@@ -10,12 +10,12 @@ const tiktokTextStyle = "text-white [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#
 
 const faqs = [
   {
-    question: "How does the video creation process work?",
-    answer: "Simply upload your app demo video, and our AI will analyze it to create engaging TikTok-style videos that showcase your app's features. We'll generate hooks, captions, and edit the video to match viral TikTok formats."
+    question: "How does the content creation process work?",
+    answer: "Add the link to your app and our AI will analyze it to create engaging TikTok-style videos that showcase your app's features. We'll generate hooks, captions, and edit the video to match viral TikTok formats."
   },
   {
-    question: "What type of videos can I create?",
-    answer: "You can create various types of TikTok-style videos including app demos, feature showcases, and user testimonials. Our AI helps optimize your content for maximum engagement and app downloads."
+    question: "What type of content can I create?",
+    answer: "Right now you can create hook + app demo videos, which are the one of the highest performing content formats for driving downloads in 2025."
   },
   {
     question: "How many videos can I create?",
@@ -26,13 +26,9 @@ const faqs = [
     answer: "Yes! While our AI generates engaging hooks automatically, you have full control to edit and customize them to match your brand voice and style."
   },
   {
-    question: "What formats do you support for demo videos?",
-    answer: "We currently support MP4 video files up to 50MB in size. Your demo video should showcase your app's key features that you want to highlight in the TikTok videos."
+    question: "Do you guys support automatically publishing content to TikTok, IG, etc?",
+    answer: "We don't support this and we have chosen not to for now. As app founders ourselves, we found that scheduled content from a third party IP address almost always performs worse than natively posted content. The platforms (TikTok, IG, etc) are always incentivized to bring people into the app so there are various features that would also be missing out on by remotely posting (TikTok AI sound selection for example) which again can negatively impact performance. We want to help you drive the most possible views and downloads so we encourage you to post all our content natively."
   },
-  {
-    question: "How do I get started?",
-    answer: "Simply sign up for an account, choose your subscription plan, and upload your first demo video. Our AI will guide you through the process of creating engaging TikTok content for your app."
-  }
 ]
 
 export default function FAQ() {
