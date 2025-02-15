@@ -38,7 +38,7 @@ export default function LandingPage({
             Create UGC content that gets downloads
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 mb-10">
-            Save thousands on your marketing budget and drive real revenue
+            Save thousands on your marketing and focus on building your app
           </p>
           <div className="flex justify-center">
             <AuthButton />

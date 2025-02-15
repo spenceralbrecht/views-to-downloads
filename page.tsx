@@ -199,7 +199,7 @@ export default function LandingPage() {
                 <CardTitle>UGC Avatar Generator</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Auto-magically generate and save viral hooks for your videos</p>
+                <p className="text-gray-600">Automatically generate and save viral hooks for your apps</p>
               </CardContent>
               <div className="absolute top-4 right-4 px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
                 Not Available Yet
@@ -211,7 +211,7 @@ export default function LandingPage() {
                 <CardTitle>Hook Generator</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Auto-magically generate and save viral hooks for your videos</p>
+                <p className="text-gray-600">Automatically generate and save viral hooks for your apps</p>
               </CardContent>
             </Card>
           </div>

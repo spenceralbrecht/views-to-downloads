@@ -44,7 +44,7 @@ export default function Features() {
             <CardTitle className="text-xl text-foreground">UGC Avatar Generator</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">Auto-magically generate and save viral hooks for your videos</p>
+            <p className="text-muted-foreground">Automatically generate and save viral hooks for your apps</p>
           </CardContent>
           <div className="absolute top-4 right-4 px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-xs font-medium text-muted-foreground">
             Coming Soon
@@ -58,7 +58,7 @@ export default function Features() {
             <CardTitle className="text-xl text-foreground">Hook Generator</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">Auto-magically generate and save viral hooks for your videos</p>
+            <p className="text-muted-foreground">Automatically generate and save viral hooks for your apps</p>
           </CardContent>
         </Card>
       </div>

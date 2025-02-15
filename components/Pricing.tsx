@@ -13,7 +13,7 @@ const plans = [
     popular: false,
     features: [
       { text: "10 videos per month", icon: Video },
-      { text: "5 UGC avatars", icon: Camera },
+      { text: "Limited UGC avatars", icon: Camera },
       { text: "Generate unlimited viral hooks", icon: Sparkles }
     ]
   },
