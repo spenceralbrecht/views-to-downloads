@@ -1,7 +1,7 @@
 'use client'
 
 import { ReactNode, useState, useEffect } from 'react'
-import { useSubscription } from '@/hooks/useSubscription'
+import { useSubscription, CONTENT_LIMITS } from '@/hooks/useSubscription'
 import { useUser } from '@supabase/auth-helpers-react'
 import {
   Dialog,
@@ -19,31 +19,37 @@ interface ContentLimitGuardProps {
 
 export function ContentLimitGuard({ children }: ContentLimitGuardProps) {
   const user = useUser()
-  const { contentRemaining, plan, isSubscribed, loading } = useSubscription(user)
+  const { subscription, loading } = useSubscription(user)
   const [showDialog, setShowDialog] = useState(false)
-
-  // Debug logging
-  useEffect(() => {
-    console.log('ContentLimitGuard state:', {
-      contentRemaining,
-      plan,
-      isSubscribed,
-      loading,
-      showDialog
-    })
-  }, [contentRemaining, plan, isSubscribed, loading, showDialog])
-
-  // Only check limits for subscribed users
-  // Unsubscribed users will be blocked by SubscriptionGuard
-  if (!isSubscribed || contentRemaining > 0) {
-    return <>{children}</>
-  }
+  const [error, setError] = useState<string | null>(null)
+  
+  const plan = subscription?.plan_name || 'starter'
+  const contentUsed = subscription?.content_used_this_month || 0
+  const contentLimit = subscription ? CONTENT_LIMITS[subscription.plan_name] : CONTENT_LIMITS['starter']
+  const hasRemainingContent = contentUsed < contentLimit
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('ContentLimitGuard: Opening dialog')
     setShowDialog(true)
+  }
+
+  const handleUpgrade = () => {
+    try {
+      setError(null)
+      const stripeConfig = getStripeConfig()
+      if (!stripeConfig.customerBillingLink) {
+        throw new Error('Billing link not available')
+      }
+      window.location.href = stripeConfig.customerBillingLink
+    } catch (error) {
+      console.error('Error handling upgrade:', error)
+      setError('Unable to process upgrade. Please try again later.')
+    }
+  }
+
+  if (hasRemainingContent) {
+    return <>{children}</>
   }
 
   // Show limit reached dialog for subscribed users with no remaining content
@@ -60,10 +66,7 @@ export function ContentLimitGuard({ children }: ContentLimitGuardProps) {
 
       <Dialog 
         open={showDialog} 
-        onOpenChange={(open) => {
-          console.log('Dialog onOpenChange:', open)
-          setShowDialog(open)
-        }}
+        onOpenChange={setShowDialog}
       >
         <DialogContent>
           <DialogHeader>
@@ -87,13 +90,28 @@ export function ContentLimitGuard({ children }: ContentLimitGuardProps) {
               </div>
             </DialogDescription>
           </DialogHeader>
+
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+              {error}
+            </div>
+          )}
+
           <div className="flex justify-end gap-4">
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDialog(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
             {plan !== 'scale' && (
-              <Button onClick={() => window.location.href = getStripeConfig().customerBillingLink}>
-                Upgrade Plan
+              <Button 
+                onClick={handleUpgrade}
+                disabled={loading}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {loading ? 'Loading...' : 'Upgrade Plan'}
               </Button>
             )}
           </div>

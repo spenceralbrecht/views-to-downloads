@@ -41,22 +41,45 @@ const prodConfig: StripeConfig = {
 }
 
 export function getStripeConfig(): StripeConfig {
-  const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV || 'development'
+  const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV
+  if (!stripeEnv) {
+    throw new Error('NEXT_PUBLIC_STRIPE_ENV must be set to either "development" or "production"')
+  }
+  
+  if (stripeEnv !== 'development' && stripeEnv !== 'production') {
+    throw new Error('NEXT_PUBLIC_STRIPE_ENV must be either "development" or "production"')
+  }
+
   console.log('🔧 Stripe Environment:', stripeEnv)
   console.log('🔧 Using config:', stripeEnv === 'development' ? 'development (test mode)' : 'production (live mode)')
   
   const config = stripeEnv === 'development' ? devConfig : prodConfig
 
-  if (!config.checkoutLinks.starter || !config.checkoutLinks.growth || !config.checkoutLinks.scale) {
-    console.warn('Missing Stripe checkout links')
-  }
-
-  if (!config.productIds.starter || !config.productIds.growth || !config.productIds.scale) {
-    console.warn('Missing Stripe product IDs')
+  // Validate required configuration
+  const missingLinks = []
+  if (!config.checkoutLinks.starter) missingLinks.push('starter')
+  if (!config.checkoutLinks.growth) missingLinks.push('growth')
+  if (!config.checkoutLinks.scale) missingLinks.push('scale')
+  
+  if (missingLinks.length > 0) {
+    throw new Error(`Missing Stripe checkout links for plans: ${missingLinks.join(', ')}`)
   }
 
   if (!config.customerBillingLink) {
-    console.warn('Missing Stripe customer billing link')
+    throw new Error('Missing Stripe customer billing link')
+  }
+
+  // Validate that we're not mixing test and live links
+  const isTestLink = (url: string) => url.includes('test_')
+  const hasTestLinks = Object.values(config.checkoutLinks).some(isTestLink)
+  const shouldBeTest = stripeEnv === 'development'
+
+  if (hasTestLinks !== shouldBeTest) {
+    throw new Error(
+      shouldBeTest 
+        ? 'Production links detected in development environment' 
+        : 'Test links detected in production environment'
+    )
   }
 
   return config

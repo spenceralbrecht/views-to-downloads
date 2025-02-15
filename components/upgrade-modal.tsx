@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { getStripeConfig } from '@/config/stripe'
+import { useState } from 'react'
 
 export interface UpgradeModalProps {
   open: boolean
@@ -19,67 +20,91 @@ export interface UpgradeModalProps {
 }
 
 export function UpgradeModal({ open, onOpenChange, subscription, loading }: UpgradeModalProps) {
-  console.log('UpgradeModal open:', open);
-  // Derive the plan from the subscription prop
+  const [error, setError] = useState<string | null>(null)
   const plan = subscription?.plan_name || null;
-  console.log('UpgradeModal subscription prop:', subscription, 'derived plan:', plan);
 
   // Get the next tier's payment link
   const getUpgradeLink = () => {
-    const stripeConfig = getStripeConfig();
-    console.log('Stripe config in getUpgradeLink:', stripeConfig);
-    
-    if (!stripeConfig.customerBillingLink) {
-      console.error('Customer billing link not defined in stripeConfig');
-      return;
+    try {
+      const stripeConfig = getStripeConfig();
+      
+      if (!stripeConfig.customerBillingLink) {
+        throw new Error('Customer billing link not defined in stripeConfig');
+      }
+      
+      return stripeConfig.customerBillingLink;
+    } catch (error) {
+      console.error('Error getting upgrade link:', error);
+      throw error;
     }
-    
-    return stripeConfig.customerBillingLink;
   }
 
   const handleUpgrade = () => {
-    console.log('Upgrade modal: Upgrade Now button clicked.');
-    console.log('Current plan:', plan);
-    const upgradeLink = getUpgradeLink();
-    console.log('Retrieved upgrade link:', upgradeLink);
-    if (upgradeLink) {
-      console.log('Redirecting to upgrade link:', upgradeLink);
+    try {
+      setError(null);
+      const upgradeLink = getUpgradeLink();
       window.location.href = upgradeLink;
       onOpenChange(false);
-    } else {
-      console.error('No upgrade link available for current plan:', plan);
+    } catch (error) {
+      console.error('Error handling upgrade:', error);
+      setError('Unable to process upgrade. Please try again later.');
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] z-[9999]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Upgrade Your Plan</DialogTitle>
           <DialogDescription>
-            You've reached your monthly content creation limit. Upgrade your plan to create more content and unlock additional features.
+            Upgrade to get more content credits and features
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="space-y-2">
-            <h3 className="font-medium">Next Tier Benefits:</h3>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-              <li>Increased monthly content creation limit</li>
-              <li>Priority processing</li>
-              <li>Advanced analytics</li>
-              <li>Premium support</li>
-            </ul>
+
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <p>
+            Your current plan: <span className="font-semibold">{plan || 'Free'}</span>
+          </p>
+          
+          <div className="text-sm text-gray-500">
+            Next tier available:
+            {plan === 'starter' && (
+              <span className="block">Growth Plan - 50 pieces of content per month</span>
+            )}
+            {plan === 'growth' && (
+              <span className="block">Scale Plan - 150 pieces of content per month</span>
+            )}
+            {plan === 'scale' && (
+              <span className="block">You&apos;re on our highest tier. Contact support for custom limits.</span>
+            )}
           </div>
         </div>
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+          >
             Cancel
           </Button>
-          <Button onClick={handleUpgrade} className="btn-gradient" disabled={loading}>
-            {loading ? 'Loading...' : 'Upgrade Now'}
-          </Button>
+          {plan !== 'scale' && (
+            <Button
+              onClick={handleUpgrade}
+              disabled={loading}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {loading ? 'Loading...' : 'Upgrade Now'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

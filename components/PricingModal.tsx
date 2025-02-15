@@ -69,20 +69,28 @@ const pricingTiers: PricingTier[] = [
   }
 ]
 
-export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
+export function PricingModal({ isOpen, onClose }: PricingModalProps) {
   const [prices, setPrices] = useState<Price[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchPrices() {
       try {
+        setError(null)
         const response = await fetch('/api/stripe/prices')
         const data = await response.json()
+        
+        if (data.error) {
+          throw new Error(data.error)
+        }
+        
         if (data.prices) {
           setPrices(data.prices)
         }
       } catch (error) {
         console.error('Error fetching prices:', error)
+        setError('Failed to load pricing information. Please try again later.')
       } finally {
         setLoading(false)
       }
@@ -94,12 +102,18 @@ export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
   }, [isOpen])
 
   const handlePurchaseClick = (tier: PricingTier) => {
-    const link = tier.getLink()
-    if (!link) {
-      console.error(`Checkout link not found for ${tier.name} plan`)
-      return
+    try {
+      const link = tier.getLink()
+      if (!link) {
+        console.error(`Checkout link not found for ${tier.name} plan`)
+        setError(`Unable to process ${tier.name} plan purchase. Please try again later.`)
+        return
+      }
+      window.location.href = link
+    } catch (error) {
+      console.error('Error handling purchase:', error)
+      setError('Unable to process purchase. Please try again later.')
     }
-    window.location.href = link
   }
 
   return (
@@ -111,6 +125,12 @@ export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
             Select the plan that best fits your needs
           </DialogDescription>
         </DialogHeader>
+        
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+            {error}
+          </div>
+        )}
 
         <div className="grid md:grid-cols-3 gap-8 mt-8">
           {pricingTiers.map((tier, index) => {

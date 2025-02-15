@@ -3,9 +3,7 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia'
-})
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,22 +16,64 @@ const supabaseAdmin = createClient(
   }
 )
 
+// Get the appropriate webhook secret based on environment
+function getWebhookSecret(): string {
+  const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV
+  if (!stripeEnv) {
+    throw new Error('NEXT_PUBLIC_STRIPE_ENV must be set')
+  }
+
+  const secret = stripeEnv === 'development' 
+    ? process.env.STRIPE_TEST_WEBHOOK_SECRET 
+    : process.env.STRIPE_WEBHOOK_SECRET
+
+  if (!secret) {
+    throw new Error(`Missing ${stripeEnv === 'development' ? 'STRIPE_TEST_WEBHOOK_SECRET' : 'STRIPE_WEBHOOK_SECRET'}`)
+  }
+
+  return secret
+}
+
+// Get the appropriate price IDs based on environment
+function getPriceIds() {
+  const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV
+  if (!stripeEnv) {
+    throw new Error('NEXT_PUBLIC_STRIPE_ENV must be set')
+  }
+
+  if (stripeEnv === 'development') {
+    return {
+      starter: process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID,
+      growth: process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID,
+      scale: process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID,
+    }
+  } else {
+    return {
+      starter: process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID,
+      growth: process.env.NEXT_PUBLIC_STRIPE_GROWTH_PRICE_ID,
+      scale: process.env.NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID,
+    }
+  }
+}
+
 async function getUserIdFromEmail(email: string | null | undefined): Promise<string | null> {
   if (!email) return null;
   
   try {
-    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({
-      filters: {
-        email: email
-      }
-    });
+    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers()
+    
+    if (error || !users) {
+      console.log('Error finding users:', error)
+      return null
+    }
 
-    if (error || !users || users.length === 0) {
+    const user = users.users.find(u => u.email === email)
+    if (!user) {
       console.log('No user found for email:', email)
       return null
     }
 
-    return users[0].id
+    return user.id
   } catch (error) {
     console.error('Error finding user by email:', error)
     return null
@@ -42,6 +82,7 @@ async function getUserIdFromEmail(email: string | null | undefined): Promise<str
 
 async function handleStripeWebhook(event: Stripe.Event) {
   console.log('Processing webhook event:', event.type);
+  const priceIds = getPriceIds()
 
   try {
     switch (event.type) {
@@ -73,9 +114,9 @@ async function handleStripeWebhook(event: Stripe.Event) {
 
         // Determine plan name from price ID
         let planName = 'starter'
-        if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID) {
+        if (priceId === priceIds.growth) {
           planName = 'growth'
-        } else if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID) {
+        } else if (priceId === priceIds.scale) {
           planName = 'scale'
         }
 
@@ -110,9 +151,9 @@ async function handleStripeWebhook(event: Stripe.Event) {
 
         // Determine new plan name from price ID
         let planName = 'starter'
-        if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID) {
+        if (priceId === priceIds.growth) {
           planName = 'growth'
-        } else if (priceId === process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID) {
+        } else if (priceId === priceIds.scale) {
           planName = 'scale'
         }
 
@@ -209,14 +250,6 @@ async function handleStripeWebhook(event: Stripe.Event) {
 }
 
 export async function POST(req: Request) {
-  if (!process.env.STRIPE_TEST_WEBHOOK_SECRET) {
-    console.error('Missing STRIPE_TEST_WEBHOOK_SECRET')
-    return new NextResponse(
-      JSON.stringify({ error: 'Server configuration error' }), 
-      { status: 500 }
-    )
-  }
-
   try {
     const text = await req.text()
     const sig = headers().get('stripe-signature')
@@ -229,10 +262,11 @@ export async function POST(req: Request) {
       )
     }
 
+    const webhookSecret = getWebhookSecret()
     const event = stripe.webhooks.constructEvent(
       text,
       sig,
-      process.env.STRIPE_TEST_WEBHOOK_SECRET
+      webhookSecret
     )
 
     const response = await handleStripeWebhook(event)

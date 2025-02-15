@@ -6,29 +6,46 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16'
 })
 
-const PRICE_IDS = [
-  process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID,
-  process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID,
-  process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID,
-]
+// Get the appropriate price IDs based on environment
+function getPriceIds() {
+  const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV
+  if (!stripeEnv) {
+    throw new Error('NEXT_PUBLIC_STRIPE_ENV must be set')
+  }
 
-const stripeConfig = getStripeConfig()
-const CHECKOUT_LINKS = {
-  [process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID!]: stripeConfig.checkoutLinks.starter,
-  [process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID!]: stripeConfig.checkoutLinks.growth,
-  [process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID!]: stripeConfig.checkoutLinks.scale,
+  if (stripeEnv === 'development') {
+    return [
+      process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID,
+    ]
+  } else {
+    return [
+      process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_GROWTH_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID,
+    ]
+  }
 }
 
 export async function GET() {
   try {
+    const stripeConfig = getStripeConfig()
+    const priceIds = getPriceIds()
+
     const prices = await Promise.all(
-      PRICE_IDS.map(async (priceId) => {
+      priceIds.map(async (priceId) => {
         if (!priceId) return null
         const price = await stripe.prices.retrieve(priceId, {
           expand: ['product']
         })
         const product = price.product as Stripe.Product
-        const checkoutUrl = CHECKOUT_LINKS[price.id]
+        
+        // Get the checkout link based on the price ID's position (starter, growth, scale)
+        let checkoutUrl = ''
+        if (price.id === priceIds[0]) checkoutUrl = stripeConfig.checkoutLinks.starter
+        else if (price.id === priceIds[1]) checkoutUrl = stripeConfig.checkoutLinks.growth
+        else if (price.id === priceIds[2]) checkoutUrl = stripeConfig.checkoutLinks.scale
 
         return {
           id: price.id,
@@ -37,7 +54,7 @@ export async function GET() {
           interval: price.recurring?.interval || 'month',
           features: product.metadata.features ? JSON.parse(product.metadata.features) : [],
           popular: product.metadata.popular === 'true',
-          checkoutUrl: checkoutUrl || ''
+          checkoutUrl: checkoutUrl
         }
       })
     )
