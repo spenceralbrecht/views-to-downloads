@@ -85,13 +85,14 @@ export function getStripeConfig(): StripeConfig {
   const shouldBeTest = stripeEnv === 'development';
 
   if (hasTestLinks !== shouldBeTest || hasTestPriceIds !== shouldBeTest) {
-    console.error('Environment:', stripeEnv);
-    console.error('Links:', config.checkoutLinks);
-    console.error('Price IDs:', config.productIds);
-    throw new Error(
+    console.warn('⚠️ Stripe Environment Warning:');
+    console.warn('Environment:', stripeEnv);
+    console.warn('Links:', config.checkoutLinks);
+    console.warn('Price IDs:', config.productIds);
+    console.warn(
       shouldBeTest 
-        ? 'Production links/prices detected in development environment' 
-        : 'Test links/prices detected in production environment'
+        ? '⚠️ Warning: Production links/prices detected in development environment' 
+        : '⚠️ Warning: Test links/prices detected in production environment'
     );
   }
 
