@@ -105,26 +105,41 @@ export function Sidebar({ user }: SidebarProps) {
         {!loading && (
           <div className="px-4 mt-6">
             {subscription ? (
-              <div className="rounded-md bg-muted p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-muted-foreground">Content Usage</span>
-                  <span className="text-sm font-medium text-primary">
-                    {contentUsed}/{contentLimit}
-                  </span>
+              <>
+                <div className="rounded-md bg-muted p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-muted-foreground">Content Usage</span>
+                    <span className="text-sm font-medium text-primary">
+                      {contentUsed}/{contentLimit}
+                    </span>
+                  </div>
+                  <Progress 
+                    value={progressPercentage} 
+                    className="bg-background"
+                  />
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      {(planName.charAt(0).toUpperCase() + planName.slice(1)) + ' Plan'}
+                    </span>
+                    <Badge className="bg-primary/20 text-primary hover:bg-primary/30">
+                      Active
+                    </Badge>
+                  </div>
+                  {contentUsed >= contentLimit && planName !== 'scale' && (
+                    <Button 
+                      className="w-full btn-gradient mt-3" 
+                      size="sm"
+                      onClick={() => setShowPricingModal(true)}
+                    >
+                      Upgrade for More
+                    </Button>
+                  )}
                 </div>
-                <Progress 
-                  value={progressPercentage} 
-                  className="bg-background"
+                <PricingModal 
+                  isOpen={showPricingModal} 
+                  onClose={() => setShowPricingModal(false)} 
                 />
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    {(planName.charAt(0).toUpperCase() + planName.slice(1)) + ' Plan'}
-                  </span>
-                  <Badge className="bg-primary/20 text-primary hover:bg-primary/30">
-                    Active
-                  </Badge>
-                </div>
-              </div>
+              </>
             ) : (
               <>
                 <Button 
