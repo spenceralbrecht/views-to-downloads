@@ -69,7 +69,7 @@ const pricingTiers: PricingTier[] = [
   }
 ]
 
-export function PricingModal({ isOpen, onClose }: PricingModalProps) {
+function PricingModal({ isOpen, onClose }: PricingModalProps) {
   const [prices, setPrices] = useState<Price[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -174,3 +174,5 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
     </Dialog>
   )
 }
+
+export default PricingModal;
