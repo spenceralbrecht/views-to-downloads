@@ -5,13 +5,18 @@ import { getStripeConfig } from '@/config/stripe'
 // Get the appropriate secret key based on environment
 function getStripeSecretKey() {
   const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV
-  if (stripeEnv === 'development') {
-    return process.env.STRIPE_TEST_SECRET_KEY
+  const secretKey = stripeEnv === 'development' 
+    ? process.env.STRIPE_TEST_SECRET_KEY 
+    : process.env.STRIPE_SECRET_KEY
+
+  if (!secretKey) {
+    throw new Error(`Missing Stripe secret key for environment: ${stripeEnv}`)
   }
-  return process.env.STRIPE_SECRET_KEY
+
+  return secretKey
 }
 
-const stripe = new Stripe(getStripeSecretKey() || '', {
+const stripe = new Stripe(getStripeSecretKey(), {
   apiVersion: '2025-01-27.acacia'
 })
 
@@ -36,6 +41,8 @@ function getPriceIds() {
   Object.entries(ids).forEach(([tier, id]) => {
     if (!id) {
       console.error(`Missing ${stripeEnv} price ID for ${tier} tier`)
+    } else {
+      console.log(`${tier} price ID: ${id.slice(0, 8)}...`)
     }
   })
 
@@ -46,42 +53,57 @@ export async function GET() {
   try {
     // First check if we have a valid Stripe secret key
     const secretKey = getStripeSecretKey()
-    if (!secretKey) {
-      console.error('Missing Stripe secret key');
-      return NextResponse.json(
-        { error: 'Stripe configuration error' },
-        { status: 500 }
-      );
+    const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV || 'development'
+    
+    console.log('=== Stripe Configuration ===')
+    console.log('Environment:', stripeEnv)
+    console.log('Secret key present:', !!secretKey)
+    if (secretKey) {
+      console.log('Secret key prefix:', secretKey.startsWith('sk_test_') ? 'sk_test_' : 'sk_live_')
     }
 
     const stripeConfig = getStripeConfig()
     const priceIds = getPriceIds()
 
-    // Log the environment and configuration for debugging
-    console.log('Environment:', process.env.NEXT_PUBLIC_STRIPE_ENV);
-    console.log('Using secret key:', secretKey.slice(0, 8) + '...');
-    console.log('Price IDs:', priceIds);
+    console.log('=== Price IDs ===')
+    priceIds.forEach((id, index) => {
+      if (id) {
+        console.log(`Price ID ${index}: ${id.slice(0, 8)}... (${id.startsWith('price_test_') ? 'test' : 'live'})`)
+      } else {
+        console.log(`Price ID ${index}: missing`)
+      }
+    })
+
+    console.log('=== Checkout Links ===')
+    Object.entries(stripeConfig.checkoutLinks).forEach(([tier, url]) => {
+      if (url) {
+        console.log(`${tier}: ${url.includes('test') ? 'test link' : 'live link'}`)
+      } else {
+        console.log(`${tier}: missing`)
+      }
+    })
 
     // Validate that we have price IDs
     if (!priceIds.some(id => id)) {
-      console.error('No valid price IDs found');
-      return NextResponse.json(
-        { error: 'No pricing information available' },
-        { status: 500 }
-      );
+      const error = `No valid price IDs found for environment: ${stripeEnv}`
+      console.error(error)
+      return NextResponse.json({ error }, { status: 500 })
     }
 
     const prices = await Promise.all(
       priceIds.map(async (priceId, index) => {
         if (!priceId) {
-          console.warn(`Missing price ID for index ${index}`);
-          return null;
+          console.warn(`Missing price ID for index ${index}`)
+          return null
         }
 
         try {
+          console.log(`Attempting to fetch price info for ID: ${priceId}`)
           const price = await stripe.prices.retrieve(priceId, {
             expand: ['product']
           })
+          console.log(`Successfully retrieved price info for ID: ${priceId}`)
+          
           const product = price.product as Stripe.Product
           
           // Get the checkout link based on the price ID's position
@@ -91,7 +113,7 @@ export async function GET() {
           else if (index === 2) checkoutUrl = stripeConfig.checkoutLinks.scale
 
           if (!checkoutUrl) {
-            console.warn(`Missing checkout URL for price ${priceId}`);
+            console.warn(`Missing checkout URL for price ${priceId}`)
           }
 
           return {
@@ -104,8 +126,16 @@ export async function GET() {
             checkoutUrl: checkoutUrl
           }
         } catch (error) {
-          console.error(`Error fetching price ${priceId}:`, error);
-          return null;
+          if (error instanceof Stripe.errors.StripeError) {
+            console.error(`Stripe error for price ${priceId}:`, {
+              type: error.type,
+              code: error.code,
+              message: error.message
+            })
+          } else {
+            console.error(`Error fetching price ${priceId}:`, error)
+          }
+          return null
         }
       })
     )
@@ -114,25 +144,35 @@ export async function GET() {
     const validPrices = prices.filter((price): price is NonNullable<typeof price> => price !== null)
 
     if (validPrices.length === 0) {
-      console.error('No valid prices were retrieved');
-      return NextResponse.json(
-        { error: 'Unable to retrieve pricing information' },
-        { status: 500 }
-      );
+      const error = 'No valid prices were retrieved. Check server logs for details.'
+      console.error(error)
+      return NextResponse.json({ error }, { status: 500 })
     }
+
+    console.log('=== Successfully Retrieved Prices ===')
+    console.log('Number of valid prices:', validPrices.length)
+    validPrices.forEach((price, index) => {
+      console.log(`Price ${index}:`, {
+        id: price.id,
+        name: price.name,
+        price: price.price,
+        hasCheckoutUrl: !!price.checkoutUrl
+      })
+    })
 
     return NextResponse.json({ prices: validPrices })
   } catch (error) {
-    console.error('Error in price fetching:', error);
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+    console.error('=== Fatal Error ===')
+    if (error instanceof Stripe.errors.StripeError) {
+      console.error('Stripe error:', {
+        type: error.type,
+        code: error.code,
+        message: error.message
+      })
+    } else {
+      console.error('Error in price fetching:', error)
     }
-    return NextResponse.json(
-      { error: 'An unexpected error occurred while fetching prices' },
-      { status: 500 }
-    );
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
