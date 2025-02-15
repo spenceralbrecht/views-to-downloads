@@ -70,19 +70,32 @@ export function getStripeConfig(): StripeConfig {
   }
 
   // Validate that we're not mixing test and live links
-  const isTestLink = (url: string) => url.includes('test_')
-  const hasTestLinks = Object.values(config.checkoutLinks).some(isTestLink)
-  const shouldBeTest = stripeEnv === 'development'
+  const isTestLink = (url: string) => {
+    if (!url) return false;
+    return url.includes('test_') || url.includes('/test/');
+  };
+  
+  const isTestPriceId = (id: string) => {
+    if (!id) return false;
+    return id.startsWith('price_test_');
+  };
 
-  if (hasTestLinks !== shouldBeTest) {
+  const hasTestLinks = Object.values(config.checkoutLinks).some(isTestLink);
+  const hasTestPriceIds = Object.values(config.productIds).some(isTestPriceId);
+  const shouldBeTest = stripeEnv === 'development';
+
+  if (hasTestLinks !== shouldBeTest || hasTestPriceIds !== shouldBeTest) {
+    console.error('Environment:', stripeEnv);
+    console.error('Links:', config.checkoutLinks);
+    console.error('Price IDs:', config.productIds);
     throw new Error(
       shouldBeTest 
-        ? 'Production links detected in development environment' 
-        : 'Test links detected in production environment'
-    )
+        ? 'Production links/prices detected in development environment' 
+        : 'Test links/prices detected in production environment'
+    );
   }
 
-  return config
+  return config;
 }
 
-export default getStripeConfig
+export default getStripeConfig;
