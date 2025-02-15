@@ -41,8 +41,6 @@ const pricingTiers: PricingTier[] = [
     features: [
       'Create up to 10 videos per month',
       'Auto Generate Engaging Hooks',
-      'Standard quality exports',
-      'Email support'
     ],
     getLink: () => getStripeConfig().checkoutLinks.starter
   },
