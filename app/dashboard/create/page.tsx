@@ -178,9 +178,13 @@ export default function CreateAd() {
   useEffect(() => {
     async function fetchDemoVideos() {
       setLoadingDemos(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
       const { data, error } = await supabase
         .from('input_content')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -242,11 +246,15 @@ export default function CreateAd() {
         return
       }
 
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
       setLoadingHooks(true)
       const { data, error } = await supabase
         .from('hooks')
         .select('*')
         .eq('app_id', selectedAppId)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
       if (error) {
