@@ -13,6 +13,11 @@ export type AppData = z.infer<typeof appDataSchema>
 // Firecrawl response type
 export interface FirecrawlResponse {
   success: boolean
-  data?: AppData
+  data: {
+    extract: AppData
+    markdown?: string
+    html?: string
+    metadata?: Record<string, any>
+  }
   error?: string
 }

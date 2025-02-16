@@ -188,35 +188,29 @@ export async function addApp(appStoreUrl: string) {
 
       try {
         const result = await Promise.race([
-          firecrawl.extract([appStoreUrl], {
-            prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
-            schema: appDataSchema,
-            actions: [
-              { type: "wait", milliseconds: 3000 }, // Initial wait for page load
-              { type: "scroll", pixels: 500 }, // Scroll down to ensure content loads
-              { type: "wait", milliseconds: 2000 }, // Wait for dynamic content
-              { type: "scroll", pixels: -500 }, // Scroll back up
-              { type: "wait", milliseconds: 2000 }, // Final wait before extraction
-            ],
-            options: {
-              waitUntil: 'networkidle0', // Wait until network is idle
-              timeout: 40000, // 40 second timeout for page load
+          firecrawl.scrapeUrl(appStoreUrl, {
+            formats: ['markdown'],
+            extract: {
+              prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
+              schema: appDataSchema
             }
           }),
           timeout
-        ]) as FirecrawlResponse
+        ]) as { success: boolean; data: { extract: { app_name: string; app_description: string; app_logo_url: string } }; error?: string }
 
         if (!result.success) {
           console.error('Extraction failed:', result.error)
           throw new Error(result.error || 'Failed to extract app data')
         }
 
-        if (!result.data || !result.data.app_name || !result.data.app_description || !result.data.app_logo_url) {
-          console.error('Invalid data structure:', result.data)
+        // The extracted data will be in result.data.extract
+        const extractedData = result.data.extract
+        if (!extractedData || !extractedData.app_name || !extractedData.app_description || !extractedData.app_logo_url) {
+          console.error('Invalid data structure:', extractedData)
           throw new Error('Failed to extract required app data')
         }
 
-        return result.data
+        return extractedData
       } catch (error) {
         console.error(`Attempt ${attempt} failed:`, error)
         throw error
