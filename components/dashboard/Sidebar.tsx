@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Download, Home, Video, Zap, Activity, HelpCircle, CreditCard, Settings, Sparkles } from 'lucide-react'
+import { Download, Home, Video, Zap, Activity, HelpCircle, CreditCard, Settings, Sparkles, BookOpen } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { User } from '@supabase/supabase-js'
@@ -33,6 +33,7 @@ export function Sidebar({ user }: SidebarProps) {
     { name: 'Videos', href: '/dashboard/videos', icon: Video },
     { name: 'Hooks', href: '/dashboard/hooks', icon: Zap },
     { name: 'Apps', href: '/dashboard/apps', icon: Activity },
+    { name: 'Guide to Virality', href: '/dashboard/guide', icon: BookOpen },
   ]
 
   const bottomNav = [
