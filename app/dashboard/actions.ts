@@ -4,7 +4,7 @@ import { createServerActionClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { appDataSchema, type FirecrawlResponse } from '@/types/firecrawl'
+import { appDataSchema, type FirecrawlResponse, type AddAppResponse } from '@/types/firecrawl'
 import { generateAppDescription } from '@/utils/openai'
 import { OpenAI } from 'openai'
 
@@ -147,7 +147,7 @@ export async function uploadDemoVideo(formData: FormData) {
   }
 }
 
-export async function addApp(appStoreUrl: string) {
+export async function addApp(appStoreUrl: string): Promise<AddAppResponse> {
   try {
     // Get user
     const supabase = createServerActionClient({ cookies })
@@ -192,25 +192,49 @@ export async function addApp(appStoreUrl: string) {
             formats: ['markdown'],
             extract: {
               prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
-              schema: appDataSchema
+              schema: {
+                properties: {
+                  app_name: { description: "The name of the app" },
+                  app_description: { description: "The full description of the app" },
+                  app_logo_url: { description: "The URL of the app's logo image" }
+                },
+                required: ["app_name", "app_description", "app_logo_url"]
+              }
             }
           }),
           timeout
-        ]) as { success: boolean; data: { extract: { app_name: string; app_description: string; app_logo_url: string } }; error?: string }
+        ]) as FirecrawlResponse
 
-        if (!result.success) {
-          console.error('Extraction failed:', result.error)
-          throw new Error(result.error || 'Failed to extract app data')
+        if (!result || !result.success) {
+          console.error('Extraction failed:', result?.error || 'No result returned')
+          throw new Error(result?.error || 'Failed to extract app data')
         }
 
-        // The extracted data will be in result.data.extract
-        const extractedData = result.data.extract
-        if (!extractedData || !extractedData.app_name || !extractedData.app_description || !extractedData.app_logo_url) {
-          console.error('Invalid data structure:', extractedData)
+        // Log the full response to debug
+        console.log('Firecrawl response:', JSON.stringify(result, null, 2))
+
+        // Extract data from metadata
+        const metadata = result.metadata
+        if (!metadata) {
+          console.error('No metadata in response:', result)
+          throw new Error('No metadata found in response')
+        }
+
+        // Construct app data from metadata
+        const extractedData = {
+          app_name: metadata.title?.replace(' - Apps on Google Play', '') || '',
+          app_description: metadata.description || '',
+          app_logo_url: metadata.ogImage || metadata['og:image'] || ''
+        }
+
+        // Validate the extracted data
+        const validationResult = appDataSchema.safeParse(extractedData)
+        if (!validationResult.success) {
+          console.error('Invalid data structure:', extractedData, validationResult.error)
           throw new Error('Failed to extract required app data')
         }
 
-        return extractedData
+        return validationResult.data
       } catch (error) {
         console.error(`Attempt ${attempt} failed:`, error)
         throw error
@@ -262,6 +286,7 @@ export async function addApp(appStoreUrl: string) {
     console.error('Error adding app:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to add app'
     return { 
+      success: false,
       error: errorMessage.includes('timed out') 
         ? 'The app store is taking too long to respond. Please try again in a few minutes.' 
         : errorMessage 
