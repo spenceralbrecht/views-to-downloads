@@ -29,13 +29,17 @@ export function AddAppModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    const result = await onAddApp(appUrl)
     
+    // Close modal immediately and let parent handle loading state
+    onOpenChange(false)
+    
+    const result = await onAddApp(appUrl)
     if (result.error) {
       setError(result.error)
+      // Reopen modal to show error
+      onOpenChange(true)
     } else if (result.success) {
       setAppUrl('')
-      onOpenChange(false)
     }
   }
 

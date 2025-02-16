@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { Button } from "@/components/ui/button"
 import { AddAppModal } from "@/components/AddAppModal"
 import { AppDetailsModal } from "@/components/AppDetailsModal"
@@ -8,6 +8,8 @@ import { AppCard } from "@/components/AppCard"
 import { AppCardSkeleton } from "@/components/AppCardSkeleton"
 import { addApp, getApps, deleteApp } from "../actions"
 import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from 'next/navigation'
+import { PostgrestError } from '@supabase/supabase-js'
 
 type App = {
   id: string
@@ -25,6 +27,8 @@ export default function AppsPage() {
   const [isAddingApp, setIsAddingApp] = useState(false)
   const [isDeletingApp, setIsDeletingApp] = useState(false)
   const { toast } = useToast()
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   useEffect(() => {
     const loadApps = async () => {
@@ -32,7 +36,7 @@ export default function AppsPage() {
       if (error) {
         toast({
           title: "Error loading apps",
-          description: error,
+          description: error instanceof PostgrestError ? error.message : String(error),
           variant: "destructive",
         })
       } else if (data) {
@@ -43,35 +47,26 @@ export default function AppsPage() {
     loadApps()
   }, [toast])
 
-  const handleAddApp = async (url: string) => {
+  const handleAddApp = async (appStoreUrl: string) => {
     setIsAddingApp(true)
-    const result = await addApp(url)
     
-    if (result.error) {
-      toast({
-        title: "Error adding app",
-        description: String(result.error),
-        variant: "destructive",
-      })
-      setIsAddingApp(false)
-    } else if (result.success) {
-      // Refresh the apps list
-      const { data, error } = await getApps()
-      if (error) {
-        toast({
-          title: "Error loading apps",
-          description: String(error),
-          variant: "destructive",
-        })
-      } else if (data) {
-        setApps(data)
-        setIsModalOpen(false)
-        toast({
-          title: "App added",
-          description: "The app has been added successfully.",
-        })
+    try {
+      const result = await addApp(appStoreUrl)
+      
+      if (result.success) {
+        // Refresh the apps list
+        const { data: newApps, error: refreshError } = await getApps()
+        if (!refreshError && newApps) {
+          setApps(newApps)
+        }
       }
-      setIsAddingApp(false)
+      
+      return result
+    } finally {
+      // Keep showing skeleton for a moment to ensure smooth transition
+      setTimeout(() => {
+        setIsAddingApp(false)
+      }, 500)
     }
   }
 
@@ -114,14 +109,18 @@ export default function AppsPage() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
           {isLoading ? (
             // Show 3 skeleton cards while loading
             Array.from({ length: 3 }).map((_, i) => (
               <AppCardSkeleton key={i} />
             ))
-          ) : apps.length > 0 ? (
+          ) : (
             <>
+              {/* Show skeleton card first while adding */}
+              {isAddingApp && <AppCardSkeleton />}
+              
+              {/* Existing app cards */}
               {apps.map(app => (
                 <AppCard
                   key={app.id}
@@ -129,9 +128,10 @@ export default function AppsPage() {
                   onClick={() => setSelectedApp(app)}
                 />
               ))}
-              {isAddingApp && <AppCardSkeleton />}
             </>
-          ) : (
+          )}
+
+          {!isLoading && apps.length === 0 && !isAddingApp && (
             <div className="col-span-full text-center py-12">
               <p className="text-muted-foreground">No apps yet. Click "Add New App" to get started.</p>
             </div>
@@ -142,14 +142,14 @@ export default function AppsPage() {
           open={isModalOpen}
           onOpenChange={setIsModalOpen}
           onAddApp={handleAddApp}
-          isPending={isAddingApp}
+          isPending={isPending || isAddingApp}
         />
 
         <AppDetailsModal
           open={!!selectedApp}
           onOpenChange={(open) => !open && setSelectedApp(null)}
           app={selectedApp}
-          onDelete={() => handleDeleteApp(selectedApp?.id)}
+          onDelete={() => selectedApp?.id && handleDeleteApp(selectedApp.id)}
           isDeleting={isDeletingApp}
         />
       </div>
