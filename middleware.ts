@@ -4,7 +4,19 @@ import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
+  const supabase = createMiddlewareClient({ 
+    req, 
+    res,
+    options: {
+      cookies: {
+        name: 'sb-auth',
+        lifetime: 60 * 60 * 24 * 7, // 1 week
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/'
+      }
+    }
+  })
 
   const {
     data: { session },
