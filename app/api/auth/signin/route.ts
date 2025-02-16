@@ -13,6 +13,10 @@ export async function GET(request: Request) {
     provider: 'google',
     options: {
       redirectTo: `${requestUrl.origin}/auth/callback`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent'
+      }
     },
   })
 
@@ -20,15 +24,13 @@ export async function GET(request: Request) {
     return NextResponse.redirect(
       `${requestUrl.origin}/?error=Could not authenticate user`,
       {
-        // a 301 status is required to redirect from a POST to a GET route
-        status: 301,
+        status: 302,
       }
     )
   }
 
   return NextResponse.redirect(data.url, {
-    // a 301 status is required to redirect from a POST to a GET route
-    status: 301,
+    status: 302,
   })
 }
 

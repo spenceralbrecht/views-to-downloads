@@ -20,15 +20,23 @@ export function AddAppModal({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAddApp: (url: string) => void
+  onAddApp: (url: string) => Promise<{ success?: boolean; error?: string }>
   isPending: boolean
 }) {
   const [appUrl, setAppUrl] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onAddApp(appUrl)
-    setAppUrl('')
+    setError(null)
+    const result = await onAddApp(appUrl)
+    
+    if (result.error) {
+      setError(result.error)
+    } else if (result.success) {
+      setAppUrl('')
+      onOpenChange(false)
+    }
   }
 
   return (
@@ -48,6 +56,10 @@ export function AddAppModal({
             onChange={(e) => setAppUrl(e.target.value)}
             required
           />
+          
+          {error && (
+            <p className="text-sm text-red-500">{error}</p>
+          )}
           
           <DialogFooter>
             <Button 

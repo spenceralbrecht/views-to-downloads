@@ -153,23 +153,51 @@ export async function addApp(appStoreUrl: string) {
     const supabase = createServerActionClient({ cookies })
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError) throw userError
+    if (!user) throw new Error('Not authenticated')
 
-    // Extract app data from Firecrawl
+    // Validate URL format
+    if (!appStoreUrl.includes('apps.apple.com') && !appStoreUrl.includes('play.google.com')) {
+      throw new Error('Please provide a valid App Store or Play Store URL')
+    }
+
+    // Extract app data from Firecrawl with timeout
     const { default: FirecrawlApp } = await import('@mendable/firecrawl-js')
     const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY })
 
     console.log('Extracting app data for:', appStoreUrl)
-    const extractResponse = await firecrawl.extract([appStoreUrl], {
-      prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
-      schema: appDataSchema
-    }) as FirecrawlResponse
+    
+    // Create a promise that rejects after 30 seconds
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timed out. Please try again.')), 30000)
+    })
+
+    // Race between the extraction and timeout
+    const extractResponse = await Promise.race([
+      firecrawl.extract([appStoreUrl], {
+        prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
+        schema: appDataSchema
+      }),
+      timeout
+    ]) as FirecrawlResponse
 
     if (!extractResponse.success || !extractResponse.data) {
       console.error('Firecrawl extraction failed:', extractResponse.error)
-      throw new Error(extractResponse.error || 'Failed to extract app data')
+      throw new Error(extractResponse.error || 'Failed to extract app data. Please try again.')
     }
 
     const { app_name, app_description, app_logo_url } = extractResponse.data
+    
+    // Check if app already exists for this user
+    const { data: existingApp } = await supabase
+      .from('apps')
+      .select('id')
+      .eq('owner_id', user.id)
+      .eq('app_store_url', appStoreUrl)
+      .single()
+
+    if (existingApp) {
+      throw new Error('This app has already been added to your account')
+    }
     
     // Process description through OpenAI
     const enhancedDescription = await generateAppDescription(app_description)
@@ -194,7 +222,8 @@ export async function addApp(appStoreUrl: string) {
     return { success: true, app: newApp }
   } catch (error) {
     console.error('Error adding app:', error)
-    return { error: error instanceof Error ? error.message : 'Failed to add app' }
+    const errorMessage = error instanceof Error ? error.message : 'Failed to add app'
+    return { error: errorMessage.includes('timed out') ? 'Request timed out. Please try again.' : errorMessage }
   }
 }
 
@@ -442,6 +471,7 @@ export async function generateHooks(appId: string) {
     // Get user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError) throw userError
+    if (!user) throw new Error('Not authenticated')
 
     // Get app details
     const { data: app, error: appError } = await supabase
