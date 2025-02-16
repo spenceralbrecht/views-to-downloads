@@ -3,7 +3,16 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+// Initialize Stripe with the appropriate secret key based on environment
+const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV || 'development'
+const stripe = new Stripe(
+  stripeEnv === 'development' 
+    ? process.env.STRIPE_TEST_SECRET_KEY!
+    : process.env.STRIPE_SECRET_KEY!,
+  {
+    apiVersion: '2025-01-27.acacia',
+  }
+)
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,6 +40,7 @@ function getWebhookSecret(): string {
     throw new Error(`Missing ${stripeEnv === 'development' ? 'STRIPE_TEST_WEBHOOK_SECRET' : 'STRIPE_WEBHOOK_SECRET'}`)
   }
 
+  console.log('Using webhook secret for environment:', stripeEnv)
   return secret
 }
 
@@ -250,34 +260,24 @@ async function handleStripeWebhook(event: Stripe.Event) {
 }
 
 export async function POST(req: Request) {
+  const body = await req.text()
+  const sig = headers().get('stripe-signature')
+
+  if (!sig) {
+    return NextResponse.json({ error: 'No signature' }, { status: 400 })
+  }
+
   try {
-    const text = await req.text()
-    const sig = headers().get('stripe-signature')
-
-    if (!sig) {
-      console.error('No stripe-signature header')
-      return new NextResponse(
-        JSON.stringify({ error: 'No stripe-signature header' }), 
-        { status: 400 }
-      )
-    }
-
     const webhookSecret = getWebhookSecret()
-    const event = stripe.webhooks.constructEvent(
-      text,
-      sig,
-      webhookSecret
-    )
-
-    const response = await handleStripeWebhook(event)
-    return new NextResponse(JSON.stringify(response), { status: 200 })
+    const event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
+    console.log('Webhook event constructed successfully:', event.type)
+    
+    const result = await handleStripeWebhook(event)
+    return NextResponse.json(result)
   } catch (err) {
-    console.error('Webhook Error:', err instanceof Error ? err.message : err)
-    return new NextResponse(
-      JSON.stringify({ 
-        error: 'Webhook error', 
-        details: err instanceof Error ? err.message : 'Unknown error'
-      }), 
+    console.error('Webhook error:', err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Unknown error' },
       { status: 400 }
     )
   }
