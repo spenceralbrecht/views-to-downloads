@@ -28,7 +28,6 @@ export function AddAppModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onAddApp(appUrl)
-    onOpenChange(false)
     setAppUrl('')
   }
 

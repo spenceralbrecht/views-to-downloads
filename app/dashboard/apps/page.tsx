@@ -50,22 +50,29 @@ export default function AppsPage() {
     if (result.error) {
       toast({
         title: "Error adding app",
-        description: result.error,
+        description: String(result.error),
         variant: "destructive",
       })
+      setIsAddingApp(false)
     } else if (result.success) {
       // Refresh the apps list
-      const { data } = await getApps()
-      if (data) {
+      const { data, error } = await getApps()
+      if (error) {
+        toast({
+          title: "Error loading apps",
+          description: String(error),
+          variant: "destructive",
+        })
+      } else if (data) {
         setApps(data)
+        setIsModalOpen(false)
+        toast({
+          title: "App added",
+          description: "The app has been added successfully.",
+        })
       }
-      setIsModalOpen(false)
-      toast({
-        title: "App added",
-        description: "The app has been added successfully.",
-      })
+      setIsAddingApp(false)
     }
-    setIsAddingApp(false)
   }
 
   const handleDeleteApp = async (appId: string) => {
@@ -135,7 +142,7 @@ export default function AppsPage() {
           open={isModalOpen}
           onOpenChange={setIsModalOpen}
           onAddApp={handleAddApp}
-          isLoading={isAddingApp}
+          isPending={isAddingApp}
         />
 
         <AppDetailsModal
