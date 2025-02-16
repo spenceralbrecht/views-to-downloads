@@ -10,14 +10,51 @@ export const appDataSchema = z.object({
 // Type inference from the schema
 export type AppData = z.infer<typeof appDataSchema>
 
+// Firecrawl metadata type
+export interface FirecrawlMetadata {
+  title?: string
+  description?: string
+  ogImage?: string
+  'og:image'?: string
+  [key: string]: any
+}
+
+// Firecrawl schema type
+export interface FirecrawlSchema {
+  properties: {
+    [key: string]: { description: string }
+  }
+  required: string[]
+}
+
+// Firecrawl extract options
+export interface FirecrawlExtractOptions {
+  prompt: string
+  schema: FirecrawlSchema
+}
+
+// Firecrawl scrape options
+export interface FirecrawlScrapeOptions {
+  formats: string[]
+  extract: FirecrawlExtractOptions
+}
+
 // Firecrawl response type
 export interface FirecrawlResponse {
   success: boolean
-  data: {
-    extract: AppData
+  data?: {
+    extract?: AppData
     markdown?: string
     html?: string
     metadata?: Record<string, any>
   }
+  metadata?: FirecrawlMetadata
   error?: string
+}
+
+// Type for the addApp function response
+export interface AddAppResponse {
+  success: boolean
+  error?: string
+  app?: any // Replace with proper app type if available
 }
