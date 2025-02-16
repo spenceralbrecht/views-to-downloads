@@ -664,7 +664,7 @@ export default function CreateAd() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-muted-foreground">No apps found. Please add an app first.</p>
+                  <p className="text-muted-foreground">No apps found. <Link href="/dashboard/apps" className="text-primary hover:underline">Please add an app first.</Link></p>
                 )}
               </div>
             </div>
