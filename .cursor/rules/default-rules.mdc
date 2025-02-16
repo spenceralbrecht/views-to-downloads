@@ -2,7 +2,7 @@
 description: general info
 globs: 
 ---
-This project uses Bun.
+This project uses Bun. We are using this version (2024-12-18.acacia) of the Stripe API.
 
 This project is deployed in production to the url https://viewstodownloads.com.
 
