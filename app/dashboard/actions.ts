@@ -160,34 +160,7 @@ export async function addApp(appStoreUrl: string) {
       throw new Error('Please provide a valid App Store or Play Store URL')
     }
 
-    // Extract app data from Firecrawl with timeout
-    const { default: FirecrawlApp } = await import('@mendable/firecrawl-js')
-    const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY })
-
-    console.log('Extracting app data for:', appStoreUrl)
-    
-    // Create a promise that rejects after 30 seconds
-    const timeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timed out. Please try again.')), 30000)
-    })
-
-    // Race between the extraction and timeout
-    const extractResponse = await Promise.race([
-      firecrawl.extract([appStoreUrl], {
-        prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
-        schema: appDataSchema
-      }),
-      timeout
-    ]) as FirecrawlResponse
-
-    if (!extractResponse.success || !extractResponse.data) {
-      console.error('Firecrawl extraction failed:', extractResponse.error)
-      throw new Error(extractResponse.error || 'Failed to extract app data. Please try again.')
-    }
-
-    const { app_name, app_description, app_logo_url } = extractResponse.data
-    
-    // Check if app already exists for this user
+    // Check if app already exists for this user first
     const { data: existingApp } = await supabase
       .from('apps')
       .select('id')
@@ -198,32 +171,107 @@ export async function addApp(appStoreUrl: string) {
     if (existingApp) {
       throw new Error('This app has already been added to your account')
     }
+
+    // Extract app data from Firecrawl with retries
+    const { default: FirecrawlApp } = await import('@mendable/firecrawl-js')
+    const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY })
+
+    console.log('Extracting app data for:', appStoreUrl)
     
-    // Process description through OpenAI
-    const enhancedDescription = await generateAppDescription(app_description)
-
-    // Insert into database
-    const { data: newApp, error: insertError } = await supabase
-      .from('apps')
-      .insert({
-        owner_id: user.id,
-        app_store_url: appStoreUrl,
-        app_description: enhancedDescription,
-        app_name,
-        app_logo_url
+    // Helper function to attempt extraction with timeout
+    const attemptExtraction = async (attempt: number) => {
+      console.log(`Attempt ${attempt} to extract app data...`)
+      
+      const timeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(`Attempt ${attempt} timed out after 45 seconds`)), 45000)
       })
-      .select()
-      .single()
 
-    if (insertError) throw insertError
-    if (!newApp) throw new Error('Failed to create app')
+      try {
+        const result = await Promise.race([
+          firecrawl.extract([appStoreUrl], {
+            prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
+            schema: appDataSchema,
+            actions: [
+              { type: "wait", milliseconds: 3000 }, // Initial wait for page load
+              { type: "scroll", pixels: 500 }, // Scroll down to ensure content loads
+              { type: "wait", milliseconds: 2000 }, // Wait for dynamic content
+              { type: "scroll", pixels: -500 }, // Scroll back up
+              { type: "wait", milliseconds: 2000 }, // Final wait before extraction
+            ],
+            options: {
+              waitUntil: 'networkidle0', // Wait until network is idle
+              timeout: 40000, // 40 second timeout for page load
+            }
+          }),
+          timeout
+        ]) as FirecrawlResponse
 
-    revalidatePath('/dashboard/apps')
-    return { success: true, app: newApp }
+        if (!result.success) {
+          console.error('Extraction failed:', result.error)
+          throw new Error(result.error || 'Failed to extract app data')
+        }
+
+        if (!result.data || !result.data.app_name || !result.data.app_description || !result.data.app_logo_url) {
+          console.error('Invalid data structure:', result.data)
+          throw new Error('Failed to extract required app data')
+        }
+
+        return result.data
+      } catch (error) {
+        console.error(`Attempt ${attempt} failed:`, error)
+        throw error
+      }
+    }
+
+    // Try up to 3 times with increasing delays
+    let lastError: Error | null = null
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const data = await attemptExtraction(attempt)
+        console.log('Successfully extracted app data on attempt', attempt)
+        
+        // Process description through OpenAI
+        const enhancedDescription = await generateAppDescription(data.app_description)
+
+        // Insert into database
+        const { data: newApp, error: insertError } = await supabase
+          .from('apps')
+          .insert({
+            owner_id: user.id,
+            app_store_url: appStoreUrl,
+            app_description: enhancedDescription,
+            app_name: data.app_name,
+            app_logo_url: data.app_logo_url
+          })
+          .select()
+          .single()
+
+        if (insertError) throw insertError
+        if (!newApp) throw new Error('Failed to create app')
+
+        revalidatePath('/dashboard/apps')
+        return { success: true, app: newApp }
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error')
+        if (attempt < 3) {
+          // Wait before retrying (2s, then 4s, then 8s)
+          const delay = Math.pow(2, attempt) * 1000
+          console.log(`Waiting ${delay}ms before retry...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+      }
+    }
+
+    // If we get here, all attempts failed
+    throw lastError || new Error('Failed to extract app data after multiple attempts')
   } catch (error) {
     console.error('Error adding app:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to add app'
-    return { error: errorMessage.includes('timed out') ? 'Request timed out. Please try again.' : errorMessage }
+    return { 
+      error: errorMessage.includes('timed out') 
+        ? 'The app store is taking too long to respond. Please try again in a few minutes.' 
+        : errorMessage 
+    }
   }
 }
 
