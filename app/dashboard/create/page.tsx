@@ -35,6 +35,38 @@ interface Hook {
   hook_text: string
 }
 
+// Get UGC video URL (from Cloudflare R2)
+const getUGCVideoUrl = (videoNumber: number | null) => {
+  if (!videoNumber) return ''
+  const baseUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL
+  const url = `${baseUrl}/${videoNumber}.mp4`
+  console.log('Getting video URL for number:', videoNumber, 'URL:', url)
+  return url
+}
+
+// Get UGC thumbnail URL (from Cloudflare R2)
+const getUGCThumbnailUrl = (videoNumber: number | null) => {
+  if (!videoNumber) return ''
+  const baseUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL
+  const url = `${baseUrl}/thumbnail-${videoNumber}.png`
+  console.log('Getting thumbnail URL for number:', videoNumber, 'URL:', url)
+  return url
+}
+
+// Get demo video URL
+const getDemoVideoUrl = (path: string) => {
+  if (!path) return ''
+  const baseUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL
+  return `${baseUrl}/demos/${path}`
+}
+
+// Get output video URL
+const getOutputVideoUrl = (path: string) => {
+  if (!path) return ''
+  const baseUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL
+  return `${baseUrl}/output/${path}`
+}
+
 const VideoGrid = memo(({ 
   videosToShow, 
   selectedVideo, 
@@ -43,28 +75,34 @@ const VideoGrid = memo(({
   videosToShow: number[], 
   selectedVideo: number | null,
   onVideoSelect: (num: number) => void
-}) => (
-  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
-    {videosToShow.map((videoNumber) => (
-      <div
-        key={videoNumber}
-        onClick={() => onVideoSelect(videoNumber)}
-        className={`relative flex-shrink-0 cursor-pointer group transition-all duration-200 rounded-lg overflow-hidden ${
-          selectedVideo === videoNumber
-            ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg'
-            : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
-        }`}
-        style={{ width: '100px', height: '177px' }}
-      >
-        <img
-          src={`https://views-to-downloads.s3.us-east-2.amazonaws.com/thumbnail-${videoNumber}.png`}
-          alt={`Video ${videoNumber}`}
-          className="w-full h-full object-cover"
-        />
-      </div>
-    ))}
-  </div>
-))
+}) => {
+  console.log('VideoGrid rendering with:', { videosToShow, selectedVideo })
+  return (
+    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+      {videosToShow.map((videoNumber) => (
+        <div
+          key={videoNumber}
+          onClick={() => {
+            console.log('Selected video number:', videoNumber)
+            onVideoSelect(videoNumber)
+          }}
+          className={`relative flex-shrink-0 cursor-pointer group transition-all duration-200 rounded-lg overflow-hidden ${
+            selectedVideo === videoNumber
+              ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg'
+              : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
+          }`}
+          style={{ width: '100px', height: '177px' }}
+        >
+          <img
+            src={getUGCThumbnailUrl(videoNumber)}
+            alt={`Video ${videoNumber}`}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ))}
+    </div>
+  )
+})
 VideoGrid.displayName = 'VideoGrid'
 
 export default function CreateAd() {
@@ -149,9 +187,18 @@ export default function CreateAd() {
 
   // Initialize videos once on mount
   useEffect(() => {
-    const videos = Array.from({ length: 59 }, (_, i) => i + 1)
-      .sort(() => Math.random() - 0.5)
-    setAllVideos(videos)
+    const totalVideos = parseInt(process.env.NEXT_PUBLIC_TOTAL_VIDEOS || '59');
+    console.log('Initializing videos with total count:', totalVideos);
+    
+    // Create array from 1 to totalVideos and randomize it
+    const videos = Array.from({ length: totalVideos }, (_, i) => i + 1);
+    console.log('Original video array:', videos);
+    
+    // Use a more stable randomization that we can track
+    const randomizedVideos = [...videos].sort(() => Math.random() - 0.5);
+    console.log('Randomized video array:', randomizedVideos);
+    
+    setAllVideos(randomizedVideos);
   }, []) // Empty dependency array means this runs once on mount
 
   // Pagination setup for the UGC videos
@@ -159,11 +206,20 @@ export default function CreateAd() {
   const pageSize = 24
   const totalPages = Math.ceil(allVideos.length / pageSize)
   
+  // Add logging for pagination
+  useEffect(() => {
+    console.log('Current allVideos state:', allVideos);
+    console.log('Total pages:', totalPages);
+    console.log('Current page:', currentPage);
+  }, [allVideos, totalPages, currentPage])
+  
   const handlePrev = () => {
+    console.log('Navigating to previous page');
     setCurrentPage((page) => (page > 1 ? page - 1 : page))
   }
   
   const handleNext = () => {
+    console.log('Navigating to next page');
     setCurrentPage((page) => (page < totalPages ? page + 1 : page))
   }
   
@@ -171,7 +227,16 @@ export default function CreateAd() {
   const videosToShow = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize
     const endIndex = startIndex + pageSize
-    return allVideos?.slice(startIndex, endIndex) || []
+    const videos = allVideos?.slice(startIndex, endIndex) || []
+    console.log('Videos to show for current page:', {
+      page: currentPage,
+      startIndex,
+      endIndex,
+      pageSize,
+      numberOfVideos: videos.length,
+      actualVideos: videos.join(', ')
+    });
+    return videos;
   }, [currentPage, pageSize, allVideos])
   
   // Function to fetch demo videos
@@ -286,12 +351,6 @@ export default function CreateAd() {
 
     checkSubscription()
   }, [supabase])
-
-  // Get UGC video URL
-  const getUGCVideoUrl = (videoNumber: number | null) => {
-    if (!videoNumber) return ''
-    return `https://views-to-downloads.s3.us-east-2.amazonaws.com/${videoNumber}.mp4`
-  }
 
   // Handle video creation
   const [showNoHooksDialog, setShowNoHooksDialog] = useState(false)
@@ -475,8 +534,11 @@ export default function CreateAd() {
   };
 
   const handleUGCVideoSelect = (num: number) => {
+    console.log('handleUGCVideoSelect called with:', num)
     setSelectedVideo(num)
-    setSelectedInfluencerVideo(getUGCVideoUrl(num))
+    const videoUrl = getUGCVideoUrl(num)
+    console.log('Setting selectedInfluencerVideo to:', videoUrl)
+    setSelectedInfluencerVideo(videoUrl)
   }
 
   const handleDemoVideoSelect = (url: string) => {
