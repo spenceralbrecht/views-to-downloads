@@ -3,9 +3,17 @@ import { Loader2 } from 'lucide-react'
 
 export function VideoCardSkeleton() {
   return (
-    <Card className="relative aspect-[9/16] bg-muted animate-pulse shadow-lg hover:shadow-xl transition-shadow duration-200">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    <Card className="relative bg-card shadow-sm hover:shadow-md transition-shadow duration-200">
+      <div className="aspect-[9/16] flex items-center justify-center bg-muted">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Processing video...</p>
+        </div>
+      </div>
+      <div className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+        </div>
       </div>
     </Card>
   )

@@ -48,14 +48,12 @@ export default function LandingPage({
         {/* Video Grid */}
         <div className="relative w-full max-w-5xl mx-auto px-4 mb-24">
           <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-8 px-6 snap-x snap-mandatory -mx-4">
-            {[
-              "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-1.mp4",
-              "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-2.mp4",
-              "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-3.mp4",
-              "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-4.mp4",
-              "https://views-to-downloads.s3.us-east-2.amazonaws.com/video-demo-5.mp4"
-            ].map((video, index) => (
-              <VideoThumbnail key={index} video={video} index={index} />
+            {[1, 2, 3, 4, 5].map((num) => (
+              <VideoThumbnail 
+                key={num-1} 
+                video={`${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/app-video-demo-${num}.mp4`}
+                index={num-1} 
+              />
             ))}
           </div>
           {/* Gradient Fade Edges */}

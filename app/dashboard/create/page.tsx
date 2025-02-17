@@ -48,9 +48,7 @@ const getUGCVideoUrl = (videoNumber: number | null) => {
 const getUGCThumbnailUrl = (videoNumber: number | null) => {
   if (!videoNumber) return ''
   const baseUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL
-  const url = `${baseUrl}/thumbnail-${videoNumber}.png`
-  console.log('Getting thumbnail URL for number:', videoNumber, 'URL:', url)
-  return url
+  return `${baseUrl}/thumbnail-${videoNumber}.png`
 }
 
 // Get demo video URL
@@ -354,6 +352,7 @@ export default function CreateAd() {
 
   // Handle video creation
   const [showNoHooksDialog, setShowNoHooksDialog] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
   const handleCreateVideo = async () => {
     console.log('DEBUG: handleCreateVideo triggered', { selectedAppId, hook, selectedInfluencerVideo, selectedDemoVideo, contentRemaining, isPending });
     if (!selectedAppId) {
@@ -469,6 +468,9 @@ export default function CreateAd() {
     };
     console.log('Video creation request body:', JSON.stringify(payload));
 
+    // Set creating state
+    setIsCreating(true)
+
     // Create a pending video object
     console.log('DEBUG: Creating pending video object');
     const pendingVideoObj = {
@@ -500,7 +502,11 @@ export default function CreateAd() {
           console.log('DEBUG: Error creating video', result.error);
           setOutputVideos(prev => prev.filter(v => v.id !== pendingVideoObj.id));
           setPendingVideo(null);
-          return;
+          toast({
+            title: "Error creating video",
+            description: result.error,
+            variant: "destructive"
+          });
         } else {
           console.log('DEBUG: Video created successfully, resetting state');
           setSelectedVideo(null);
@@ -510,14 +516,17 @@ export default function CreateAd() {
           console.log('DEBUG: Attempting to fetch updated videos');
           if (typeof fetchOutputVideos === 'function') {
             fetchOutputVideos();
-          } else {
-            console.log('DEBUG: fetchOutputVideos is not defined');
           }
 
           // Check if result has output_id before using it
           if ('output_id' in result && typeof result.output_id === 'string') {
             pollForVideoCompletion(result.output_id);
           }
+
+          toast({
+            title: "Video creation started",
+            description: "Your video is being processed and will appear in the list below when ready.",
+          });
         }
       } catch (error: any) {
         console.error('DEBUG: Exception in createVideo', error);
@@ -529,6 +538,11 @@ export default function CreateAd() {
 
         setOutputVideos(prev => prev.filter(video => video.id !== pendingVideoObj.id));
         setPendingVideo(null);
+      } finally {
+        // Reset creating state after a short delay to allow for visual feedback
+        setTimeout(() => {
+          setIsCreating(false);
+        }, 1000);
       }
     });
   };
@@ -987,9 +1001,9 @@ export default function CreateAd() {
                 type="button" 
                 className="btn-gradient" 
                 onClick={handleCreateVideo} 
-                disabled={isPending}
+                disabled={isCreating}
               >
-                {isPending ? (
+                {isCreating ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Creating...

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Download, Trash2, Loader2, X } from 'lucide-react'
@@ -35,9 +35,11 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
   const [isDownloading, setIsDownloading] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [playError, setPlayError] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const supabase = createClientComponentClient()
 
-  if (isPending) {
+  // Show loading skeleton for in_progress videos
+  if (video.status === 'in_progress' || isPending) {
     return <VideoCardSkeleton />
   }
 
@@ -82,63 +84,88 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
         onMouseLeave={() => setIsHovered(false)}
       >
         {playError ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted">
-            <p className="text-sm text-muted-foreground">Error loading video</p>
+          <div className="aspect-[9/16] flex items-center justify-center bg-muted p-4 text-center">
+            <div className="text-sm text-muted-foreground">
+              Error loading video
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPlayError(false)}
+                className="block mx-auto mt-2"
+              >
+                Retry
+              </Button>
+            </div>
           </div>
         ) : (
-          <ReactPlayer
-            url={videoUrl}
-            width="100%"
-            height="100%"
-            controls={true}
-            playing={isHovered}
-            onError={() => setPlayError(true)}
-            style={{ aspectRatio: '9/16', objectFit: 'cover' }}
-            playsinline
-            config={{
-              file: {
-                attributes: {
-                  controlsList: 'nodownload',
-                  disablePictureInPicture: true
-                }
-              }
-            }}
-          />
+          <>
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            <div className="aspect-[9/16]">
+              <ReactPlayer
+                url={videoUrl}
+                width="100%"
+                height="100%"
+                controls={true}
+                playing={false}
+                onError={() => {
+                  setPlayError(true)
+                  setIsLoading(false)
+                }}
+                onReady={() => setIsLoading(false)}
+                style={{ aspectRatio: '9/16' }}
+                playsinline
+                config={{
+                  file: {
+                    attributes: {
+                      controlsList: 'nodownload',
+                      disablePictureInPicture: true,
+                      preload: 'metadata'
+                    },
+                    forceVideo: true
+                  }
+                }}
+              />
+            </div>
+          </>
         )}
         
         {/* Delete button overlay - only visible on hover */}
         <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 left-2 p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-black/50"
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 left-2 p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-black/50"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+              ) : (
+                <X className="h-4 w-4 text-white" />
+              )}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Video</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this video? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                onClick={handleDelete}
               >
-                {isDeleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-white" />
-                ) : (
-                  <X className="h-4 w-4 text-white" />
-                )}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Video</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete this video? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                  onClick={handleDelete}
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Download button overlay - visible on hover */}
         <div 

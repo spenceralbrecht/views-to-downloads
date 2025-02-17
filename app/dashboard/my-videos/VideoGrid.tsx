@@ -18,6 +18,14 @@ export function VideoGrid({ initialVideos }: VideoGridProps) {
   const [upgradeLink, setUpgradeLink] = useState('')
   const supabase = createClientComponentClient()
 
+  // Initialize pendingVideos with any videos that are in_progress
+  useEffect(() => {
+    const inProgressVideos = initialVideos
+      .filter(video => video.status === 'in_progress')
+      .map(video => video.id)
+    setPendingVideos(inProgressVideos)
+  }, [initialVideos])
+
   useEffect(() => {
     const checkSubscriptionStatus = async () => {
       const { data: subscription } = await supabase
@@ -65,7 +73,7 @@ export function VideoGrid({ initialVideos }: VideoGridProps) {
                 video.id === payload.new.id ? { ...video, ...payload.new } : video
               )
             )
-            if (payload.new.status !== 'in_progress') {
+            if (payload.new.status === 'completed') {
               setPendingVideos(current => current.filter(id => id !== payload.new.id))
             }
           } else if (payload.eventType === 'INSERT') {
@@ -74,6 +82,13 @@ export function VideoGrid({ initialVideos }: VideoGridProps) {
             if (newVideo.status === 'in_progress') {
               setPendingVideos(current => [...current, newVideo.id])
             }
+          } else if (payload.eventType === 'DELETE') {
+            setVideos(currentVideos => 
+              currentVideos.filter(video => video.id !== payload.old.id)
+            )
+            setPendingVideos(current => 
+              current.filter(id => id !== payload.old.id)
+            )
           }
         }
       )
@@ -107,7 +122,7 @@ export function VideoGrid({ initialVideos }: VideoGridProps) {
           <VideoCard 
             key={video.id} 
             video={video} 
-            isPending={pendingVideos.includes(video.id)}
+            isPending={pendingVideos.includes(video.id) || video.status === 'in_progress'}
             onDelete={handleDelete}
           />
         ))}
