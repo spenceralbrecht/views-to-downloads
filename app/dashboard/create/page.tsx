@@ -174,36 +174,38 @@ export default function CreateAd() {
     return allVideos?.slice(startIndex, endIndex) || []
   }, [currentPage, pageSize, allVideos])
   
-  // Fetch demo videos
-  useEffect(() => {
-    async function fetchDemoVideos() {
-      setLoadingDemos(true)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+  // Function to fetch demo videos
+  const fetchDemoVideos = async () => {
+    setLoadingDemos(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
 
-      const { data, error } = await supabase
-        .from('input_content')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+    const { data, error } = await supabase
+      .from('input_content')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Error fetching demo videos:', error)
-      } else if (data) {
-        const demoVideosWithUrls = await Promise.all(data.map(async (video) => {
-          // Get the public URL for the full path including user ID
-          const { data: publicData } = supabase
-            .storage
-            .from('input-content')
-            .getPublicUrl(video.content_url)
-          return { ...video, publicUrl: publicData.publicUrl }
-        }))
-        setDemoVideos(demoVideosWithUrls)
-      }
-      setLoadingDemos(false)
+    if (error) {
+      console.error('Error fetching demo videos:', error)
+    } else if (data) {
+      const demoVideosWithUrls = await Promise.all(data.map(async (video) => {
+        // Get the public URL for the full path including user ID
+        const { data: publicData } = supabase
+          .storage
+          .from('input-content')
+          .getPublicUrl(video.content_url)
+        return { ...video, publicUrl: publicData.publicUrl }
+      }))
+      setDemoVideos(demoVideosWithUrls)
     }
+    setLoadingDemos(false)
+  }
+
+  // Call fetchDemoVideos on mount
+  useEffect(() => {
     fetchDemoVideos()
-  }, [supabase])
+  }, []) // Empty dependency array means this runs once on mount
 
   // Function to fetch output videos
   const fetchOutputVideos = async () => {
@@ -453,7 +455,8 @@ export default function CreateAd() {
             console.log('DEBUG: fetchOutputVideos is not defined');
           }
 
-          if (result.output_id) {
+          // Check if result has output_id before using it
+          if ('output_id' in result && typeof result.output_id === 'string') {
             pollForVideoCompletion(result.output_id);
           }
         }
@@ -820,19 +823,47 @@ export default function CreateAd() {
               <h2 className="text-lg font-semibold mb-4">4. Demos</h2>
               <p className="text-sm text-muted-foreground mb-4">Upload your product demo videos</p>
               <div className="flex items-start gap-4">
-                <label
-                  htmlFor="demoVideo"
-                  className="flex-shrink-0 w-24 h-[170px] rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center bg-card text-muted-foreground hover:text-primary cursor-pointer transition-colors duration-200"
-                >
-                  {isUploadingDemo ? (
-                    <Loader2 className="animate-spin h-6 w-6" />
-                  ) : (
-                    <div className="text-center">
-                      <span className="text-2xl">+</span>
-                      <p className="text-xs mt-2">Upload demo</p>
-                    </div>
-                  )}
-                </label>
+                <form>
+                  <input
+                    type="file"
+                    id="demoVideo"
+                    name="videoFile"
+                    accept="video/mp4"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        startDemoUpload(async () => {
+                          const formData = new FormData()
+                          formData.append('videoFile', e.target.files![0])
+                          const result = await uploadDemoVideo(formData)
+                          if (result.error) {
+                            toast({
+                              title: "Error uploading video",
+                              description: result.error,
+                              variant: "destructive"
+                            })
+                          } else {
+                            // Refresh the demo videos list
+                            fetchDemoVideos()
+                          }
+                        })
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="demoVideo"
+                    className="flex-shrink-0 w-24 h-[170px] rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center bg-card text-muted-foreground hover:text-primary cursor-pointer transition-colors duration-200"
+                  >
+                    {isUploadingDemo ? (
+                      <Loader2 className="animate-spin h-6 w-6" />
+                    ) : (
+                      <div className="text-center">
+                        <span className="text-2xl">+</span>
+                        <p className="text-xs mt-2">Upload demo</p>
+                      </div>
+                    )}
+                  </label>
+                </form>
 
                 {/* Display uploaded demo videos */}
                 <div className="flex-1 flex flex-wrap gap-2 items-start">

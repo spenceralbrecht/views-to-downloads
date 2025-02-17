@@ -245,7 +245,7 @@ NEXT_PUBLIC_STRIPE_GROWTH_LINK=https://buy.stripe.com/...
 NEXT_PUBLIC_STRIPE_SCALE_LINK=https://buy.stripe.com/...
 ```
 
-## Instructions
+## Local Development
 
 1. Update your environment variables (e.g., AIRTABLE_API_KEY, AIRTABLE_BASE_ID) as required.
 2. Run `npm install` (or `yarn install`) to install dependencies.
@@ -335,3 +335,58 @@ Note: Tests use the Supabase credentials from your `.env.local` file. Make sure 
 - 2025-02-05: Updated video creation API parameters to match new schema (influencerVideoUrl, demoFootageUrl, captionText, captionPosition)
 - 2025-02-05: Fixed TypeScript type error in `app/dashboard/create/page.tsx` by updating the state initialization for `items`. Changed from `useState([])` to `useState<{ id: string; loading: boolean }[]>([])` for proper typing.
 - 2025-02-05: Fixed createVideo type error by passing the required arguments in the call from the create page.
+
+### Testing Stripe Webhooks Locally
+
+To test Stripe subscriptions and webhooks in your local development environment:
+
+1. Install the Stripe CLI:
+   ```bash
+   # On macOS
+   brew install stripe/stripe-cli/stripe
+
+   # On Windows (using scoop)
+   scoop install stripe
+
+   # On Linux
+   # Follow instructions at https://stripe.com/docs/stripe-cli
+   ```
+
+2. Login to your Stripe account through the CLI:
+   ```bash
+   stripe login
+   ```
+
+3. Start the webhook forwarding in a separate terminal:
+   ```bash
+   stripe listen --forward-to localhost:3000/api/webhooks/stripe
+   ```
+
+4. Copy the webhook signing secret that appears after running the listen command:
+   ```
+   Ready! Your webhook signing secret is whsec_xxx... (^C to quit)
+   ```
+
+5. Add the webhook secret to your `.env.local` file:
+   ```
+   STRIPE_TEST_WEBHOOK_SECRET=whsec_xxx...
+   ```
+
+6. Test specific webhook events:
+   ```bash
+   # Test a successful checkout
+   stripe trigger checkout.session.completed
+
+   # Test subscription updates
+   stripe trigger customer.subscription.updated
+
+   # Test subscription cancellation
+   stripe trigger customer.subscription.deleted
+
+   # Test invoice payment
+   stripe trigger invoice.paid
+   ```
+
+7. Monitor the webhook forwarding terminal to see events being sent and responses from your local server.
+
+Note: The webhook secret changes each time you run `stripe listen`. Make sure to update your `.env.local` file with the new secret when testing.
