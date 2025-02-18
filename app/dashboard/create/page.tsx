@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { DemoVideoCardSkeleton } from '@/components/DemoVideoCardSkeleton'
 
 interface Hook {
   id: string
@@ -40,7 +41,6 @@ const getUGCVideoUrl = (videoNumber: number | null) => {
   if (!videoNumber) return ''
   const baseUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL
   const url = `${baseUrl}/${videoNumber}.mp4`
-  console.log('Getting video URL for number:', videoNumber, 'URL:', url)
   return url
 }
 
@@ -173,7 +173,6 @@ export default function CreateAd() {
   // State for demo videos
   const [demoVideos, setDemoVideos] = useState<DemoVideo[]>([])
   const [loadingDemos, setLoadingDemos] = useState(false)
-  const [isUploadingDemo, startDemoUpload] = useTransition()
 
   // State for output videos
   const [outputVideos, setOutputVideos] = useState<OutputVideo[]>([])
@@ -655,7 +654,6 @@ export default function CreateAd() {
     }
   }, [demoVideos, loadingDemos, selectedDemoVideo, selectedInfluencerVideo, videosToShow])
 
-  console.log('CreateAd subscription:', subscription);
 
   // Insert this function inside CreateAd (e.g., after other hooks/state declarations and before handleDeleteDemo)
   async function pollForVideoCompletion(outputId: string) {
@@ -679,6 +677,12 @@ export default function CreateAd() {
       }
     }, pollInterval);
   }
+
+  // Add uploadProgress state
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+
+  // Add isUploading state
+  const [isUploading, setIsUploading] = useState(false)
 
   return (
     <div className="min-h-screen bg-background">
@@ -926,11 +930,23 @@ export default function CreateAd() {
                           return;
                         }
                         
-                        startDemoUpload(async () => {
-                          try {
-                            const formData = new FormData()
-                            formData.append('videoFile', file)
-                            const result = await uploadDemoVideo(formData)
+                        setIsUploading(true)
+                        setUploadProgress(0)
+                        
+                        const formData = new FormData()
+                        formData.append('videoFile', file)
+                        
+                        const xhr = new XMLHttpRequest()
+                        xhr.upload.onprogress = (event) => {
+                          if (event.lengthComputable) {
+                            const progress = (event.loaded / event.total) * 100
+                            setUploadProgress(progress)
+                          }
+                        }
+                        
+                        xhr.onload = async () => {
+                          if (xhr.status === 200) {
+                            const result = JSON.parse(xhr.responseText)
                             if (result.error) {
                               console.error('Demo upload error:', result.error)
                               toast({
@@ -946,15 +962,31 @@ export default function CreateAd() {
                               // Refresh the demo videos list
                               fetchDemoVideos()
                             }
-                          } catch (error: any) {
-                            console.error('Demo upload exception:', error)
+                          } else {
+                            console.error('Upload failed with status:', xhr.status)
                             toast({
-                              title: "Demo Upload Error",
-                              description: `Unexpected error uploading demo. Please report this error: ${error.message || 'Unknown error'}`,
+                              title: "Demo Upload Failed",
+                              description: "Error uploading demo video. Please try again.",
                               variant: "destructive"
                             })
                           }
-                        })
+                          setUploadProgress(null)
+                          setIsUploading(false)
+                        }
+                        
+                        xhr.onerror = () => {
+                          console.error('Upload failed')
+                          toast({
+                            title: "Demo Upload Failed",
+                            description: "Error uploading demo video. Please check your connection and try again.",
+                            variant: "destructive"
+                          })
+                          setUploadProgress(null)
+                          setIsUploading(false)
+                        }
+                        
+                        xhr.open('POST', '/api/upload-demo')
+                        xhr.send(formData)
                       }
                     }}
                   />
@@ -962,14 +994,10 @@ export default function CreateAd() {
                     htmlFor="demoVideo"
                     className="flex-shrink-0 w-24 h-[170px] rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center bg-card text-muted-foreground hover:text-primary cursor-pointer transition-colors duration-200"
                   >
-                    {isUploadingDemo ? (
-                      <Loader2 className="animate-spin h-6 w-6" />
-                    ) : (
-                      <div className="text-center">
-                        <span className="text-2xl">+</span>
-                        <p className="text-xs mt-2">Upload demo</p>
-                      </div>
-                    )}
+                    <div className="text-center">
+                      <span className="text-2xl">+</span>
+                      <p className="text-xs mt-2">Upload demo</p>
+                    </div>
                   </label>
                 </form>
 
@@ -977,52 +1005,58 @@ export default function CreateAd() {
                 <div className="flex-1 flex flex-wrap gap-2 items-start">
                   {loadingDemos ? (
                     <Loader2 className="animate-spin h-6 w-6 text-primary" />
-                  ) : demoVideos.length > 0 ? (
-                    demoVideos.map((video) => (
-                      <div
-                        key={video.id}
-                        className={`relative flex-shrink-0 cursor-pointer group transition-all duration-200 rounded-lg overflow-hidden ${
-                          selectedDemoVideo === video.publicUrl 
-                            ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg' 
-                            : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
-                        }`}
-                        style={{ width: '100px' }}
-                      >
-                        {/* Delete button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteDemo(video.id);
-                          }}
-                          className="absolute top-1 right-1 z-10 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                        <div 
-                          className="aspect-[9/16] w-full rounded-lg overflow-hidden"
-                          onClick={() => handleDemoVideoSelect(video.publicUrl || '')}
-                        >
-                          <video
-                            key={video.publicUrl || ''}
-                            src={video.publicUrl || ''}
-                            className="w-full h-full object-cover"
-                            preload="auto"
-                            muted
-                            loop
-                            playsInline
-                            controlsList="nodownload"
-                            onContextMenu={(e) => e.preventDefault()}
-                            onMouseEnter={(e) => e.currentTarget.play()}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.pause()
-                              e.currentTarget.currentTime = 0
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))
                   ) : (
-                    <p className="text-muted-foreground">No demos uploaded yet</p>
+                    <>
+                      {isUploading && (
+                        <DemoVideoCardSkeleton progress={uploadProgress ?? undefined} />
+                      )}
+                      {demoVideos.map((video) => (
+                        <div
+                          key={video.id}
+                          className={`relative flex-shrink-0 cursor-pointer group transition-all duration-200 rounded-lg overflow-hidden ${
+                            selectedDemoVideo === video.publicUrl 
+                              ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg' 
+                              : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
+                          }`}
+                          style={{ width: '100px' }}
+                        >
+                          {/* Delete button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteDemo(video.id);
+                            }}
+                            className="absolute top-1 right-1 z-10 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                          <div 
+                            className="aspect-[9/16] w-full rounded-lg overflow-hidden"
+                            onClick={() => handleDemoVideoSelect(video.publicUrl || '')}
+                          >
+                            <video
+                              key={video.publicUrl || ''}
+                              src={video.publicUrl || ''}
+                              className="w-full h-full object-cover"
+                              preload="auto"
+                              muted
+                              loop
+                              playsInline
+                              controlsList="nodownload"
+                              onContextMenu={(e) => e.preventDefault()}
+                              onMouseEnter={(e) => e.currentTarget.play()}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.pause()
+                                e.currentTarget.currentTime = 0
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      {demoVideos.length === 0 && !isUploading && (
+                        <p className="text-muted-foreground">No demos uploaded yet</p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
