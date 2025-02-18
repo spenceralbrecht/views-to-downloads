@@ -842,6 +842,8 @@ export default function CreateAd() {
                           playsInline
                           loop
                           muted
+                          controlsList="nodownload"
+                          onContextMenu={(e) => e.preventDefault()}
                           className="w-full h-full object-cover relative z-20"
                           onLoadedData={(e) => {
                             const target = e.target as HTMLVideoElement;
@@ -978,6 +980,8 @@ export default function CreateAd() {
                             muted
                             loop
                             playsInline
+                            controlsList="nodownload"
+                            onContextMenu={(e) => e.preventDefault()}
                             onMouseEnter={(e) => e.currentTarget.play()}
                             onMouseLeave={(e) => {
                               e.currentTarget.pause()
