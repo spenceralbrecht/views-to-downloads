@@ -556,13 +556,25 @@ export async function generateHooks(appId: string) {
     })
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'chatgpt-4o-latest',
       messages: [
         {
           role: 'system',
-          content: `You are a creative content marketer tasked with generating catchy TikTok video hooks for a product. The hooks should be informal, engaging, and use the following six unique formats. Use mostly lower case letters for the hooks. For each format, generate two different examples that incorporate the product (replace [PRODUCT NAME] and [PRODUCT DESCRIPTION] with the actual details).
+          content: `# Hook Generation Prompt for UGC Videos
 
-Please provide your response in JSON format with an array of hooks like this:
+## Context
+You are a creative hook generator for our AI UGC video creation SaaS. Your task is to generate attention-grabbing hooks for app/product descriptions.
+
+## Success Criteria
+- Hooks achieve >1% engagement rate in social media tests
+- Gen Z audiences rate language authenticity 8+/10 in blind tests
+- Each hook presents a unique angle or perspective
+- Hooks are immediately actionable for video creation
+- Language feels natural and unforced
+
+## Input/Output Format
+INPUT: [App/Product Description]
+OUTPUT: JSON object with array of 10 hooks in this exact format:
 {
   "hooks": [
     "hook1",
@@ -571,56 +583,91 @@ Please provide your response in JSON format with an array of hooks like this:
   ]
 }
 
-Use these formats for the hooks:
-1.	Direct Call-to-Action (Addressing a Problem):
-Start with a relatable problem or scenario that the viewer might be facing, then directly introduce the product as the solution.
-Example structure: "If you're struggling with [problem related to the product], you need to check out [PRODUCT NAME]!"
-	2.	Discovery/Excitement ("Just Found…"):
-Express excitement about having just discovered the product or a new way it solves a problem.
-Example structure: "I just found the ultimate way to [solve a problem/achieve a goal] with [PRODUCT NAME]!"
-	3.	After/FOMO Reactive (Realizing After the Fact):
-Share a moment of realization where you or someone else missed out until now, and then reveal the product as the game changer.
-Example structure: "I only just realized that after [negative experience], [PRODUCT NAME] is exactly what you need to [benefit]!"
-	4.	Casual Commentary (Conversational Tone):
-Use a relaxed, off-the-cuff style to casually talk about the benefits or features of the product.
-Example structure: "So, I was chatting about [PRODUCT NAME] and how it [solves a problem], and you won't believe what it does!"
-	5.	Personal/Testimonial Narrative:
-Share a brief personal story or a friend's testimony that highlights how the product has made a difference.
-Example structure: "My friend just swears by [PRODUCT NAME] for [benefit], and honestly, it's a total game changer!"
-	6.	Provocative Hot Take/Challenge:
-Offer a bold opinion or challenge a common belief, then introduce the product as the solution to the issue.
-Example structure: "Hot take: [common belief] is holding you back. [PRODUCT NAME] is here to flip the script!"`
+## Process Steps
+1. Analyze core value proposition
+2. Identify key user pain points
+3. Brainstorm diverse angles (emotional, practical, humorous)
+4. Generate hooks using authentic Gen-Z voice
+5. Verify uniqueness of each hook
+6. Check against evaluation criteria
+
+## Hook Requirements
+- Use casual, conversational Gen-Z language
+- Incorporate relevant slang naturally (e.g., "fr fr", "ngl", "bestie")
+- Include fitting emojis where natural
+- Keep each hook concise and impactful
+- Ensure immediate clarity of value proposition
+
+## Examples
+✅ GOOD HOOK:
+"pov: you haven't checked your phone in 2 hours and your personality is still intact"
+(Why: Conversational, authentic voice, clear value, humor)
+
+❌ BAD HOOK:
+"This amazing app will help you reduce phone addiction!"
+(Why: Generic, promotional, lacks personality)
+
+## Evaluation Checklist
+Each hook must:
+- Be immediately understandable
+- Use authentic Gen-Z language
+- Present a unique angle
+- Be suitable for video format
+- Avoid repetitive patterns
+- Feel natural, not forced
+- Be distinct from all other generated hooks
+
+## CRITICAL: Response Format
+Your entire response must be a single JSON object with a "hooks" array containing exactly 10 strings. No other text or formatting allowed.`
         },
         {
           role: 'user',
-          content: `Generate 12 hooks for TikTok videos based on the app ${app.app_name} with description and return them in JSON format: ${app.app_description}`
+          content: `Generate 10 hooks for TikTok videos based on this app description: ${app.app_description} and app name: ${app.app_name}`
         }
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+      max_tokens: 2000
     })
 
     const content = response.choices[0].message.content
     if (!content) throw new Error('No hooks generated')
 
-    const { hooks } = JSON.parse(content)
-    if (!Array.isArray(hooks)) throw new Error('Invalid hooks format')
+    try {
+      // Clean the content string to handle potential markdown formatting
+      const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim()
+      console.log('Cleaned content:', cleanContent)
+      
+      // Parse the JSON
+      const parsed = JSON.parse(cleanContent)
+      console.log('Parsed hooks:', parsed)
+      
+      // Validate the structure
+      if (!parsed || !Array.isArray(parsed.hooks) || parsed.hooks.length !== 10) {
+        console.error('Invalid hooks structure:', parsed)
+        throw new Error('Invalid hooks format or incorrect number of hooks')
+      }
 
-    // Save hooks to Supabase
-    const { data: savedHooks, error: insertError } = await supabase
-      .from('hooks')
-      .insert(
-        hooks.map(hook => ({
-          app_id: appId,
-          user_id: user.id,
-          hook_text: hook
-        }))
-      )
-      .select()
+      // Save hooks to Supabase
+      const { data: savedHooks, error: insertError } = await supabase
+        .from('hooks')
+        .insert(
+          parsed.hooks.map(hook => ({
+            app_id: appId,
+            user_id: user.id,
+            hook_text: hook
+          }))
+        )
+        .select()
 
-    if (insertError) throw insertError
+      if (insertError) throw insertError
 
-    revalidatePath('/dashboard/hooks')
-    return { success: true, hooks: savedHooks }
+      revalidatePath('/dashboard/hooks')
+      return { success: true, hooks: savedHooks }
+    } catch (jsonError) {
+      console.error('Error parsing OpenAI response:', content)
+      throw new Error('Failed to parse generated hooks as JSON')
+    }
   } catch (error) {
     console.error('Error generating hooks:', error)
     return { error: error instanceof Error ? error.message : 'Failed to generate hooks' }

@@ -7,60 +7,57 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request) {
   const cookieStore = cookies()
   const requestUrl = new URL(request.url)
-  
-  console.log('Callback request from:', requestUrl.origin)
-  console.log('Full callback URL:', request.url)
-  console.log('Callback query params:', Object.fromEntries(requestUrl.searchParams))
-
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-  const code = requestUrl.searchParams.get('code')
 
-  if (code) {
-    try {
-      console.log('Exchanging code for session...')
-      const { data: authData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-      
-      if (exchangeError) {
-        console.error('Code exchange error:', exchangeError)
-        throw exchangeError
-      }
+  try {
+    const code = requestUrl.searchParams.get('code')
+    // Get the redirect URL if it exists
+    const redirectTo = requestUrl.searchParams.get('redirect') || '/dashboard'
 
-      console.log('Code exchange successful, checking session...')
-      
-      // Get the session to ensure it's properly set
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError) {
-        console.error('Session error:', sessionError)
-        throw sessionError
-      }
-
-      if (!session) {
-        console.error('No session found after successful code exchange')
-        throw new Error('Authentication failed - no session')
-      }
-
-      console.log('Session successfully established')
-      const dashboardUrl = new URL('/dashboard', requestUrl.origin).toString()
-      console.log('Redirecting to:', dashboardUrl)
-
-      return NextResponse.redirect(dashboardUrl, {
-        status: 302
-      })
-    } catch (error) {
-      console.error('Auth callback error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Authentication failed'
-      return NextResponse.redirect(
-        `${requestUrl.origin}/?error=${encodeURIComponent(errorMessage)}`,
-        {
-          status: 302
-        }
-      )
+    if (!code) {
+      console.warn('No code provided in callback')
+      throw new Error('No code provided')
     }
-  }
 
-  console.warn('No code provided in callback')
-  return NextResponse.redirect(requestUrl.origin, {
-    status: 302
-  })
+    // Exchange the code for a session
+    const { data: { session }, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+    
+    if (exchangeError) {
+      console.error('Code exchange error:', exchangeError)
+      throw exchangeError
+    }
+
+    if (!session) {
+      console.error('No session found after successful code exchange')
+      throw new Error('Authentication failed - no session')
+    }
+
+    // Set the auth cookie
+    await supabase.auth.setSession(session)
+
+    // Verify the session was set
+    const { data: verifyData, error: verifyError } = await supabase.auth.getUser()
+    
+    if (verifyError || !verifyData.user) {
+      console.error('Session verification failed:', verifyError)
+      throw new Error('Session verification failed')
+    }
+
+    console.log('Session successfully established')
+    console.log('Redirecting to:', redirectTo)
+
+    // Redirect to the intended destination
+    return NextResponse.redirect(new URL(redirectTo, requestUrl.origin), {
+      status: 302
+    })
+
+  } catch (error) {
+    console.error('Auth callback error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Authentication failed'
+    const errorUrl = new URL('/', requestUrl.origin)
+    errorUrl.searchParams.set('error', errorMessage)
+    return NextResponse.redirect(errorUrl, {
+      status: 302
+    })
+  }
 }
