@@ -7,14 +7,16 @@ import Image from 'next/image'
 interface VideoThumbnailProps {
   video: string;
   index: number;
+  onClick?: () => void;
 }
 
-export function VideoThumbnail({ video, index }: VideoThumbnailProps) {
+export function VideoThumbnail({ video, index, onClick }: VideoThumbnailProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   // Load the first frame on mount
   useEffect(() => {
@@ -101,7 +103,13 @@ export function VideoThumbnail({ video, index }: VideoThumbnailProps) {
   };
 
   return (
-    <div className="relative flex-none w-[216px] snap-center p-2">
+    <div
+      className="relative flex-shrink-0 cursor-pointer group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={onClick}
+      style={{ width: '300px' }}
+    >
       <div className="relative aspect-[9/16] rounded-xl overflow-hidden shadow-lg group">
         <div className="transform transition-transform duration-200 group-hover:scale-105 h-full">
           <video
