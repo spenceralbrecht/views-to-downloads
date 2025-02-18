@@ -4,6 +4,8 @@ globs:
 ---
 This project uses Bun. We are using this version (2024-12-18.acacia) of the Stripe API.
 
+The model used should be `chatgpt-4o-latest`.
+
 This project is deployed in production to the url https://viewstodownloads.com.
 
 Do everything you can to avoid unnecessary complexity. Showing localhost notifications is not good UX.
