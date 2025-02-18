@@ -23,7 +23,7 @@ export async function generateAppDescription(originalDescription: string): Promi
 Here's the app description to analyze:
 ${originalDescription}
 
-Please format the response in a clear, readable way with section headers and bullet points where appropriate.`
+Please format the response in a clear, readable way with section headers and bullet points where appropriate. And return only the result and no additional commentary.`
 
     console.log('Generating enhanced description with OpenAI...')
     const response = await openai.chat.completions.create({

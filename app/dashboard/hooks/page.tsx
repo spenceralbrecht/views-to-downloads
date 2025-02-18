@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Button } from "@/components/ui/button"
 import { AppSelect } from "@/components/app-select"
 import { HookItem } from "@/components/HookItem"
-import { getApps, generateHooks, getHooks, deleteHook, updateHook } from "../actions"
+import { generateHooks, deleteHook } from "../actions"
 import { useToast } from "@/components/ui/use-toast"
 import { useUser } from '@supabase/auth-helpers-react'
 import { useSubscription } from '@/hooks/useSubscription'
@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { UpgradeModal } from '@/components/upgrade-modal'
+import { HookItemSkeleton } from '@/components/HookItemSkeleton'
 import Link from 'next/link'
 
 type App = {
@@ -34,7 +35,7 @@ type Hook = {
   app_logo_url?: string
 }
 
-type DatabaseHook = {
+interface RawDatabaseHook {
   id: string
   hook_text: string
   app_id: string
@@ -110,7 +111,9 @@ export default function HooksPage() {
 
         if (error) throw error
 
-        const processedHooks = (data as unknown as DatabaseHook[]).map(hook => ({
+        // Cast to unknown first, then to our raw database type
+        const rawData = (data as unknown) as RawDatabaseHook[]
+        const processedHooks = rawData.map(hook => ({
           id: hook.id,
           hook_text: hook.hook_text,
           app_id: hook.app_id,
@@ -184,7 +187,9 @@ export default function HooksPage() {
 
       if (error) throw error
 
-      const processedHooks = (data as DatabaseHook[]).map(hook => ({
+      // Cast to unknown first, then to our raw database type
+      const rawData = (data as unknown) as RawDatabaseHook[]
+      const processedHooks = rawData.map(hook => ({
         id: hook.id,
         hook_text: hook.hook_text,
         app_id: hook.app_id,
@@ -241,11 +246,11 @@ export default function HooksPage() {
         title: "Hook updated",
         description: "The hook has been updated successfully."
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating hook:', error)
       toast({
         title: "Error updating hook",
-        description: error.message,
+        description: error?.message || "An error occurred while updating the hook",
         variant: "destructive"
       })
     }
@@ -264,20 +269,22 @@ export default function HooksPage() {
             {/* Header with Generate Button */}
             <div className="flex justify-between items-center">
               <h1 className="text-3xl font-bold">Hooks</h1>
-              <Button
-                className="btn-gradient"
-                onClick={() => setShowAppPicker(true)}
-                disabled={isGenerating || apps.length === 0}
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  'Generate Hooks'
-                )}
-              </Button>
+              <ContentLimitGuard>
+                <Button
+                  className="btn-gradient"
+                  onClick={() => setShowAppPicker(true)}
+                  disabled={isGenerating || apps.length === 0}
+                >
+                  {isGenerating ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Generating...
+                    </div>
+                  ) : (
+                    'Generate Hooks'
+                  )}
+                </Button>
+              </ContentLimitGuard>
             </div>
 
             {/* App Selection Dialog */}
@@ -314,15 +321,24 @@ export default function HooksPage() {
 
             {/* Hooks List */}
             <div className="grid gap-4">
-              {hooks.map((hook) => (
-                <HookItem
-                  key={hook.id}
-                  hook={hook}
-                  onDelete={() => handleDeleteHook(hook.id)}
-                  onEdit={() => handleEditHook(hook)}
-                />
-              ))}
-              {hooks.length === 0 && !isGenerating && (
+              {/* Show skeleton cards at the top while generating */}
+              {isGenerating && (
+                Array.from({ length: 10 }).map((_, index) => (
+                  <HookItemSkeleton key={`skeleton-${index}`} />
+                ))
+              )}
+              
+              {/* Show existing hooks */}
+              {hooks.length > 0 ? (
+                hooks.map((hook) => (
+                  <HookItem
+                    key={hook.id}
+                    hook={hook}
+                    onDelete={() => handleDeleteHook(hook.id)}
+                    onEdit={() => handleEditHook(hook)}
+                  />
+                ))
+              ) : !isGenerating && (
                 <div className="text-center py-8 text-muted-foreground">
                   No hooks generated yet. Click &quot;Generate Hooks&quot; to get started.
                 </div>

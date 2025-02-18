@@ -344,11 +344,13 @@ export default function CreateAd() {
   // Check subscription status
   useEffect(() => {
     async function checkSubscription() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const { data: { user: subscriptionUser }, error: subscriptionError } = await supabase.auth.getUser()
+      if (subscriptionError || !subscriptionUser) {
+        console.error('Error fetching user:', subscriptionError)
+        return
+      }
 
-      const subscriptionStatus = user.user_metadata?.stripe_subscription_status;
-      // setIsSubscribed(subscriptionStatus === 'active');
+      const subscriptionStatus = subscriptionUser.user_metadata?.stripe_subscription_status;
     }
 
     checkSubscription()
@@ -421,12 +423,17 @@ export default function CreateAd() {
       return;
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      console.log('DEBUG: Error fetching user', { userError, user });
+    const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+    if (userError || !currentUser) {
+      console.log('DEBUG: Error fetching user', { userError });
+      toast({
+        title: "Authentication Error",
+        description: "Please try logging in again",
+        variant: "destructive"
+      });
       return;
     }
-    console.log('DEBUG: User fetched', user);
+    console.log('DEBUG: User fetched', currentUser);
 
     console.log('DEBUG: Checking contentRemaining value', contentRemaining);
     if (loading) {
@@ -450,7 +457,7 @@ export default function CreateAd() {
     }
 
     // Check and increment content usage
-    const canCreate = await incrementContentUsage(user.id);
+    const canCreate = await incrementContentUsage(currentUser.id);
     console.log('DEBUG: Result of incrementContentUsage', canCreate);
     if (!canCreate) {
       console.log('DEBUG: Monthly limit reached during incrementContentUsage. Triggering upgrade modal.');
@@ -467,7 +474,7 @@ export default function CreateAd() {
       demoFootageUrl: selectedDemoVideo,
       captionText: hook,
       captionPosition: textPosition,
-      userUuid: user.id,
+      userUuid: currentUser.id,
       app_id: selectedAppId
     };
     console.log('Video creation request body:', JSON.stringify(payload));
@@ -482,7 +489,7 @@ export default function CreateAd() {
       status: 'pending',
       created_at: new Date().toISOString(),
       app_id: selectedAppId,
-      user_id: user.id,
+      user_id: currentUser.id,
       url: ''
     };
 

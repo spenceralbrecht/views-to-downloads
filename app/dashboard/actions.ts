@@ -556,7 +556,7 @@ export async function generateHooks(appId: string) {
     })
 
     const response = await openai.chat.completions.create({
-      model: 'o3-mini',
+      model: 'gpt-4o',
       messages: [
         {
           role: 'system',
@@ -593,7 +593,7 @@ Example structure: "Hot take: [common belief] is holding you back. [PRODUCT NAME
         },
         {
           role: 'user',
-          content: `Generate 12 hooks for TikTok videos based on this app description and return them in JSON format: ${app.app_description}`
+          content: `Generate 12 hooks for TikTok videos based on the app ${app.app_name} with description and return them in JSON format: ${app.app_description}`
         }
       ],
       response_format: { type: "json_object" }
