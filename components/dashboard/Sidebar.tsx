@@ -197,8 +197,8 @@ export function Sidebar({ user }: SidebarProps) {
             <div className="flex-shrink-0">
               <UserIcon className="h-8 w-8 text-muted-foreground" />
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-foreground">{user?.email}</p>
+            <div className="ml-3 overflow-hidden">
+              <p className="text-sm font-medium text-foreground truncate">{user?.email}</p>
               <button
                 onClick={() => signOut()}
                 className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"

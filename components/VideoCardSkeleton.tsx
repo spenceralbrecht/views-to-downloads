@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react'
 
 export function VideoCardSkeleton() {
   return (
-    <Card className="relative bg-card shadow-sm hover:shadow-md transition-shadow duration-200">
+    <Card className="relative bg-card shadow-sm hover:shadow-md transition-shadow duration-200 w-full">
       <div className="aspect-[9/16] flex items-center justify-center bg-muted">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-2" />

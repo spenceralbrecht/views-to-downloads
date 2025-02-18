@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition, useMemo, memo } from 'react'
-import { ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, X, HelpCircle } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
@@ -30,6 +30,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { DemoVideoCardSkeleton } from '@/components/DemoVideoCardSkeleton'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Hook {
   id: string
@@ -914,7 +920,26 @@ export default function CreateAd() {
             
             {/* Demos Section */}
             <div>
-              <h2 className="text-lg font-semibold mb-4">4. Demos</h2>
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-lg font-semibold">4. Demos</h2>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[300px]">
+                      <p>Tips for filming great demo videos:</p>
+                      <ul className="list-disc ml-4 mt-2 space-y-1">
+                        <li>Film in portrait mode (9:16 ratio)</li>
+                        <li>Keep it short (15-30 seconds)</li>
+                        <li>Show clear app interactions</li>
+                        <li>Ensure good lighting</li>
+                        <li>Keep your hand movements smooth</li>
+                      </ul>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <p className="text-sm text-muted-foreground mb-4">Upload your product demo videos</p>
               <div className="flex items-start gap-4">
                 <form>
