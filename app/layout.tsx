@@ -22,6 +22,18 @@ export default async function RootLayout({
     <html lang="en" className="dark">
       <head>
         <script defer src="https://feedback.fish/ff.js?pid=8ce000788096e9"></script>
+        <Script id="new-relic" strategy="beforeInteractive">
+          {`
+            ;window.NREUM||(NREUM={});NREUM.init={distributed_tracing:{enabled:true},privacy:{cookies_enabled:true},ajax:{deny_list:["bam.nr-data.net"]}};
+            
+            ;NREUM.loader_config={accountID:"6454671",trustKey:"6454671",agentID:"1134555137",licenseKey:"NRJS-89b34598ab2aebca1b4",applicationID:"1134555137"};
+            ;NREUM.info={beacon:"bam.nr-data.net",errorBeacon:"bam.nr-data.net",licenseKey:"NRJS-89b34598ab2aebca1b4",applicationID:"1134555137",sa:1};
+          `}
+        </Script>
+        <Script 
+          src="https://js-agent.newrelic.com/nr-loader-spa-1.281.0.min.js"
+          strategy="beforeInteractive"
+        />
         <Script id="microsoft-clarity" strategy="beforeInteractive">
           {`
             (function(c,l,a,r,i,t,y){

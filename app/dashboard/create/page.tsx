@@ -324,6 +324,11 @@ export default function CreateAd() {
 
       if (error) {
         console.error('Error fetching hooks:', error)
+        toast({
+          title: "Error Loading Hooks",
+          description: `Error code: ${error.code}. Please report this error: ${error.message}`,
+          variant: "destructive"
+        })
       } else if (data) {
         setHooks(data)
         if (data.length > 0) {
@@ -910,19 +915,44 @@ export default function CreateAd() {
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files?.[0]) {
+                        const file = e.target.files[0];
+                        // Check file size (max 100MB)
+                        if (file.size > 100 * 1024 * 1024) {
+                          toast({
+                            title: "File Too Large",
+                            description: "Demo video must be under 100MB. Please compress your video and try again.",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+                        
                         startDemoUpload(async () => {
-                          const formData = new FormData()
-                          formData.append('videoFile', e.target.files![0])
-                          const result = await uploadDemoVideo(formData)
-                          if (result.error) {
+                          try {
+                            const formData = new FormData()
+                            formData.append('videoFile', file)
+                            const result = await uploadDemoVideo(formData)
+                            if (result.error) {
+                              console.error('Demo upload error:', result.error)
+                              toast({
+                                title: "Demo Upload Failed",
+                                description: `Error uploading demo video. Please report this error: ${result.error}`,
+                                variant: "destructive"
+                              })
+                            } else {
+                              toast({
+                                title: "Demo Upload Success",
+                                description: "Your demo video has been uploaded successfully.",
+                              })
+                              // Refresh the demo videos list
+                              fetchDemoVideos()
+                            }
+                          } catch (error: any) {
+                            console.error('Demo upload exception:', error)
                             toast({
-                              title: "Error uploading video",
-                              description: result.error,
+                              title: "Demo Upload Error",
+                              description: `Unexpected error uploading demo. Please report this error: ${error.message || 'Unknown error'}`,
                               variant: "destructive"
                             })
-                          } else {
-                            // Refresh the demo videos list
-                            fetchDemoVideos()
                           }
                         })
                       }
