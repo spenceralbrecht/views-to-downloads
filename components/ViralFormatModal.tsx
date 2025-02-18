@@ -12,17 +12,7 @@ import { Eye, Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { useEffect, useState } from 'react'
-import Script from 'next/script'
-
-// Add type declaration for TikTok global
-declare global {
-  interface Window {
-    TikTok?: {
-      reload: () => void
-    }
-  }
-}
+import { useEffect, useState, useRef } from 'react'
 
 interface ViralFormatModalProps {
   open: boolean
@@ -33,7 +23,7 @@ interface VideoExample {
   url: string
   platform: "tiktok" | "instagram"
   views: number
-  embedCode?: string
+  view_url: string
 }
 
 interface Format {
@@ -59,7 +49,6 @@ export function ViralFormatModal({ open, onOpenChange }: ViralFormatModalProps) 
   const supabase = createClientComponentClient()
   const [format, setFormat] = useState<Format | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [tiktokScriptLoaded, setTiktokScriptLoaded] = useState(false)
 
   useEffect(() => {
     async function fetchFormat() {
@@ -81,24 +70,19 @@ export function ViralFormatModal({ open, onOpenChange }: ViralFormatModalProps) 
     }
   }, [open, supabase])
 
-  useEffect(() => {
-    if (open && !tiktokScriptLoaded) {
-      const script = document.createElement('script')
-      script.src = 'https://www.tiktok.com/embed.js'
-      script.async = true
-      script.onload = () => {
-        setTiktokScriptLoaded(true)
-      }
-      document.body.appendChild(script)
-      return () => {
-        document.body.removeChild(script)
-      }
-    }
-  }, [open, tiktokScriptLoaded])
-
   const handleUseFormat = () => {
     router.push('/dashboard/create')
     onOpenChange(false)
+  }
+
+  const handleVideoHover = (videoElement: HTMLVideoElement) => {
+    videoElement.play().catch(error => {
+      console.log("Autoplay failed:", error)
+    })
+  }
+
+  const handleVideoLeave = (videoElement: HTMLVideoElement) => {
+    videoElement.pause()
   }
 
   if (!format && isLoading) {
@@ -135,7 +119,7 @@ export function ViralFormatModal({ open, onOpenChange }: ViralFormatModalProps) 
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           <div className="space-y-6 py-4">
             {/* How it Works Section */}
             <div>
@@ -156,36 +140,36 @@ export function ViralFormatModal({ open, onOpenChange }: ViralFormatModalProps) 
             {/* Viral Examples Section */}
             <div>
               <h3 className="text-lg font-semibold mb-3">Viral Examples</h3>
-              <div className="flex gap-6 overflow-x-auto pb-4 -mx-6 px-6 snap-x snap-mandatory">
+              <div className="flex gap-6 overflow-x-auto pb-4 -mx-6 px-6 snap-x snap-mandatory scrollbar-hide">
                 {format.examples.map((example, index) => (
                   <div 
                     key={index}
-                    className="group relative w-[325px] flex-shrink-0 snap-center"
+                    className="group relative w-[244px] flex-shrink-0 snap-center"
                   >
                     <Card className="overflow-hidden">
-                      <div className="aspect-[9/16] relative h-[575px]">
-                        {example.platform === "tiktok" ? (
-                          <>
-                            <div className="absolute top-3 left-3 flex items-center gap-1.5 text-white text-base z-30">
-                              <Eye className="w-4 h-4" />
-                              <span>{formatViewCount(example.views)}</span>
-                            </div>
-                            <TikTokEmbed url={example.url} />
-                          </>
-                        ) : (
-                          <>
-                            <div className="absolute top-3 left-3 flex items-center gap-1.5 text-white text-base z-30">
-                              <Eye className="w-4 h-4" />
-                              <span>{formatViewCount(example.views)}</span>
-                            </div>
-                            <iframe
-                              className="w-full h-full"
-                              src={`https://www.instagram.com/reel/${example.url.split('/').pop()}/embed/`}
-                              frameBorder="0"
-                              allowFullScreen
-                            />
-                          </>
-                        )}
+                      <div 
+                        className="aspect-[9/16] relative h-[431px]"
+                        onMouseEnter={(e) => {
+                          const video = e.currentTarget.querySelector('video')
+                          if (video) handleVideoHover(video)
+                        }}
+                        onMouseLeave={(e) => {
+                          const video = e.currentTarget.querySelector('video')
+                          if (video) handleVideoLeave(video)
+                        }}
+                      >
+                        <div className="absolute top-3 left-3 flex items-center gap-1.5 text-white text-base z-30">
+                          <Eye className="w-4 h-4" />
+                          <span>{formatViewCount(example.views)}</span>
+                        </div>
+                        <video
+                          src={example.view_url}
+                          className="w-full h-full object-cover"
+                          loop
+                          playsInline
+                          muted
+                          preload="metadata"
+                        />
                         <a 
                           href={example.url}
                           target="_blank"
@@ -213,39 +197,5 @@ export function ViralFormatModal({ open, onOpenChange }: ViralFormatModalProps) 
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function TikTokEmbed({ url }: { url: string }) {
-  const videoId = url.split('/').pop()
-  
-  useEffect(() => {
-    if (window.TikTok) {
-      window.TikTok.reload()
-    }
-  }, [])
-
-  return (
-    <div className="w-full h-full">
-      <style>{`
-        .tiktok-embed {
-          margin: 0 !important;
-          max-width: none !important;
-          min-width: 0 !important;
-          width: 100% !important;
-          height: 100% !important;
-        }
-        .tiktok-embed::before {
-          display: none !important;
-        }
-      `}</style>
-      <blockquote 
-        className="tiktok-embed w-full h-full" 
-        cite={url}
-        data-video-id={videoId}
-      >
-        <section></section>
-      </blockquote>
-    </div>
   )
 } 
