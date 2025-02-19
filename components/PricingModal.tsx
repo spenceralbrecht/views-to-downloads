@@ -9,8 +9,10 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { getStripeConfig } from '@/config/stripe'
+import { trackStripeCheckout } from '@/utils/tracking'
 import { Check } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useUser } from '@supabase/auth-helpers-react'
 
 interface PricingModalProps {
   isOpen: boolean
@@ -71,6 +73,7 @@ function PricingModal({ isOpen, onClose }: PricingModalProps) {
   const [prices, setPrices] = useState<Price[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const user = useUser();
 
   useEffect(() => {
     async function fetchPrices() {
@@ -107,6 +110,7 @@ function PricingModal({ isOpen, onClose }: PricingModalProps) {
         setError(`Unable to process ${tier.name} plan purchase. Please try again later.`)
         return
       }
+      trackStripeCheckout(user?.email);
       window.location.href = link
     } catch (error) {
       console.error('Error handling purchase:', error)

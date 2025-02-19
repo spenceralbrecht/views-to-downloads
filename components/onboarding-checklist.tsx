@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useState } from 'react'
 import PricingModal from '@/components/PricingModal'
+import { trackStripeCheckout } from '@/utils/tracking'
+import { useUser } from '@supabase/auth-helpers-react'
 
 interface OnboardingChecklistProps {
   hasSubscription: boolean
@@ -17,13 +19,19 @@ interface OnboardingChecklistProps {
 
 export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, hasHooks, billingUrl }: OnboardingChecklistProps) {
   const [showPricingModal, setShowPricingModal] = useState(false)
+  const user = useUser();
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Onboarding</h2>
       <div className="grid gap-4">
         <div 
-          onClick={() => !hasSubscription && setShowPricingModal(true)} 
+          onClick={() => {
+            if (!hasSubscription) {
+              trackStripeCheckout(user?.email);
+              setShowPricingModal(true);
+            }
+          }} 
           className={!hasSubscription ? 'cursor-pointer' : 'cursor-default'}
         >
           <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors ${!hasSubscription ? 'hover:bg-accent/50' : ''}`}>

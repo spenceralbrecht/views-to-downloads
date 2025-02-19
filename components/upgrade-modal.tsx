@@ -10,7 +10,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { getStripeConfig } from '@/config/stripe'
+import { trackStripeCheckout } from '@/utils/tracking'
 import { useState } from 'react'
+import { useUser } from '@supabase/auth-helpers-react'
 
 export interface UpgradeModalProps {
   open: boolean
@@ -22,6 +24,7 @@ export interface UpgradeModalProps {
 export function UpgradeModal({ open, onOpenChange, subscription, loading }: UpgradeModalProps) {
   const [error, setError] = useState<string | null>(null)
   const plan = subscription?.plan_name || null;
+  const user = useUser();
 
   // Get the next tier's payment link
   const getUpgradeLink = () => {
@@ -43,6 +46,7 @@ export function UpgradeModal({ open, onOpenChange, subscription, loading }: Upgr
     try {
       setError(null);
       const upgradeLink = getUpgradeLink();
+      trackStripeCheckout(user?.email);
       window.location.href = upgradeLink;
       onOpenChange(false);
     } catch (error) {

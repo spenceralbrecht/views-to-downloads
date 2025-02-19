@@ -9,6 +9,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { trackStripeCheckout } from '@/utils/tracking'
+import { useUser } from '@supabase/auth-helpers-react'
 
 interface SubscriptionLimitDialogProps {
   isOpen: boolean
@@ -23,6 +25,8 @@ export function SubscriptionLimitDialog({
   currentPlan,
   upgradeLink 
 }: SubscriptionLimitDialogProps) {
+  const user = useUser();
+
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent>
@@ -37,6 +41,7 @@ export function SubscriptionLimitDialog({
           <AlertDialogAction
             className="bg-primary hover:bg-primary/90"
             onClick={() => {
+              trackStripeCheckout(user?.email);
               window.location.href = upgradeLink
             }}
           >

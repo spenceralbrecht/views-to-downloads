@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from '@/components/ui/button'
 import { getStripeConfig } from '@/config/stripe'
+import { trackStripeCheckout } from '@/utils/tracking'
 
 interface ContentLimitGuardProps {
   children: ReactNode
@@ -41,6 +42,7 @@ export function ContentLimitGuard({ children }: ContentLimitGuardProps) {
       if (!stripeConfig.customerBillingLink) {
         throw new Error('Billing link not available')
       }
+      trackStripeCheckout(user?.email);
       window.location.href = stripeConfig.customerBillingLink
     } catch (error) {
       console.error('Error handling upgrade:', error)
