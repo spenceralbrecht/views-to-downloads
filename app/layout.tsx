@@ -6,8 +6,69 @@ import Script from 'next/script'
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Views to Downloads',
+  title: {
+    default: 'Views to Downloads',
+    template: '%s | Views to Downloads'
+  },
   description: 'Automating UGC content that gets you views and downloads',
+  keywords: ['UGC', 'content creation', 'app marketing', 'video content', 'automation'],
+  authors: [{ name: 'Views to Downloads' }],
+  creator: 'Views to Downloads',
+  publisher: 'Views to Downloads',
+  icons: {
+    icon: [
+      {
+        url: '/favicon.ico',
+        sizes: 'any',
+        type: 'image/x-icon',
+      },
+      {
+        url: '/favicon-16x16.png',
+        sizes: '16x16',
+        type: 'image/png',
+      },
+      {
+        url: '/favicon-32x32.png',
+        sizes: '32x32',
+        type: 'image/png',
+      },
+      {
+        url: '/android-chrome-192x192.png',
+        sizes: '192x192',
+        type: 'image/png',
+      },
+      {
+        url: '/android-chrome-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
+      },
+    ],
+    apple: [
+      {
+        url: '/apple-touch-icon.png',
+        type: 'image/png',
+      },
+    ],
+  },
+  manifest: '/site.webmanifest',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://viewstodownloads.com',
+    title: 'Views to Downloads',
+    description: 'Automating UGC content that gets you views and downloads',
+    siteName: 'Views to Downloads',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Views to Downloads',
+    description: 'Automating UGC content that gets you views and downloads',
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+  },
 }
 
 export default async function RootLayout({
@@ -57,4 +118,5 @@ export default async function RootLayout({
   )
 }
 
+import './globals.css'
 import './globals.css'
