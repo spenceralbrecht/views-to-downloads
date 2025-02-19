@@ -8,10 +8,21 @@ export async function middleware(req: NextRequest) {
 
   // Refresh session if expired
   const { data: { session }, error } = await supabase.auth.getSession()
+  
+  // Add detailed logging
+  console.log('Middleware - Current path:', req.nextUrl.pathname)
+  console.log('Middleware - Session exists:', !!session)
   if (error) console.error('Session error in middleware:', error)
+
+  // If this is the callback route, let it process normally
+  if (req.nextUrl.pathname === '/auth/callback') {
+    console.log('Middleware - Processing callback route')
+    return res
+  }
 
   // If trying to access a protected route and not logged in, redirect to home
   if (req.nextUrl.pathname.startsWith('/dashboard') && !session) {
+    console.log('Middleware - Redirecting to home: Not authenticated for dashboard')
     const redirectUrl = new URL('/', req.url)
     redirectUrl.searchParams.set('redirect', req.nextUrl.pathname)
     return NextResponse.redirect(redirectUrl)
@@ -19,6 +30,7 @@ export async function middleware(req: NextRequest) {
 
   // If logged in and trying to access login page, redirect to dashboard
   if (session && req.nextUrl.pathname === '/') {
+    console.log('Middleware - Redirecting to dashboard: Already authenticated')
     const redirectUrl = req.nextUrl.searchParams.get('redirect') || '/dashboard'
     return NextResponse.redirect(new URL(redirectUrl, req.url))
   }
