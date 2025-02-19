@@ -340,7 +340,7 @@ export default function HooksPage() {
                 ))
               ) : !isGenerating && (
                 <div className="text-center py-8 text-muted-foreground">
-                  No hooks generated yet. Click &quot;Generate Hooks&quot; to get started.
+                  No hooks generated yet. Click &quot;Generate Hooks&quot; to get started, but make sure you have added an app first!
                 </div>
               )}
             </div>

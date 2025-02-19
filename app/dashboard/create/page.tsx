@@ -724,7 +724,7 @@ export default function CreateAd() {
             {/* App Selection */}
             <div>
               <h2 className="text-lg font-semibold mb-4">1. Select your app</h2>
-              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-muted">
+              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
                 {loadingApps ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />

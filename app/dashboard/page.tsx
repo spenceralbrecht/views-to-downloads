@@ -9,12 +9,14 @@ import { OnboardingChecklist } from '@/components/onboarding-checklist'
 import { getStripeConfig } from '@/config/stripe'
 import { useState, useEffect } from 'react'
 import { ViralFormatModal } from '@/components/ViralFormatModal'
+import { Separator } from "@/components/ui/separator"
 
 export default function Dashboard() {
   const [session, setSession] = useState<any>(null)
   const [subscription, setSubscription] = useState<any>(null)
   const [apps, setApps] = useState<any[]>([])
   const [demoVideos, setDemoVideos] = useState<any[]>([])
+  const [hooks, setHooks] = useState<any[]>([])
   const [isViralFormatModalOpen, setIsViralFormatModalOpen] = useState(false)
   const supabase = createClientComponentClient()
 
@@ -26,7 +28,7 @@ export default function Dashboard() {
       }
       setSession(session)
 
-      const [subscriptionData, appsData, demoVideosData] = await Promise.all([
+      const [subscriptionData, appsData, demoVideosData, hooksData] = await Promise.all([
         supabase
           .from('subscriptions')
           .select('*')
@@ -39,12 +41,17 @@ export default function Dashboard() {
         supabase
           .from('input_content')
           .select('*')
+          .eq('user_id', session.user.id),
+        supabase
+          .from('hooks')
+          .select('*')
           .eq('user_id', session.user.id)
       ])
 
       setSubscription(subscriptionData.data)
       setApps(appsData.data || [])
       setDemoVideos(demoVideosData.data || [])
+      setHooks(hooksData.data || [])
     }
 
     fetchData()
@@ -53,6 +60,7 @@ export default function Dashboard() {
   const hasSubscription = !!subscription
   const hasApp = apps.length > 0
   const hasDemoVideo = demoVideos.length > 0
+  const hasHooks = hooks.length > 0
   const billingUrl = getStripeConfig().customerBillingLink
 
   const handleCreateUGCClick = (e: React.MouseEvent) => {
@@ -71,8 +79,11 @@ export default function Dashboard() {
           hasSubscription={hasSubscription}
           hasApp={hasApp}
           hasDemoVideo={hasDemoVideo}
+          hasHooks={hasHooks}
           billingUrl={billingUrl}
         />
+
+        <Separator className="my-8" />
 
         {/* Feature Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -123,13 +134,12 @@ export default function Dashboard() {
             </Card>
           </Link>
         </div>
-      </div>
 
-      {/* Viral Format Modal */}
-      <ViralFormatModal 
-        open={isViralFormatModalOpen} 
-        onOpenChange={setIsViralFormatModalOpen} 
-      />
+        <ViralFormatModal
+          open={isViralFormatModalOpen}
+          onOpenChange={setIsViralFormatModalOpen}
+        />
+      </div>
     </div>
   )
 }

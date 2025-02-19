@@ -27,7 +27,7 @@ Please format the response in a clear, readable way with section headers and bul
 
     console.log('Generating enhanced description with OpenAI...')
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'chatgpt-4o-latest',
       messages: [
         {
           role: 'user',
