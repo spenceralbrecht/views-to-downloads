@@ -28,11 +28,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // If logged in and trying to access login page, redirect to dashboard
+  // If logged in and trying to access root page, redirect to dashboard
   if (session && req.nextUrl.pathname === '/') {
     console.log('Middleware - Redirecting to dashboard: Already authenticated')
-    const redirectUrl = req.nextUrl.searchParams.get('redirect') || '/dashboard'
-    return NextResponse.redirect(new URL(redirectUrl, req.url))
+    return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
   return res
