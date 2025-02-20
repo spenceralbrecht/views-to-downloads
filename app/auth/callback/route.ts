@@ -36,8 +36,16 @@ export async function GET(request: Request) {
     }
 
     console.log('Auth callback - Setting session')
-    // Set the auth cookie
-    await supabase.auth.setSession(session)
+    // Set session and get cookies
+    const { error: setSessionError } = await supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token
+    })
+
+    if (setSessionError) {
+      console.error('Auth callback - Failed to set session:', setSessionError)
+      throw setSessionError
+    }
 
     // Verify the session was set
     console.log('Auth callback - Verifying session')
@@ -51,13 +59,24 @@ export async function GET(request: Request) {
     console.log('Auth callback - Session successfully established')
     console.log('Auth callback - Redirecting to:', redirectTo)
 
-    // Redirect to the intended destination
-    return NextResponse.redirect(new URL(redirectTo, requestUrl.origin), {
+    // Create the response with redirect
+    const response = NextResponse.redirect(new URL(redirectTo, requestUrl.origin), {
       status: 302
     })
 
+    // Ensure cookies are properly set in the response
+    const cookieStore = cookies()
+    cookieStore.getAll().forEach(cookie => {
+      response.cookies.set(cookie.name, cookie.value, {
+        path: '/',
+        ...cookie
+      })
+    })
+
+    return response
+
   } catch (error) {
-    console.error('Auth callback - Error:', error)
+    console.error('Auth callback - Error during authentication:', error)
     const errorMessage = error instanceof Error ? error.message : 'Authentication failed'
     const errorUrl = new URL('/', requestUrl.origin)
     errorUrl.searchParams.set('error', errorMessage)
