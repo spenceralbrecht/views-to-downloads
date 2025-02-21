@@ -4,6 +4,7 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import Script from 'next/script'
 import { Toaster } from "@/components/ui/toaster"
+import './globals.css'
 
 export const metadata: Metadata = {
   title: {
@@ -126,6 +127,3 @@ export default async function RootLayout({
     </html>
   )
 }
-
-import './globals.css'
-import './globals.css'

@@ -53,16 +53,20 @@ export default function AuthButton() {
   }, [supabase.auth, router, searchParams])
 
   const handleSignIn = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         },
-      },
-    })
+      })
+    } catch (error) {
+      console.error('Sign in error:', error)
+    }
   }
 
   if (user) {
