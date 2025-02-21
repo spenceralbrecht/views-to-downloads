@@ -578,25 +578,41 @@ export default function CreateAd() {
             description: result.error,
             variant: "destructive"
           });
-        } else if ('outputId' in result) {
-          console.log('DEBUG: Video created successfully, resetting state');
+        } else if (result.success && result.video) {
+          console.log('DEBUG: Video created successfully with outputId:', result.video.outputId);
           setSelectedVideo(null);
           setSelectedDemoVideo('');
           setHook('');
 
-          // Add the video to the list immediately with in_progress status
+          // Create new video object and add to list
           const newVideo: OutputVideo = {
-            id: result.outputId as string,
+            id: result.video.outputId,
             status: 'in_progress',
             created_at: new Date().toISOString(),
             user_id: currentUser.id,
             url: ''
           };
-          setOutputVideos(prev => [newVideo, ...prev]);
+          console.log('DEBUG: Adding new video to list:', newVideo);
+          setOutputVideos(prev => {
+            console.log('DEBUG: Previous videos:', prev);
+            const updated = [newVideo, ...prev];
+            console.log('DEBUG: Updated videos list:', updated);
+            return updated;
+          });
+
+          // Start polling for video completion
+          pollForVideoCompletion(result.video.outputId);
 
           toast({
             title: "Video creation started",
             description: "Your video is being processed and will appear in the list below when ready.",
+          });
+        } else {
+          console.log('DEBUG: Unexpected response format:', result);
+          toast({
+            title: "Error creating video",
+            description: "Unexpected response from server",
+            variant: "destructive"
           });
         }
       } catch (error: any) {
