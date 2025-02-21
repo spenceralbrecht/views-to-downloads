@@ -36,6 +36,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import type { OutputContent } from '@/types/video'
 
 interface Hook {
   id: string
@@ -283,25 +284,101 @@ export default function CreateAd() {
       .from('output_content')
       .select('*')
       .eq('user_id', user.id)
-      .eq('status', 'completed')
       .order('created_at', { ascending: false });
     if (error) {
       console.error('Error fetching output videos:', error);
       return;
     }
     const outputVideosWithUrls = (videos || []).map((video) => {
-      const videoPath = video.url.includes('output-content/')
-        ? video.url.split('output-content/')[1]
-        : video.url;
-      const { data: { publicUrl } } = supabase
-        .storage
-        .from('output-content')
-        .getPublicUrl(videoPath);
-      return { ...video, url: publicUrl };
+      if (!video || !video.url) {
+        console.warn('Video or URL is missing:', video);
+        return { ...video, url: '' };
+      }
+      try {
+        const videoPath = video.url.includes('output-content/')
+          ? video.url.split('output-content/')[1]
+          : video.url;
+        const { data: { publicUrl } } = supabase
+          .storage
+          .from('output-content')
+          .getPublicUrl(videoPath);
+        return { ...video, url: publicUrl };
+      } catch (error) {
+        console.error('Error processing video URL:', error, video);
+        return { ...video, url: '' };
+      }
     });
-    setOutputVideos(outputVideosWithUrls);
+    setOutputVideos(outputVideosWithUrls.filter(video => video !== null));
     setLoadingOutputs(false);
   };
+
+  // Add real-time subscription for video status updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('output_content_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'output_content'
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            setOutputVideos(currentVideos => 
+              currentVideos.map(video => {
+                if (video.id === payload.new.id) {
+                  const newVideo = payload.new;
+                  if (!newVideo.url) return { ...video, ...newVideo };
+                  try {
+                    const videoPath = newVideo.url.includes('output-content/')
+                      ? newVideo.url.split('output-content/')[1]
+                      : newVideo.url;
+                    const { data: { publicUrl } } = supabase
+                      .storage
+                      .from('output-content')
+                      .getPublicUrl(videoPath);
+                    return { ...video, ...newVideo, url: publicUrl };
+                  } catch (error) {
+                    console.error('Error processing updated video URL:', error);
+                    return { ...video, ...newVideo };
+                  }
+                }
+                return video;
+              })
+            );
+          } else if (payload.eventType === 'INSERT') {
+            const newVideo = payload.new as OutputContent;
+            if (!newVideo.url) {
+              setOutputVideos(currentVideos => [newVideo, ...currentVideos]);
+              return;
+            }
+            try {
+              const videoPath = newVideo.url.includes('output-content/')
+                ? newVideo.url.split('output-content/')[1]
+                : newVideo.url;
+              const { data: { publicUrl } } = supabase
+                .storage
+                .from('output-content')
+                .getPublicUrl(videoPath);
+              setOutputVideos(currentVideos => [{ ...newVideo, url: publicUrl }, ...currentVideos]);
+            } catch (error) {
+              console.error('Error processing new video URL:', error);
+              setOutputVideos(currentVideos => [newVideo, ...currentVideos]);
+            }
+          } else if (payload.eventType === 'DELETE') {
+            setOutputVideos(currentVideos => 
+              currentVideos.filter(video => video.id !== payload.old.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   useEffect(() => {
     fetchOutputVideos();
@@ -1125,25 +1202,14 @@ export default function CreateAd() {
             ) : outputVideos.length === 0 ? (
               <p className="text-muted-foreground text-center">No videos created yet. Create your first video above!</p>
             ) : (
-              outputVideos.map((video) => {
-                if (video.status === 'pending') {
-                  return (
-                    <div key={video.id} className="border border-dashed p-4 flex flex-col items-center justify-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <span className="text-sm text-muted-foreground">Processing video...</span>
-                    </div>
-                  );
-                } else {
-                  return (
-                    <VideoCard 
-                      key={video.id} 
-                      video={video} 
-                      onDelete={handleDeleteVideo}
-                      isPending={false}
-                    />
-                  );
-                }
-              })
+              outputVideos.map((video) => (
+                <VideoCard 
+                  key={video.id} 
+                  video={video} 
+                  isPending={video.status === 'in_progress'}
+                  onDelete={handleDeleteVideo}
+                />
+              ))
             )}
           </div>
         </div>

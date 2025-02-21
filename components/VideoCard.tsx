@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Download, Trash2, Loader2, X } from 'lucide-react'
+import { Download, Trash2, Loader2, X, AlertTriangle } from 'lucide-react'
 import { VideoCardSkeleton } from './VideoCardSkeleton'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import ReactPlayer from 'react-player'
@@ -41,6 +41,35 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
   // Show loading skeleton for in_progress videos
   if (video.status === 'in_progress' || isPending) {
     return <VideoCardSkeleton />
+  }
+
+  // Show failed state
+  if (video.status === 'failed') {
+    return (
+      <Card className="relative bg-card shadow-sm hover:shadow-md transition-shadow duration-200 w-full">
+        <div className="aspect-[9/16] flex items-center justify-center bg-muted">
+          <div className="text-center">
+            <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Video processing failed</p>
+          </div>
+        </div>
+        <div className="p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              {new Date(video.created_at).toLocaleDateString()}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(video.id)}
+              className="text-destructive hover:text-destructive/90"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Card>
+    )
   }
 
   const videoUrl = video.url || ''
