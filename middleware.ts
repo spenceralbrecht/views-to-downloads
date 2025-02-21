@@ -7,7 +7,7 @@ export async function middleware(req: NextRequest) {
   const supabase = createMiddlewareClient({ req, res })
 
   try {
-    // Refresh session if expired
+    // Refresh session if expired - use the response from supabase
     const { data: { session }, error } = await supabase.auth.getSession()
     
     // Add detailed logging
@@ -26,23 +26,40 @@ export async function middleware(req: NextRequest) {
       console.log('Middleware - Redirecting to home: Not authenticated for dashboard')
       const redirectUrl = new URL('/', req.url)
       redirectUrl.searchParams.set('redirect', req.nextUrl.pathname)
-      return NextResponse.redirect(redirectUrl)
+      const redirectRes = NextResponse.redirect(redirectUrl)
+      
+      // Copy over the supabase auth cookies to the redirect response
+      const cookiesList = res.cookies.getAll()
+      cookiesList.forEach(cookie => {
+        redirectRes.cookies.set(cookie.name, cookie.value, {
+          ...cookie,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production'
+        })
+      })
+      
+      return redirectRes
     }
 
     // If logged in and trying to access root page, redirect to dashboard
     if (session && req.nextUrl.pathname === '/') {
       console.log('Middleware - Redirecting to dashboard: Already authenticated')
-      return NextResponse.redirect(new URL('/dashboard', req.url))
+      const dashboardRes = NextResponse.redirect(new URL('/dashboard', req.url))
+      
+      // Copy over the supabase auth cookies to the redirect response
+      const cookiesList = res.cookies.getAll()
+      cookiesList.forEach(cookie => {
+        dashboardRes.cookies.set(cookie.name, cookie.value, {
+          ...cookie,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production'
+        })
+      })
+      
+      return dashboardRes
     }
 
-    // Ensure cookies are properly set in the response
-    const response = NextResponse.next()
-    const cookiesList = res.cookies.getAll()
-    cookiesList.forEach(cookie => {
-      response.cookies.set(cookie.name, cookie.value, cookie)
-    })
-
-    return response
+    return res
   } catch (error) {
     console.error('Middleware - Error:', error)
     return res
