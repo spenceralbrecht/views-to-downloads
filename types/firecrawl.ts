@@ -42,14 +42,14 @@ export interface FirecrawlScrapeOptions {
 // Firecrawl response type
 export interface FirecrawlResponse {
   success: boolean
-  data?: {
-    extract?: AppData
-    markdown?: string
-    html?: string
-    metadata?: Record<string, any>
-  }
-  metadata?: FirecrawlMetadata
+  warning?: string
   error?: string
+  metadata?: FirecrawlMetadata
+  extract?: {
+    app_name: string
+    app_description: string
+    app_logo_url: string
+  }
 }
 
 // Type for the addApp function response

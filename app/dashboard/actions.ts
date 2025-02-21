@@ -189,14 +189,15 @@ export async function addApp(appStoreUrl: string): Promise<AddAppResponse> {
       try {
         const result = await Promise.race([
           firecrawl.scrapeUrl(appStoreUrl, {
-            formats: ['markdown'],
+            formats: ['extract'],
             extract: {
               prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
               schema: {
+                type: "object",
                 properties: {
-                  app_name: { description: "The name of the app" },
-                  app_description: { description: "The full description of the app" },
-                  app_logo_url: { description: "The URL of the app's logo image" }
+                  app_name: { type: "string", description: "The name of the app" },
+                  app_description: { type: "string", description: "The full description of the app" },
+                  app_logo_url: { type: "string", description: "The URL of the app's logo image" }
                 },
                 required: ["app_name", "app_description", "app_logo_url"]
               }
@@ -213,18 +214,11 @@ export async function addApp(appStoreUrl: string): Promise<AddAppResponse> {
         // Log the full response to debug
         console.log('Firecrawl response:', JSON.stringify(result, null, 2))
 
-        // Extract data from metadata
-        const metadata = result.metadata
-        if (!metadata) {
-          console.error('No metadata in response:', result)
-          throw new Error('No metadata found in response')
-        }
-
-        // Construct app data from metadata
-        const extractedData = {
-          app_name: metadata.title?.replace(' - Apps on Google Play', '') || '',
-          app_description: metadata.description || '',
-          app_logo_url: metadata.ogImage || metadata['og:image'] || ''
+        // Extract data directly from the extract field
+        const extractedData = result.extract
+        if (!extractedData) {
+          console.error('No extracted data in response:', result)
+          throw new Error('No extracted data found in response')
         }
 
         // Validate the extracted data
