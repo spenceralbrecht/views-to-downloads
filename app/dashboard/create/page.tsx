@@ -565,27 +565,6 @@ export default function CreateAd() {
     // Set creating state
     setIsCreating(true)
 
-    // Create a pending video object
-    console.log('DEBUG: Creating pending video object');
-    const pendingVideoObj = {
-      id: crypto.randomUUID(),
-      status: 'pending',
-      created_at: new Date().toISOString(),
-      app_id: selectedAppId,
-      user_id: currentUser.id,
-      url: ''
-    };
-
-    // Add the pending video to the list
-    setOutputVideos(prev => [pendingVideoObj, ...prev]);
-    setPendingVideo(pendingVideoObj);
-    console.log('DEBUG: Pending video object added', pendingVideoObj);
-
-    toast({
-      title: "Creating video...",
-      description: "This should take a few minutes",
-    });
-
     startTransition(async () => {
       try {
         console.log('DEBUG: Calling createVideo with', payload);
@@ -594,28 +573,26 @@ export default function CreateAd() {
 
         if ('error' in result) {
           console.log('DEBUG: Error creating video', result.error);
-          setOutputVideos(prev => prev.filter(v => v.id !== pendingVideoObj.id));
-          setPendingVideo(null);
           toast({
             title: "Error creating video",
             description: result.error,
             variant: "destructive"
           });
-        } else {
+        } else if ('outputId' in result) {
           console.log('DEBUG: Video created successfully, resetting state');
           setSelectedVideo(null);
           setSelectedDemoVideo('');
           setHook('');
-          setPendingVideo(null);
-          console.log('DEBUG: Attempting to fetch updated videos');
-          if (typeof fetchOutputVideos === 'function') {
-            fetchOutputVideos();
-          }
 
-          // Check if result has output_id before using it
-          if ('output_id' in result && typeof result.output_id === 'string') {
-            pollForVideoCompletion(result.output_id);
-          }
+          // Add the video to the list immediately with in_progress status
+          const newVideo: OutputVideo = {
+            id: result.outputId as string,
+            status: 'in_progress',
+            created_at: new Date().toISOString(),
+            user_id: currentUser.id,
+            url: ''
+          };
+          setOutputVideos(prev => [newVideo, ...prev]);
 
           toast({
             title: "Video creation started",
@@ -629,9 +606,6 @@ export default function CreateAd() {
           description: error.message,
           variant: "destructive"
         });
-
-        setOutputVideos(prev => prev.filter(video => video.id !== pendingVideoObj.id));
-        setPendingVideo(null);
       } finally {
         // Reset creating state after a short delay to allow for visual feedback
         setTimeout(() => {
