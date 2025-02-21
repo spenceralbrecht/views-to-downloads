@@ -219,25 +219,57 @@ async function handleStripeWebhook(event: Stripe.Event) {
 
         const subscription = await stripe.subscriptions.retrieve(subscriptionId as string)
         const customerId = subscription.customer as string
+        const priceId = subscription.items.data[0].price.id
 
-        // Update subscription and reset content usage for new billing period
-        const { error } = await supabaseAdmin
-          .from('subscriptions')
-          .update({
-            status: subscription.status,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            content_used_this_month: 0, // Reset content usage on new billing period
-            content_reset_date: new Date(subscription.current_period_start * 1000).toISOString()
-          })
-          .eq('stripe_customer_id', customerId)
+        // Get userId from customer email
+        const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer
+        const userId = await getUserIdFromEmail(customer.email)
 
-        if (error) {
-          console.error('Error updating subscription period:', error)
-          return { status: 'error', message: 'Failed to update subscription period' }
+        if (!userId) {
+          console.log('No user found for email:', customer.email)
+          return { status: 'success', message: 'Skipped - user not found' }
         }
 
-        return { status: 'success', message: 'Invoice processed' }
+        // Determine plan name from price ID
+        let planName = 'starter'
+        if (priceId === priceIds.growth) {
+          planName = 'growth'
+        } else if (priceId === priceIds.scale) {
+          planName = 'scale'
+        }
+
+        // Create or update subscription record
+        const { error } = await supabaseAdmin.from('subscriptions').upsert({
+          user_id: userId,
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscriptionId as string,
+          stripe_price_id: priceId,
+          plan_name: planName,
+          status: subscription.status,
+          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          content_used_this_month: 0,
+          content_reset_date: new Date(subscription.current_period_start * 1000).toISOString()
+        }, {
+          onConflict: 'user_id'
+        })
+
+        if (error) {
+          console.error('Error upserting subscription:', error)
+          return { status: 'error', message: 'Failed to update subscription' }
+        }
+
+        // Store userId in customer and subscription metadata for future reference
+        await Promise.all([
+          stripe.customers.update(customerId, {
+            metadata: { userId }
+          }),
+          stripe.subscriptions.update(subscriptionId as string, {
+            metadata: { userId }
+          })
+        ])
+
+        return { status: 'success', message: 'Invoice processed and subscription updated' }
       }
 
       // We can safely ignore these events
