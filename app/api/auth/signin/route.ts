@@ -62,14 +62,25 @@ export async function GET(request: Request) {
       )
     }
 
-    if (!result.data?.url) {
-      throw new Error('No OAuth URL returned')
+    if (!result.data?.url || !result.data?.codeVerifier) {
+      throw new Error('No OAuth URL or code verifier returned')
     }
 
-    console.log('OAuth URL:', result.data.url)
-    return NextResponse.redirect(result.data.url, {
+    // Store the code_verifier in a secure cookie
+    const response = NextResponse.redirect(result.data.url, {
       status: 302,
     })
+    response.cookies.set({
+      name: 'supabase-auth-code-verifier',
+      value: result.data.codeVerifier,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 10, // 10 minutes
+    })
+
+    console.log('OAuth URL:', result.data.url)
+    return response
   } catch (error) {
     console.error('Signin error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Authentication failed'
@@ -81,4 +92,3 @@ export async function GET(request: Request) {
     )
   }
 }
-
