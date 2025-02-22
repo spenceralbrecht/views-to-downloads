@@ -188,39 +188,38 @@ export async function addApp(appStoreUrl: string): Promise<AddAppResponse> {
 
       try {
         const result = await Promise.race([
-          firecrawl.scrapeUrl(appStoreUrl, {
-            formats: ['extract'],
-            extract: {
-              prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
-              schema: {
-                type: "object",
-                properties: {
-                  app_name: { type: "string", description: "The name of the app" },
-                  app_description: { type: "string", description: "The full description of the app" },
-                  app_logo_url: { type: "string", description: "The URL of the app's logo image" }
-                },
-                required: ["app_name", "app_description", "app_logo_url"]
-              }
+          firecrawl.extract([appStoreUrl], {
+            prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
+            schema: {
+              type: "object",
+              properties: {
+                app_name: { type: "string", description: "The name of the app" },
+                app_description: { type: "string", description: "The full description of the app" },
+                app_logo_url: { type: "string", description: "The URL of the app's logo image" }
+              },
+              required: ["app_name", "app_description", "app_logo_url"]
             }
           }),
           timeout
-        ]) as FirecrawlResponse
+        ]) as { success: boolean; data?: { app_name: string; app_description: string; app_logo_url: string }; error?: string } | undefined
 
-        if (!result || !result.success) {
-          console.error('Extraction failed:', result?.error || 'No result returned')
-          throw new Error(result?.error || 'Failed to extract app data')
+        // Check if result is undefined first
+        if (!result) {
+          console.error('No response from Firecrawl')
+          throw new Error('Failed to get response from Firecrawl')
+        }
+
+        // Then check success and error properties
+        if (!result.success || !result.data) {
+          console.error('Extraction failed:', result.error || 'No error message provided')
+          throw new Error(result.error || 'Failed to extract app data')
         }
 
         // Log the full response to debug
         console.log('Firecrawl response:', JSON.stringify(result, null, 2))
 
-        // Extract data directly from the extract field
-        const extractedData = result.extract
-        if (!extractedData) {
-          console.error('No extracted data in response:', result)
-          throw new Error('No extracted data found in response')
-        }
-
+        // Extract data directly from the data field
+        const extractedData = result.data
         // Validate the extracted data
         const validationResult = appDataSchema.safeParse(extractedData)
         if (!validationResult.success) {
