@@ -398,6 +398,18 @@ export async function createVideo({
 
       console.log('Video creation result:', result) // Add logging
 
+      // Increment the content usage count in Supabase
+      const { error: updateError } = await supabase
+        .from('subscriptions')
+        .update({ content_used_this_month: subscription.content_used_this_month + 1 })
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+
+      if (updateError) {
+        console.error('Failed to increment content usage count:', updateError)
+        // Don't throw error here as video was still created successfully
+      }
+
       return { success: true, video: { ...result, status: 'completed' } }
     } catch (error) {
       throw error
