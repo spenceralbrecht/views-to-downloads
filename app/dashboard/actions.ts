@@ -399,14 +399,33 @@ export async function createVideo({
 
       console.log('Video creation result:', result) // Add logging
 
-      // Increment the content usage using the utility function
-      const success = await incrementContentUsage(user.id)
-      
-      if (!success) {
-        console.error('Failed to increment content usage count for user:', user.id)
-        // Don't throw error here as video was still created successfully
+      // Get current subscription again to ensure we have the latest count
+      const { data: currentSub, error: fetchError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('id', subscription.id)
+        .single()
+
+      if (fetchError) {
+        console.error('Error fetching current subscription:', fetchError)
+        return { success: true, video: { ...result, status: 'completed' } }
+      }
+
+      // Increment the content usage count
+      const { error: updateError } = await supabase
+        .from('subscriptions')
+        .update({ content_used_this_month: (currentSub.content_used_this_month || 0) + 1 })
+        .eq('id', subscription.id)
+        .eq('user_id', user.id)
+
+      if (updateError) {
+        console.error('Failed to increment content usage count:', {
+          error: updateError,
+          subscriptionId: subscription.id,
+          userId: user.id
+        })
       } else {
-        console.log('Successfully incremented content usage for user:', user.id)
+        console.log('Successfully incremented content usage for subscription:', subscription.id)
       }
 
       return { success: true, video: { ...result, status: 'completed' } }
