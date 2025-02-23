@@ -411,6 +411,12 @@ export async function createVideo({
         return { success: true, video: { ...result, status: 'completed' } }
       }
 
+      console.log('Current content usage before increment:', {
+        subscriptionId: subscription.id,
+        currentUsage: currentSub.content_used_this_month || 0,
+        newUsage: (currentSub.content_used_this_month || 0) + 1
+      })
+
       // Increment the content usage count
       const { error: updateError } = await supabase
         .from('subscriptions')
