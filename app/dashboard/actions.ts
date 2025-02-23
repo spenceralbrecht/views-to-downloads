@@ -172,128 +172,73 @@ export async function addApp(appStoreUrl: string): Promise<AddAppResponse> {
       throw new Error('This app has already been added to your account')
     }
 
-    // Extract app data from Firecrawl with retries
+    // Extract app data from Firecrawl
     const { default: FirecrawlApp } = await import('@mendable/firecrawl-js')
     const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY })
 
     console.log('Extracting app data for:', appStoreUrl)
     
-    // Helper function to attempt extraction with timeout
-    const attemptExtraction = async (attempt: number) => {
-      console.log(`Attempt ${attempt} to extract app data...`)
-      
-      const TIMEOUT_MS = 120000 // Increase timeout to 120 seconds
-      const timeout = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(`Attempt ${attempt} timed out after ${TIMEOUT_MS/1000} seconds`)), TIMEOUT_MS)
+    try {
+      console.log('Starting Firecrawl extraction')
+      const result = await firecrawl.extract([appStoreUrl], {
+        prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
+        schema: appDataSchema
       })
 
-      try {
-        console.log(`Starting Firecrawl extraction for attempt ${attempt}`)
-        const extractionPromise = firecrawl.extract([appStoreUrl], {
-          prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
-          schema: {
-            type: "object",
-            properties: {
-              app_name: { type: "string", description: "The name of the app" },
-              app_description: { type: "string", description: "The full description of the app" },
-              app_logo_url: { type: "string", description: "The URL of the app's logo image" }
-            },
-            required: ["app_name", "app_description", "app_logo_url"]
-          }
+      console.log('Firecrawl raw response:', JSON.stringify(result, null, 2))
+
+      // Check for error response first
+      if ('error' in result && result.error) {
+        console.error('Firecrawl extraction failed with error:', result.error)
+        throw new Error(result.error)
+      }
+
+      // Type guard to ensure we have a successful response
+      if (!('success' in result) || !result.success || !result.data) {
+        console.error('Firecrawl extraction failed:', {
+          success: 'success' in result ? result.success : false,
+          hasData: 'data' in result ? !!result.data : false
         })
-
-        const result = await Promise.race([
-          extractionPromise,
-          timeout
-        ]) as { success: boolean; data?: { app_name: string; app_description: string; app_logo_url: string }; error?: string } | undefined
-
-        // Enhanced error handling and logging
-        if (!result) {
-          console.error(`Attempt ${attempt}: No response from Firecrawl`)
-          throw new Error('Failed to get response from Firecrawl')
-        }
-
-        console.log(`Attempt ${attempt} raw response:`, JSON.stringify(result, null, 2))
-
-        if (!result.success || !result.data) {
-          console.error(`Attempt ${attempt} failed:`, {
-            success: result.success,
-            error: result.error,
-            hasData: !!result.data
-          })
-          throw new Error(result.error || 'Failed to extract app data')
-        }
-
-        // Validate the extracted data more thoroughly
-        const extractedData = result.data
-        if (!extractedData.app_name || !extractedData.app_description || !extractedData.app_logo_url) {
-          console.error(`Attempt ${attempt}: Missing required fields in extracted data:`, extractedData)
-          throw new Error('Incomplete data extracted from app store')
-        }
-
-        // Validate the extracted data
-        const validationResult = appDataSchema.safeParse(extractedData)
-        if (!validationResult.success) {
-          console.error(`Attempt ${attempt}: Invalid data structure:`, {
-            data: extractedData,
-            error: validationResult.error
-          })
-          throw new Error('Failed to validate extracted app data')
-        }
-
-        console.log(`Attempt ${attempt} successful with validated data`)
-        return validationResult.data
-      } catch (error) {
-        console.error(`Attempt ${attempt} failed with error:`, error instanceof Error ? {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
-        } : error)
-        throw error
+        throw new Error('Failed to extract app data')
       }
-    }
 
-    // Try up to 3 times with increasing delays
-    let lastError: Error | null = null
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const data = await attemptExtraction(attempt)
-        console.log('Successfully extracted app data on attempt', attempt)
-        
-        // Process description through OpenAI
-        const enhancedDescription = await generateAppDescription(data.app_description)
-
-        // Insert into database
-        const { data: newApp, error: insertError } = await supabase
-          .from('apps')
-          .insert({
-            owner_id: user.id,
-            app_store_url: appStoreUrl,
-            app_description: enhancedDescription,
-            app_name: data.app_name,
-            app_logo_url: data.app_logo_url
-          })
-          .select()
-          .single()
-
-        if (insertError) throw insertError
-        if (!newApp) throw new Error('Failed to create app')
-
-        revalidatePath('/dashboard/apps')
-        return { success: true, app: newApp }
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error('Unknown error')
-        if (attempt < 3) {
-          // Wait before retrying (2s, then 4s, then 8s)
-          const delay = Math.pow(2, attempt) * 1000
-          console.log(`Waiting ${delay}ms before retry...`)
-          await new Promise(resolve => setTimeout(resolve, delay))
-        }
+      // At this point TypeScript knows result has data property
+      const validationResult = appDataSchema.safeParse(result.data)
+      if (!validationResult.success) {
+        console.error('Invalid data structure:', {
+          data: result.data,
+          error: validationResult.error
+        })
+        throw new Error('Failed to validate extracted app data')
       }
-    }
 
-    // If we get here, all attempts failed
-    throw lastError || new Error('Failed to extract app data after multiple attempts')
+      console.log('Successfully extracted and validated app data')
+      
+      // Process description through OpenAI
+      const enhancedDescription = await generateAppDescription(validationResult.data.app_description)
+
+      // Insert into database
+      const { data: newApp, error: insertError } = await supabase
+        .from('apps')
+        .insert({
+          owner_id: user.id,
+          app_store_url: appStoreUrl,
+          app_description: enhancedDescription,
+          app_name: validationResult.data.app_name,
+          app_logo_url: validationResult.data.app_logo_url
+        })
+        .select()
+        .single()
+
+      if (insertError) throw insertError
+      if (!newApp) throw new Error('Failed to create app')
+
+      revalidatePath('/dashboard/apps')
+      return { success: true, app: newApp }
+    } catch (error) {
+      console.error('Error in Firecrawl extraction:', error)
+      throw error
+    }
   } catch (error) {
     console.error('Error adding app:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to add app'
