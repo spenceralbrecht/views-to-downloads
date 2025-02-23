@@ -396,45 +396,7 @@ export async function createVideo({
       }
 
       const result = await response.json()
-
-      console.log('Video creation result:', result) // Add logging
-
-      // Get current subscription again to ensure we have the latest count
-      const { data: currentSub, error: fetchError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('id', subscription.id)
-        .single()
-
-      if (fetchError) {
-        console.error('Error fetching current subscription:', fetchError)
-        return { success: true, video: { ...result, status: 'completed' } }
-      }
-
-      console.log('Current content usage before increment:', {
-        subscriptionId: subscription.id,
-        currentUsage: currentSub.content_used_this_month || 0,
-        newUsage: (currentSub.content_used_this_month || 0) + 1
-      })
-
-      // Increment the content usage count
-      const { error: updateError } = await supabase
-        .from('subscriptions')
-        .update({ content_used_this_month: (Number(currentSub.content_used_this_month) || 0) + 1 })
-        .eq('id', subscription.id)
-        .eq('user_id', user.id)
-        .select()
-        .single()  // Return the updated row
-
-      if (updateError) {
-        console.error('Failed to increment content usage count:', {
-          error: updateError,
-          subscriptionId: subscription.id,
-          userId: user.id
-        })
-      } else {
-        console.log('Successfully incremented content usage for subscription:', subscription.id)
-      }
+      console.log('Video creation result:', result)
 
       return { success: true, video: { ...result, status: 'completed' } }
     } catch (error) {
