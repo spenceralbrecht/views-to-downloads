@@ -339,6 +339,7 @@ interface VideoCreationRequest {
   captionPosition?: 'top' | 'middle' | 'bottom'
   userUuid?: string
   appId?: string
+  fontOutline?: boolean
 }
 
 interface VideoCreationResponse {
@@ -433,6 +434,7 @@ export async function createVideo({
           captionPosition,
           userUuid: user.id,
           appId,
+          fontOutline: true
         })
       })
 
