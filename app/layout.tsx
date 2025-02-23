@@ -83,6 +83,12 @@ export default async function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        <script
+          defer
+          data-website-id="67bba6ec4eab65b131b903fc"
+          data-domain="viewstodownloads.com"
+          src="https://datafa.st/js/script.js"
+        />
         <script defer src="https://feedback.fish/ff.js?pid=8ce000788096e9"></script>
         <Script id="microsoft-clarity" strategy="beforeInteractive">
           {`
