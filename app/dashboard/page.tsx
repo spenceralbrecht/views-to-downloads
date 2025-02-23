@@ -83,10 +83,8 @@ export default function Dashboard() {
           billingUrl={billingUrl}
         />
 
-        <Separator className="my-8" />
-
         {/* Feature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 mt-4">
           <Link href="/dashboard/create" onClick={handleCreateUGCClick} className="cursor-pointer">
             <Card className="bg-card border-border hover:bg-accent/50 transition-colors">
               <CardHeader>
