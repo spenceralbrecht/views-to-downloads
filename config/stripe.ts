@@ -72,11 +72,11 @@ export function getStripeConfig(): StripeConfig {
   }
 
   // Log configuration for debugging
-  console.log('Using links:', {
-    starter: config.checkoutLinks.starter || 'missing',
-    growth: config.checkoutLinks.growth || 'missing',
-    scale: config.checkoutLinks.scale || 'missing'
-  })
+  // console.log('Using links:', {
+  //   starter: config.checkoutLinks.starter || 'missing',
+  //   growth: config.checkoutLinks.growth || 'missing',
+  //   scale: config.checkoutLinks.scale || 'missing'
+  // })
 
   return config
 }

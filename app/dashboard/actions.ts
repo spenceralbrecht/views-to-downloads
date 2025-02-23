@@ -182,54 +182,73 @@ export async function addApp(appStoreUrl: string): Promise<AddAppResponse> {
     const attemptExtraction = async (attempt: number) => {
       console.log(`Attempt ${attempt} to extract app data...`)
       
+      const TIMEOUT_MS = 120000 // Increase timeout to 120 seconds
       const timeout = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(`Attempt ${attempt} timed out after 45 seconds`)), 45000)
+        setTimeout(() => reject(new Error(`Attempt ${attempt} timed out after ${TIMEOUT_MS/1000} seconds`)), TIMEOUT_MS)
       })
 
       try {
+        console.log(`Starting Firecrawl extraction for attempt ${attempt}`)
+        const extractionPromise = firecrawl.extract([appStoreUrl], {
+          prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
+          schema: {
+            type: "object",
+            properties: {
+              app_name: { type: "string", description: "The name of the app" },
+              app_description: { type: "string", description: "The full description of the app" },
+              app_logo_url: { type: "string", description: "The URL of the app's logo image" }
+            },
+            required: ["app_name", "app_description", "app_logo_url"]
+          }
+        })
+
         const result = await Promise.race([
-          firecrawl.extract([appStoreUrl], {
-            prompt: "Extract the app name, full app description, and app logo URL from this app store page.",
-            schema: {
-              type: "object",
-              properties: {
-                app_name: { type: "string", description: "The name of the app" },
-                app_description: { type: "string", description: "The full description of the app" },
-                app_logo_url: { type: "string", description: "The URL of the app's logo image" }
-              },
-              required: ["app_name", "app_description", "app_logo_url"]
-            }
-          }),
+          extractionPromise,
           timeout
         ]) as { success: boolean; data?: { app_name: string; app_description: string; app_logo_url: string }; error?: string } | undefined
 
-        // Check if result is undefined first
+        // Enhanced error handling and logging
         if (!result) {
-          console.error('No response from Firecrawl')
+          console.error(`Attempt ${attempt}: No response from Firecrawl`)
           throw new Error('Failed to get response from Firecrawl')
         }
 
-        // Then check success and error properties
+        console.log(`Attempt ${attempt} raw response:`, JSON.stringify(result, null, 2))
+
         if (!result.success || !result.data) {
-          console.error('Extraction failed:', result.error || 'No error message provided')
+          console.error(`Attempt ${attempt} failed:`, {
+            success: result.success,
+            error: result.error,
+            hasData: !!result.data
+          })
           throw new Error(result.error || 'Failed to extract app data')
         }
 
-        // Log the full response to debug
-        console.log('Firecrawl response:', JSON.stringify(result, null, 2))
-
-        // Extract data directly from the data field
+        // Validate the extracted data more thoroughly
         const extractedData = result.data
+        if (!extractedData.app_name || !extractedData.app_description || !extractedData.app_logo_url) {
+          console.error(`Attempt ${attempt}: Missing required fields in extracted data:`, extractedData)
+          throw new Error('Incomplete data extracted from app store')
+        }
+
         // Validate the extracted data
         const validationResult = appDataSchema.safeParse(extractedData)
         if (!validationResult.success) {
-          console.error('Invalid data structure:', extractedData, validationResult.error)
-          throw new Error('Failed to extract required app data')
+          console.error(`Attempt ${attempt}: Invalid data structure:`, {
+            data: extractedData,
+            error: validationResult.error
+          })
+          throw new Error('Failed to validate extracted app data')
         }
 
+        console.log(`Attempt ${attempt} successful with validated data`)
         return validationResult.data
       } catch (error) {
-        console.error(`Attempt ${attempt} failed:`, error)
+        console.error(`Attempt ${attempt} failed with error:`, error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        } : error)
         throw error
       }
     }
