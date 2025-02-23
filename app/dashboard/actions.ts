@@ -417,6 +417,7 @@ export async function createVideo({
         .update({ content_used_this_month: (currentSub.content_used_this_month || 0) + 1 })
         .eq('id', subscription.id)
         .eq('user_id', user.id)
+        .select() // Add select to return the updated row which triggers real-time updates
 
       if (updateError) {
         console.error('Failed to increment content usage count:', {
