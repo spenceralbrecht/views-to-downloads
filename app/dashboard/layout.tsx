@@ -20,7 +20,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-background">
       <Sidebar user={session.user} />
-      <div className="pl-64">
+      <div className="lg:pl-64 min-h-screen pb-16 lg:pb-0">
         {children}
       </div>
     </div>

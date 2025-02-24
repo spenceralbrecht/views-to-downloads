@@ -72,8 +72,8 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8 text-foreground">Dashboard</h1>
+      <div className="container mx-auto px-4 py-6 lg:py-8">
+        <h1 className="text-2xl lg:text-3xl font-bold mb-6 lg:mb-8 text-foreground">Dashboard</h1>
         
         <OnboardingChecklist 
           hasSubscription={hasSubscription}
@@ -84,50 +84,53 @@ export default function Dashboard() {
         />
 
         {/* Feature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4 mb-8 mt-4">
           <Link href="/dashboard/create" onClick={handleCreateUGCClick} className="cursor-pointer">
-            <Card className="bg-card border-border hover:bg-accent/50 transition-colors">
-              <CardHeader>
-                <Video className="h-8 w-8 mb-2 text-primary" />
-                <CardTitle className="text-foreground">UGC Hook & Demo Format</CardTitle>
+            <Card className="bg-card border-border hover:bg-accent/50 transition-colors h-full">
+              <CardHeader className="p-4 lg:p-6">
+                <Video className="h-6 w-6 lg:h-8 lg:w-8 mb-2 text-primary" />
+                <CardTitle className="text-lg lg:text-xl text-foreground">UGC Hook & Demo Format</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Create UGC content that get downloads for your app</p>
+              <CardContent className="p-4 lg:p-6 pt-0">
+                <p className="text-sm lg:text-base text-muted-foreground">Create UGC content that get downloads for your app</p>
               </CardContent>
             </Card>
           </Link>
-          <Card className="relative bg-card border-border">
-            <CardHeader>
-              <ImageIcon className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle className="text-foreground">Other viral formats</CardTitle>
+
+          <Card className="relative bg-card border-border h-full">
+            <CardHeader className="p-4 lg:p-6">
+              <ImageIcon className="h-6 w-6 lg:h-8 lg:w-8 mb-2 text-primary" />
+              <CardTitle className="text-lg lg:text-xl text-foreground">Other viral formats</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">More viral formats coming soon!</p>
+            <CardContent className="p-4 lg:p-6 pt-0">
+              <p className="text-sm lg:text-base text-muted-foreground">More viral formats coming soon!</p>
             </CardContent>
-            <div className="absolute top-4 right-4 px-3 py-1 bg-accent rounded-full text-sm text-muted-foreground">
+            <div className="absolute top-3 right-3 lg:top-4 lg:right-4 px-2 py-1 lg:px-3 lg:py-1 bg-accent rounded-full text-xs lg:text-sm text-muted-foreground">
               Not Available Yet
             </div>
           </Card>
-          <Card className="relative bg-card border-border">
-            <CardHeader>
-              <User className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle className="text-foreground">UGC Avatar Generator</CardTitle>
+
+          <Card className="relative bg-card border-border h-full">
+            <CardHeader className="p-4 lg:p-6">
+              <User className="h-6 w-6 lg:h-8 lg:w-8 mb-2 text-primary" />
+              <CardTitle className="text-lg lg:text-xl text-foreground">UGC Avatar Generator</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Automatically create UGC demo videos</p>
+            <CardContent className="p-4 lg:p-6 pt-0">
+              <p className="text-sm lg:text-base text-muted-foreground">Automatically create UGC demo videos</p>
             </CardContent>
-            <div className="absolute top-4 right-4 px-3 py-1 bg-accent rounded-full text-sm text-muted-foreground">
+            <div className="absolute top-3 right-3 lg:top-4 lg:right-4 px-2 py-1 lg:px-3 lg:py-1 bg-accent rounded-full text-xs lg:text-sm text-muted-foreground">
               Not Available Yet
             </div>
           </Card>
+
           <Link href="/dashboard/hooks" className="cursor-pointer">
-            <Card className="bg-card border-border hover:bg-accent/50 transition-colors">
-              <CardHeader>
-                <Sparkles className="h-8 w-8 mb-2 text-primary" />
-                <CardTitle className="text-foreground">Hook Generator</CardTitle>
+            <Card className="bg-card border-border hover:bg-accent/50 transition-colors h-full">
+              <CardHeader className="p-4 lg:p-6">
+                <Sparkles className="h-6 w-6 lg:h-8 lg:w-8 mb-2 text-primary" />
+                <CardTitle className="text-lg lg:text-xl text-foreground">Hook Generator</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Automatically generate and save viral hooks for your apps</p>
+              <CardContent className="p-4 lg:p-6 pt-0">
+                <p className="text-sm lg:text-base text-muted-foreground">Automatically generate and save viral hooks for your apps</p>
               </CardContent>
             </Card>
           </Link>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition, useMemo, memo } from 'react'
-import { ChevronLeft, ChevronRight, Loader2, X, HelpCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, X, HelpCircle, Upload } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
@@ -37,6 +37,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import type { OutputContent } from '@/types/video'
+import { Textarea } from "@/components/ui/textarea"
 
 interface Hook {
   id: string
@@ -764,9 +765,82 @@ export default function CreateAd() {
   // Add isUploading state
   const [isUploading, setIsUploading] = useState(false)
 
+  const handleDemoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      const file = e.target.files[0];
+      // Check file size (max 100MB)
+      if (file.size > 100 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Demo video must be under 100MB. Please compress your video and try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setIsUploading(true)
+      setUploadProgress(0)
+      
+      const formData = new FormData()
+      formData.append('videoFile', file)
+      
+      const xhr = new XMLHttpRequest()
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const progress = (event.loaded / event.total) * 100
+          setUploadProgress(progress)
+        }
+      }
+      
+      xhr.onload = async () => {
+        if (xhr.status === 200) {
+          const result = JSON.parse(xhr.responseText)
+          if (result.error) {
+            console.error('Demo upload error:', result.error)
+            toast({
+              title: "Demo Upload Failed",
+              description: `Error uploading demo video. Please report this error: ${result.error}`,
+              variant: "destructive"
+            })
+          } else {
+            toast({
+              title: "Demo Upload Success",
+              description: "Your demo video has been uploaded successfully.",
+            })
+            // Refresh the demo videos list
+            fetchDemoVideos()
+          }
+        } else {
+          console.error('Upload failed with status:', xhr.status)
+          toast({
+            title: "Demo Upload Failed",
+            description: "Error uploading demo video. Please try again.",
+            variant: "destructive"
+          })
+        }
+        setUploadProgress(null)
+        setIsUploading(false)
+      }
+      
+      xhr.onerror = () => {
+        console.error('Upload failed')
+        toast({
+          title: "Demo Upload Failed",
+          description: "Error uploading demo video. Please check your connection and try again.",
+          variant: "destructive"
+        })
+        setUploadProgress(null)
+        setIsUploading(false)
+      }
+      
+      xhr.open('POST', '/api/upload-demo')
+      xhr.send(formData)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6 lg:py-8">
         {/* No Hooks Dialog */}
         <AlertDialog open={showNoHooksDialog} onOpenChange={setShowNoHooksDialog}>
           <AlertDialogContent>
@@ -787,11 +861,11 @@ export default function CreateAd() {
           </AlertDialogContent>
         </AlertDialog>
         <SubscriptionGuard>
-          <div className="space-y-8">
+          <div className="space-y-6 lg:space-y-8">
             {/* App Selection */}
             <div>
-              <h2 className="text-lg font-semibold mb-4">1. Select your app</h2>
-              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+              <h2 className="text-lg font-semibold mb-3 lg:mb-4">1. Select your app</h2>
+              <div className="flex gap-3 lg:gap-4 overflow-x-auto pb-4 scrollbar-hide">
                 {loadingApps ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -802,16 +876,16 @@ export default function CreateAd() {
                     <div
                       key={app.id}
                       onClick={() => setSelectedAppId(app.id)}
-                      className={`flex-shrink-0 p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
+                      className={`flex-shrink-0 p-3 lg:p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
                         selectedAppId === app.id
                           ? 'bg-primary/10 border-primary'
                           : 'bg-card border-border hover:border-primary/50'
                       }`}
-                      style={{ minWidth: '200px' }}
+                      style={{ minWidth: '160px', maxWidth: '200px' }}
                     >
                       <div className="flex items-center gap-3">
                         {app.app_logo_url ? (
-                          <div className="h-12 w-12 relative rounded-lg overflow-hidden flex-shrink-0">
+                          <div className="h-10 w-10 lg:h-12 lg:w-12 relative rounded-lg overflow-hidden flex-shrink-0">
                             <img
                               src={app.app_logo_url}
                               alt={app.app_name}
@@ -819,12 +893,12 @@ export default function CreateAd() {
                             />
                           </div>
                         ) : (
-                          <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                          <div className="h-10 w-10 lg:h-12 lg:w-12 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
                             <span className="text-muted-foreground text-xl">?</span>
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-foreground truncate">
+                          <h3 className="font-medium text-sm lg:text-base text-foreground truncate">
                             {app.app_name}
                           </h3>
                         </div>
@@ -832,71 +906,70 @@ export default function CreateAd() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-muted-foreground">No apps found. <Link href="/dashboard/apps" className="text-primary hover:underline">Please add an app first.</Link></p>
+                  <p className="text-muted-foreground text-sm lg:text-base">No apps found. <Link href="/dashboard/apps" className="text-primary hover:underline">Please add an app first.</Link></p>
                 )}
               </div>
             </div>
 
             {/* Hook Selection */}
             <div>
-              <h2 className="text-lg font-semibold text-foreground mb-4">2. Choose a Hook</h2>
-              {loadingHooks ? (
-                <div className="flex justify-center items-center h-24">
-                  <Loader2 className="animate-spin h-6 w-6 text-primary" />
-                </div>
-              ) : hooks.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4">
+              <h2 className="text-lg font-semibold mb-3 lg:mb-4">2. Select a Hook</h2>
+              <div className="flex flex-col lg:flex-row gap-4">
+                <div className="w-full lg:w-3/4">
+                  <div className="flex items-center gap-2 mb-2">
                     <Button
                       variant="outline"
-                      size="icon"
+                      size="sm"
                       onClick={handlePrevHook}
+                      disabled={hooks.length === 0}
                       className="hover:bg-primary/5"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <div className="flex-1">
-                      <Input
-                        value={hook}
-                        onChange={(e) => setHook(e.target.value)}
-                        className="input-dark w-full"
-                        placeholder="Enter hook text..."
-                      />
+                    <div className="flex-1 text-center">
+                      <span className="text-sm text-muted-foreground">
+                        {hooks.length > 0 ? `Hook ${currentHookIndex + 1} of ${hooks.length}` : 'No hooks available'}
+                      </span>
                     </div>
                     <Button
                       variant="outline"
-                      size="icon"
+                      size="sm"
                       onClick={handleNextHook}
+                      disabled={hooks.length === 0}
                       className="hover:bg-primary/5"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
+                  <div className="relative">
+                    <Textarea
+                      value={hook}
+                      onChange={(e) => setHook(e.target.value)}
+                      placeholder="Select an app to see available hooks..."
+                      className="min-h-[100px] text-base"
+                    />
+                  </div>
                 </div>
-              ) : (
-                <p className="text-muted-foreground text-center">
-                  No hooks found for this app. <Link href="/dashboard/hooks" className="text-primary hover:underline">Generate some now!</Link>
-                </p>
-              )}
+              </div>
             </div>
 
             {/* Video Selection */}
             <div>
-              <div className="flex justify-between mb-2">
+              <div className="flex justify-between items-center mb-3 lg:mb-4">
                 <h2 className="text-lg font-semibold text-foreground">3. Select a Video</h2>
-                <span className="text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   Page {currentPage} of {totalPages}
                 </span>
               </div>
-              <div className="flex gap-6">
+              <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
                 {/* Video Grid */}
-                <div className="w-3/4">
+                <div className="w-full lg:w-3/4">
                   <VideoGrid 
                     videosToShow={videosToShow}
                     selectedVideo={selectedVideo}
                     onVideoSelect={handleUGCVideoSelect}
                   />
-                  <div className="flex justify-center mt-4 gap-2 w-3/4">
+                  <div className="flex justify-center mt-4 gap-2">
                     <Button 
                       variant="outline" 
                       onClick={handlePrev} 
@@ -917,10 +990,10 @@ export default function CreateAd() {
                 </div>
 
                 {/* Video Preview */}
-                <div className="w-1/4">
+                <div className="w-full lg:w-1/4">
                   {selectedVideo !== null && (
                     <div>
-                      <div className="relative rounded-lg overflow-hidden border-4 border-white/10 bg-white/5">
+                      <div className="relative rounded-lg overflow-hidden border-4 border-white/10 bg-white/5 aspect-[9/16] max-w-[240px] mx-auto">
                         <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
                           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
@@ -941,19 +1014,19 @@ export default function CreateAd() {
                         />
                         {hook && (
                           <div 
-                            className={`absolute inset-x-0 z-30 p-4 text-center ${
+                            className={`absolute inset-x-0 z-30 p-3 lg:p-4 text-center ${
                               textPosition === 'top' ? 'top-0' : 
                               textPosition === 'middle' ? 'top-1/2 -translate-y-1/2' : 
                               'bottom-0'
                             }`}
                           >
-                            <p className="text-white text-base md:text-lg font-medium whitespace-pre-wrap [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#000,_-1px_1px_0_#000,_1px_1px_0_#000]" style={{ fontFamily: 'TikTokDisplay' }}>
+                            <p className="text-white text-sm lg:text-base font-medium whitespace-pre-wrap [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#000,_-1px_1px_0_#000,_1px_1px_0_#000]" style={{ fontFamily: 'TikTokDisplay' }}>
                               {hook}
                             </p>
                           </div>
                         )}
                       </div>
-                      <div className="flex justify-center gap-4 mt-4">
+                      <div className="flex justify-center gap-2 lg:gap-4 mt-4">
                         <Button
                           variant="outline"
                           size="sm"
@@ -987,7 +1060,7 @@ export default function CreateAd() {
             
             {/* Demos Section */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-3 lg:mb-4">
                 <h2 className="text-lg font-semibold">4. Demos</h2>
                 <TooltipProvider>
                   <Tooltip>
@@ -1007,171 +1080,90 @@ export default function CreateAd() {
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <p className="text-sm text-muted-foreground mb-4">Upload your product demo videos</p>
-              <div className="flex items-start gap-4">
-                <form>
-                  <input
-                    type="file"
-                    id="demoVideo"
-                    name="videoFile"
-                    accept="video/mp4"
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        const file = e.target.files[0];
-                        // Check file size (max 100MB)
-                        if (file.size > 100 * 1024 * 1024) {
-                          toast({
-                            title: "File Too Large",
-                            description: "Demo video must be under 100MB. Please compress your video and try again.",
-                            variant: "destructive"
-                          });
-                          return;
-                        }
-                        
-                        setIsUploading(true)
-                        setUploadProgress(0)
-                        
-                        const formData = new FormData()
-                        formData.append('videoFile', file)
-                        
-                        const xhr = new XMLHttpRequest()
-                        xhr.upload.onprogress = (event) => {
-                          if (event.lengthComputable) {
-                            const progress = (event.loaded / event.total) * 100
-                            setUploadProgress(progress)
-                          }
-                        }
-                        
-                        xhr.onload = async () => {
-                          if (xhr.status === 200) {
-                            const result = JSON.parse(xhr.responseText)
-                            if (result.error) {
-                              console.error('Demo upload error:', result.error)
-                              toast({
-                                title: "Demo Upload Failed",
-                                description: `Error uploading demo video. Please report this error: ${result.error}`,
-                                variant: "destructive"
-                              })
-                            } else {
-                              toast({
-                                title: "Demo Upload Success",
-                                description: "Your demo video has been uploaded successfully.",
-                              })
-                              // Refresh the demo videos list
-                              fetchDemoVideos()
-                            }
-                          } else {
-                            console.error('Upload failed with status:', xhr.status)
-                            toast({
-                              title: "Demo Upload Failed",
-                              description: "Error uploading demo video. Please try again.",
-                              variant: "destructive"
-                            })
-                          }
-                          setUploadProgress(null)
-                          setIsUploading(false)
-                        }
-                        
-                        xhr.onerror = () => {
-                          console.error('Upload failed')
-                          toast({
-                            title: "Demo Upload Failed",
-                            description: "Error uploading demo video. Please check your connection and try again.",
-                            variant: "destructive"
-                          })
-                          setUploadProgress(null)
-                          setIsUploading(false)
-                        }
-                        
-                        xhr.open('POST', '/api/upload-demo')
-                        xhr.send(formData)
-                      }
-                    }}
-                  />
-                  <label
-                    htmlFor="demoVideo"
-                    className="flex-shrink-0 w-24 h-[170px] rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center bg-card text-muted-foreground hover:text-primary cursor-pointer transition-colors duration-200"
-                  >
-                    <div className="text-center">
-                      <span className="text-2xl">+</span>
-                      <p className="text-xs mt-2">Upload demo</p>
-                    </div>
-                  </label>
-                </form>
-
-                {/* Display uploaded demo videos */}
-                <div className="flex-1 flex flex-wrap gap-2 items-start">
-                  {loadingDemos ? (
-                    <Loader2 className="animate-spin h-6 w-6 text-primary" />
-                  ) : (
-                    <>
+              <p className="text-sm text-muted-foreground mb-3 lg:mb-4">Upload your product demo videos</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 lg:gap-4">
+                {loadingDemos ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading demos...
+                  </div>
+                ) : (
+                  <>
+                    <div className="relative aspect-[9/16] rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors">
+                      <input
+                        type="file"
+                        accept="video/*"
+                        onChange={handleDemoUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+                        <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
+                        <p className="text-xs text-center text-muted-foreground">Upload Demo</p>
+                      </div>
                       {isUploading && (
-                        <DemoVideoCardSkeleton progress={uploadProgress ?? undefined} />
-                      )}
-                      {demoVideos.map((video) => (
-                        <div
-                          key={video.id}
-                          className={`relative flex-shrink-0 cursor-pointer group transition-all duration-200 rounded-lg overflow-hidden ${
-                            selectedDemoVideo === video.publicUrl 
-                              ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg' 
-                              : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
-                          }`}
-                          style={{ width: '100px' }}
-                        >
-                          {/* Delete button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteDemo(video.id);
-                            }}
-                            className="absolute top-1 right-1 z-10 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                          <div 
-                            className="aspect-[9/16] w-full rounded-lg overflow-hidden"
-                            onClick={() => handleDemoVideoSelect(video.publicUrl || '')}
-                          >
-                            <video
-                              key={video.publicUrl || ''}
-                              src={video.publicUrl || ''}
-                              className="w-full h-full object-cover"
-                              preload="auto"
-                              muted
-                              loop
-                              playsInline
-                              controlsList="nodownload"
-                              onContextMenu={(e) => e.preventDefault()}
-                              onMouseEnter={(e) => e.currentTarget.play()}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.pause()
-                                e.currentTarget.currentTime = 0
-                              }}
-                            />
+                        <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                          <div className="text-center">
+                            <Loader2 className="h-6 w-6 mb-2 animate-spin mx-auto" />
+                            <p className="text-xs">{uploadProgress ? `${uploadProgress}%` : 'Uploading...'}</p>
                           </div>
                         </div>
-                      ))}
-                      {demoVideos.length === 0 && !isUploading && (
-                        <p className="text-muted-foreground">No demos uploaded yet</p>
                       )}
-                    </>
-                  )}
-                </div>
+                    </div>
+                    {demoVideos.map((video) => (
+                      <div
+                        key={video.id}
+                        className={`relative aspect-[9/16] rounded-lg overflow-hidden group ${
+                          selectedDemo === video.id ? 'ring-2 ring-primary' : ''
+                        }`}
+                      >
+                        <button
+                          onClick={() => handleDeleteDemo(video.id || '')}
+                          className="absolute top-2 right-2 z-10 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+                        >
+                          <X className="h-4 w-4 text-foreground" />
+                        </button>
+                        <div 
+                          className="aspect-[9/16] w-full rounded-lg overflow-hidden"
+                          onClick={() => handleDemoVideoSelect(video.publicUrl || '')}
+                        >
+                          <video
+                            key={video.publicUrl || ''}
+                            src={video.publicUrl || ''}
+                            className="w-full h-full object-cover"
+                            preload="auto"
+                            muted
+                            loop
+                            playsInline
+                            controlsList="nodownload"
+                            onContextMenu={(e) => e.preventDefault()}
+                            onMouseEnter={(e) => e.currentTarget.play()}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.pause()
+                              e.currentTarget.currentTime = 0
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {demoVideos.length === 0 && !isUploading && (
+                      <p className="text-sm text-muted-foreground">No demos uploaded yet</p>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>
           
-          <div className="mt-8 flex justify-end">
+          <div className="mt-6 lg:mt-8 flex justify-end">
             <ContentLimitGuard>
               <Button 
                 type="button" 
-                className="btn-gradient" 
+                className="btn-gradient w-full sm:w-auto" 
                 onClick={handleCreateVideo} 
                 disabled={isCreating}
               >
                 {isCreating ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Creating...
                   </div>
@@ -1184,13 +1176,13 @@ export default function CreateAd() {
         </SubscriptionGuard>
         
         {/* My Videos Section */}
-        <div className="mt-12">
-          <h2 className="text-lg font-semibold text-foreground mb-4">My Videos</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div className="mt-8 lg:mt-12">
+          <h2 className="text-lg font-semibold text-foreground mb-3 lg:mb-4">My Videos</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 lg:gap-4">
             {loadingOutputs ? (
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             ) : outputVideos.length === 0 ? (
-              <p className="text-muted-foreground text-center">No videos created yet. Create your first video above!</p>
+              <p className="text-sm text-muted-foreground text-center col-span-full">No videos created yet. Create your first video above!</p>
             ) : (
               outputVideos.map((video) => (
                 <VideoCard 
