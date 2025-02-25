@@ -59,6 +59,14 @@ export const metadata: Metadata = {
     title: 'Views to Downloads',
     description: 'Automating UGC content that gets you views and downloads',
     siteName: 'Views to Downloads',
+    images: [
+      {
+        url: '/opengraph-image.jpg', // Path will need to be updated once the image is provided
+        width: 1024,
+        height: 1024,
+        alt: 'Views to Downloads',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
