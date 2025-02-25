@@ -8,7 +8,11 @@ import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { User } from '@supabase/auth-helpers-nextjs'
 
-export default function AuthButton() {
+interface AuthButtonProps {
+  className?: string;
+}
+
+export default function AuthButton({ className }: AuthButtonProps) {
   const [user, setUser] = useState<User | null>(null)
   const supabase = createClientComponentClient()
   const router = useRouter()
@@ -71,7 +75,7 @@ export default function AuthButton() {
 
   if (user) {
     return (
-      <Button asChild>
+      <Button asChild className={className}>
         <Link href="/dashboard">
           Dashboard
           <ArrowRight className="ml-2 h-5 w-5" />
@@ -81,7 +85,7 @@ export default function AuthButton() {
   }
 
   return (
-    <Button onClick={handleSignIn}>
+    <Button onClick={handleSignIn} className={className}>
       Start Now
       <ArrowRight className="ml-2 h-5 w-5" />
     </Button>
