@@ -3,69 +3,142 @@
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { VideoThumbnail } from "@/components/VideoThumbnail"
-import AuthButton from '@/components/AuthButton'
 import Features from '@/components/Features'
 import Pricing from '@/components/Pricing'
 import Alternatives from '@/components/Alternatives'
 import FAQ from '@/components/FAQ'
 import { useState } from 'react'
-import { Video, Camera, Sparkles } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import { Button } from "@/components/ui/button"
+import Image from 'next/image'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 export default function LandingPage({
   searchParams,
 }: {
   searchParams: { error?: string }
 }) {
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const supabase = createClientComponentClient()
 
-  const handleStartNow = () => {
-    setIsLoginModalOpen(true)
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true)
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        },
+      })
+    } catch (error) {
+      console.error('Sign in error:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#fafafa] dark:bg-gray-950">
+    <div className="min-h-screen flex flex-col">
+      <div className="fixed inset-0 bg-gradient-to-b from-white via-white to-gray-50 dark:from-gray-950 dark:via-gray-950 dark:to-gray-900 -z-10"></div>
+      
+      <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+        <div className="absolute -top-[20%] -right-[30%] w-[120%] h-[120%] rounded-full bg-blue-500/5 blur-3xl"></div>
+        <div className="absolute -bottom-[20%] -left-[30%] w-[120%] h-[120%] rounded-full bg-purple-500/5 blur-3xl"></div>
+        <div className="absolute top-[40%] left-[10%] w-[60%] h-[60%] rounded-full bg-indigo-500/5 blur-3xl"></div>
+      </div>
+      
       <Header />
-      <main className="flex-grow container mx-auto px-4 py-16 md:py-24">
-        {searchParams.error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
-            <strong className="font-bold">Error: </strong>
-            <span className="block sm:inline">{searchParams.error}</span>
+      <main className="flex-grow relative">
+        <div className="w-full max-w-7xl mx-auto px-4">
+          {searchParams.error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
+              <strong className="font-bold">Error: </strong>
+              <span className="block sm:inline">{searchParams.error}</span>
+            </div>
+          )}
+          
+          {/* Hero Section */}
+          <div className="relative pt-20 pb-24 md:pt-28 md:pb-16 overflow-hidden">            
+            <div className="max-w-5xl mx-auto text-center relative z-10">
+              <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
+                Automate Viral App Content
+              </h1>
+              <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-10 max-w-3xl mx-auto">
+                Turn viral trends into downloads with AI — No Effort Required
+              </p>
+              
+              <div className="flex justify-center mb-16">
+                <Button 
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                  size="lg" 
+                  className="rounded-full px-8 py-6 text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all"
+                >
+                  {isLoading ? "Connecting..." : "Start in 30 Seconds"} <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </div>
+              
+              {/* Social Proof */}
+              <div className="mb-16">
+                <p className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-6">Trusted by 500+ Founders & Growth Teams</p>
+              </div>
+            </div>
           </div>
-        )}
-        {/* Hero Section */}
-        <div className="max-w-4xl mx-auto text-center mb-16 md:mb-24">
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
-            Create UGC content that gets downloads
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 mb-10">
-            Save thousands on your marketing and focus on building your app
-          </p>
-          <div className="flex justify-center">
-            <AuthButton />
-          </div>
-        </div>
 
-        {/* Video Grid */}
-        <div className="relative w-full max-w-5xl mx-auto px-4 mb-24">
-          <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-8 px-6 snap-x snap-mandatory -mx-4">
-            {[1, 2, 3, 4, 5].map((num) => (
-              <VideoThumbnail 
-                key={num-1} 
-                video={`${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/app-video-demo-${num}.mp4`}
-                index={num-1} 
-              />
-            ))}
+          {/* Video Demo Section with Floating UI */}
+          <div className="relative w-full max-w-6xl mx-auto mb-24 rounded-xl overflow-hidden shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm z-0"></div>
+            <div className="relative z-10 p-4">
+              <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-inner">
+                <div className="relative aspect-video w-full">
+                  {/* Video Showcase */}
+                  <div className="flex gap-4 overflow-x-auto scrollbar-hide py-4 px-6 snap-x snap-mandatory">
+                    {[1, 2, 3, 4, 5].map((num) => (
+                      <VideoThumbnail 
+                        key={num-1} 
+                        video={`${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/app-video-demo-${num}.mp4`}
+                        index={num-1} 
+                      />
+                    ))}
+                  </div>
+                  {/* Gradient Fade Edges - adjusted to match the height of the content */}
+                  <div className="absolute left-0 top-4 bottom-4 w-12 bg-gradient-to-r from-white dark:from-gray-900 to-transparent pointer-events-none" />
+                  <div className="absolute right-0 top-4 bottom-4 w-12 bg-gradient-to-l from-white dark:from-gray-900 to-transparent pointer-events-none" />
+                </div>
+              </div>
+            </div>
           </div>
-          {/* Gradient Fade Edges */}
-          <div className="absolute left-0 top-0 bottom-8 w-12 bg-gradient-to-r from-[#fafafa] dark:from-gray-950 to-transparent pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-8 w-12 bg-gradient-to-l from-[#fafafa] dark:from-gray-950 to-transparent pointer-events-none" />
-        </div>
 
-        <Alternatives />
-        <Features />
-        <Pricing />
-        <div className="mb-24">
-          <FAQ />
+          {/* Value Propositions and Features */}
+          <Alternatives />
+          <Features />
+          <Pricing />
+          <div className="mb-24">
+            <FAQ />
+          </div>
+          
+          {/* Final CTA Section */}
+          <div className="max-w-4xl mx-auto text-center py-16 mb-16 relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl z-0"></div>
+            <div className="relative z-10 p-8">
+              <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Automate Your UGC Content?</h2>
+              <p className="text-xl text-gray-700 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+                Join thousands of app founders and marketers saving time and money with AI-generated UGC ads.
+              </p>
+              <Button 
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+                size="lg" 
+                className="rounded-full px-8 py-6 text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all"
+              >
+                {isLoading ? "Connecting..." : "Generate Your First AI Video Now"} <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </div>
+          </div>
         </div>
       </main>
       <Footer />
