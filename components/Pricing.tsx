@@ -44,7 +44,6 @@ const plans = [
       { text: "Generate unlimited viral hooks", icon: Sparkles },
       { text: "Dedicated support", icon: Shield },
       { text: "Performance analytics", icon: Download, comingSoon: true },
-      { text: "Custom branding", icon: Zap },
     ]
   }
 ]
