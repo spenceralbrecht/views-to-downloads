@@ -1094,16 +1094,16 @@ export default function CreateAd() {
                         type="file"
                         accept="video/*"
                         onChange={handleDemoUpload}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
                       />
-                      <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-4 pointer-events-none">
                         <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
                         <p className="text-xs text-center text-muted-foreground">Upload Demo</p>
                       </div>
                       {isUploading && (
-                        <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-40">
                           <div className="text-center">
-                            <Loader2 className="h-6 w-6 mb-2 animate-spin mx-auto" />
+                            <Loader2 className="h-6 w-4 mb-2 animate-spin mx-auto" />
                             <p className="text-xs">{uploadProgress ? `${uploadProgress}%` : 'Uploading...'}</p>
                           </div>
                         </div>
