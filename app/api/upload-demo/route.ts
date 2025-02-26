@@ -63,19 +63,27 @@ export async function POST(request: Request) {
       )
     }
     
-    const { error: insertError } = await supabase
+    // Log the data we're about to insert
+    const recordData = {
+      user_id: user.id,
+      content_url: filePath,
+      app_id: formData.get('appId')
+    }
+    console.log('Attempting to insert record into input_content:', recordData)
+    
+    const { data: insertedRecord, error: insertError } = await supabase
       .from('input_content')
-      .insert({
-        user_id: user.id,
-        content_url: filePath
-      })
+      .insert(recordData)
+      .select()
+      .single()
 
     if (insertError) {
       console.error('Database insert failed:', {
         table: 'input_content',
         error: insertError,
         user: user.id,
-        filePath: filePath
+        filePath: filePath,
+        recordData
       })
       return NextResponse.json(
         { error: insertError.message },
@@ -83,7 +91,8 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json({ success: true })
+    console.log('Successfully created input_content record:', insertedRecord)
+    return NextResponse.json({ success: true, record: insertedRecord })
     
   } catch (error) {
     console.error('Unexpected error in upload process:', {

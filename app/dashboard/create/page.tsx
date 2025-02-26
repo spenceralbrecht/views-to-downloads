@@ -247,29 +247,54 @@ export default function CreateAd() {
   // Function to fetch demo videos
   const fetchDemoVideos = async () => {
     setLoadingDemos(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        console.error('No authenticated user found')
+        return
+      }
 
-    const { data, error } = await supabase
-      .from('input_content')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+      const query = supabase
+        .from('input_content')
+        .select('*')
+        .eq('user_id', user.id)
 
-    if (error) {
-      console.error('Error fetching demo videos:', error)
-    } else if (data) {
-      const demoVideosWithUrls = await Promise.all(data.map(async (video) => {
-        // Get the public URL for the full path including user ID
-        const { data: publicData } = supabase
-          .storage
-          .from('input-content')
-          .getPublicUrl(video.content_url)
-        return { ...video, publicUrl: publicData.publicUrl }
-      }))
-      setDemoVideos(demoVideosWithUrls)
+      // If an app is selected, filter by app_id
+      if (selectedAppId) {
+        query.eq('app_id', selectedAppId)
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching demo videos:', error)
+        toast({
+          title: "Error Loading Demos",
+          description: "Could not load your demo videos. Please try refreshing the page.",
+          variant: "destructive"
+        })
+      } else if (data) {
+        console.log('Fetched demo videos:', data)
+        const demoVideosWithUrls = await Promise.all(data.map(async (video) => {
+          // Get the public URL for the full path including user ID
+          const { data: publicData } = supabase
+            .storage
+            .from('input-content')
+            .getPublicUrl(video.content_url)
+          return { ...video, publicUrl: publicData.publicUrl }
+        }))
+        setDemoVideos(demoVideosWithUrls)
+      }
+    } catch (error: any) {
+      console.error('Error in fetchDemoVideos:', error)
+      toast({
+        title: "Error Loading Demos",
+        description: "Could not load your demo videos. Please try refreshing the page.",
+        variant: "destructive"
+      })
+    } finally {
+      setLoadingDemos(false)
     }
-    setLoadingDemos(false)
   }
 
   // Call fetchDemoVideos on mount
@@ -777,12 +802,22 @@ export default function CreateAd() {
         });
         return;
       }
+
+      if (!selectedAppId) {
+        toast({
+          title: "App Required",
+          description: "Please select an app before uploading a demo video.",
+          variant: "destructive"
+        });
+        return;
+      }
       
       setIsUploading(true)
       setUploadProgress(0)
       
       const formData = new FormData()
       formData.append('videoFile', file)
+      formData.append('appId', selectedAppId)
       
       const xhr = new XMLHttpRequest()
       xhr.upload.onprogress = (event) => {
@@ -803,6 +838,7 @@ export default function CreateAd() {
               variant: "destructive"
             })
           } else {
+            console.log('Upload successful, created record:', result.record)
             toast({
               title: "Demo Upload Success",
               description: "Your demo video has been uploaded successfully.",
@@ -811,7 +847,7 @@ export default function CreateAd() {
             fetchDemoVideos()
           }
         } else {
-          console.error('Upload failed with status:', xhr.status)
+          console.error('Upload failed with status:', xhr.status, 'Response:', xhr.responseText)
           toast({
             title: "Demo Upload Failed",
             description: "Error uploading demo video. Please try again.",
@@ -837,6 +873,13 @@ export default function CreateAd() {
       xhr.send(formData)
     }
   }
+
+  // Refresh demo videos when selected app changes
+  useEffect(() => {
+    if (selectedAppId) {
+      fetchDemoVideos()
+    }
+  }, [selectedAppId])
 
   return (
     <div className="min-h-screen bg-background">
@@ -1112,8 +1155,10 @@ export default function CreateAd() {
                     {demoVideos.map((video) => (
                       <div
                         key={video.id}
-                        className={`relative aspect-[9/16] rounded-lg overflow-hidden group ${
-                          selectedDemo === video.id ? 'ring-2 ring-primary' : ''
+                        className={`relative aspect-[9/16] rounded-lg overflow-hidden group transition-all duration-200 ${
+                          selectedDemoVideo === video.publicUrl 
+                            ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg' 
+                            : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
                         }`}
                       >
                         <button
@@ -1123,7 +1168,7 @@ export default function CreateAd() {
                           <X className="h-4 w-4 text-foreground" />
                         </button>
                         <div 
-                          className="aspect-[9/16] w-full rounded-lg overflow-hidden"
+                          className="aspect-[9/16] w-full rounded-lg overflow-hidden cursor-pointer"
                           onClick={() => handleDemoVideoSelect(video.publicUrl || '')}
                         >
                           <video
@@ -1145,9 +1190,7 @@ export default function CreateAd() {
                         </div>
                       </div>
                     ))}
-                    {demoVideos.length === 0 && !isUploading && (
-                      <p className="text-sm text-muted-foreground">No demos uploaded yet</p>
-                    )}
+                    
                   </>
                 )}
               </div>
