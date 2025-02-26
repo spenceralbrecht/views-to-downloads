@@ -124,32 +124,6 @@ export default function CreateAd() {
   const [apps, setApps] = useState<{ id: string; app_store_url: string; app_name: string; app_logo_url: string; created_at: string }[]>([])
   const [loadingApps, setLoadingApps] = useState(true)
 
-  // Fetch apps
-  useEffect(() => {
-    async function fetchApps() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data, error } = await supabase
-        .from('apps')
-        .select('id, app_store_url, app_name, app_logo_url, created_at')
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching apps:', error)
-      } else if (data && data.length > 0) {
-        setApps(data)
-        // Set the first app as default if no app is selected
-        if (!selectedAppId) {
-          setSelectedAppId(data[0].id)
-        }
-      }
-      setLoadingApps(false)
-    }
-    fetchApps()
-  }, [supabase, selectedAppId])
-
   // State for hooks
   const [hooks, setHooks] = useState<Hook[]>([])
   const [currentHookIndex, setCurrentHookIndex] = useState(0)
@@ -299,8 +273,38 @@ export default function CreateAd() {
 
   // Call fetchDemoVideos on mount
   useEffect(() => {
-    fetchDemoVideos()
+    // Only fetch demo videos if an app is selected
+    if (selectedAppId) {
+      fetchDemoVideos()
+    }
   }, []) // Empty dependency array means this runs once on mount
+
+  // Fetch apps
+  useEffect(() => {
+    async function fetchApps() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from('apps')
+        .select('id, app_store_url, app_name, app_logo_url, created_at')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching apps:', error)
+      } else if (data && data.length > 0) {
+        setApps(data)
+        // Set the first app as default if no app is selected
+        if (!selectedAppId) {
+          setSelectedAppId(data[0].id)
+          // We'll fetch demo videos when selectedAppId changes via the other useEffect
+        }
+      }
+      setLoadingApps(false)
+    }
+    fetchApps()
+  }, [supabase, selectedAppId])
 
   // Function to fetch output videos
   const fetchOutputVideos = async () => {
@@ -674,7 +678,7 @@ export default function CreateAd() {
       // First get the video details to get the URL
       const { data: video, error: fetchError } = await supabase
         .from('output_content')
-        .select('url')
+        .select('url, status')
         .eq('id', id)
         .single()
 
@@ -688,28 +692,26 @@ export default function CreateAd() {
         return
       }
 
-      // Extract the file path from the URL
-      const filePath = video.url.includes('output-content/') 
-        ? video.url.split('output-content/')[1]
-        : video.url
+      // Only try to delete from storage if the video has a URL and was completed
+      if (video.url && video.status === 'completed') {
+        // Extract the file path from the URL
+        const filePath = video.url.includes('output-content/') 
+          ? video.url.split('output-content/')[1]
+          : video.url
 
-      // Delete from storage
-      const { error: storageError } = await supabase
-        .storage
-        .from('output-content')
-        .remove([filePath])
+        // Delete from storage
+        const { error: storageError } = await supabase
+          .storage
+          .from('output-content')
+          .remove([filePath])
 
-      if (storageError) {
-        console.error('Error deleting from storage:', storageError)
-        toast({
-          title: "Error deleting video",
-          description: "Could not delete video file",
-          variant: "destructive"
-        })
-        return
+        if (storageError) {
+          console.error('Error deleting from storage:', storageError)
+          // Don't return here, still try to delete the database record
+        }
       }
 
-      // Delete from database
+      // Delete from database regardless of storage deletion result
       const { error: dbError } = await supabase
         .from('output_content')
         .delete()
