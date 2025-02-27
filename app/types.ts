@@ -3,6 +3,8 @@ export interface DemoVideo {
   content_url: string;
   created_at: string;
   publicUrl?: string;
+  isLoading?: boolean;
+  uploadProgress?: number;
 }
 
 export interface OutputVideo {

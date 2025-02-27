@@ -32,10 +32,10 @@ export async function POST(request: Request) {
       )
     }
 
-    const maxSize = 50 * 1024 * 1024
+    const maxSize = 100 * 1024 * 1024
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: 'File size exceeds 50MB limit' },
+        { error: 'File size exceeds 100MB limit' },
         { status: 400 }
       )
     }

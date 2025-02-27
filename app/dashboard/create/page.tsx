@@ -82,7 +82,6 @@ const VideoGrid = memo(({
   selectedVideo: number | null,
   onVideoSelect: (num: number) => void
 }) => {
-  console.log('VideoGrid rendering with:', { videosToShow, selectedVideo })
   return (
     <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
       {videosToShow.map((videoNumber) => (
@@ -225,6 +224,7 @@ export default function CreateAd() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         console.error('No authenticated user found')
+        setLoadingDemos(false)
         return
       }
 
@@ -255,9 +255,23 @@ export default function CreateAd() {
             .storage
             .from('input-content')
             .getPublicUrl(video.content_url)
-          return { ...video, publicUrl: publicData.publicUrl }
+          return { 
+            ...video, 
+            publicUrl: publicData.publicUrl,
+            isLoading: false, // Add loading state for each video
+            uploadProgress: undefined // Initialize uploadProgress
+          }
         }))
         setDemoVideos(demoVideosWithUrls)
+        
+        // If we have a newly uploaded video, select it automatically
+        if (demoVideosWithUrls.length > 0 && isUploading === false && uploadingFile !== null) {
+          const latestVideo = demoVideosWithUrls[0]
+          if (latestVideo.publicUrl) {
+            setSelectedDemoVideo(latestVideo.publicUrl)
+          }
+          setUploadingFile(null) // Clear the uploading file reference
+        }
       }
     } catch (error: any) {
       console.error('Error in fetchDemoVideos:', error)
@@ -743,9 +757,103 @@ export default function CreateAd() {
     }
   }
 
-  const handleDeleteDemo = (id: string) => {
-    setDemoVideos(videos => videos.filter(video => video.id !== id))
-  }
+  // Add state to track which demo is being deleted
+  const [deletingDemoId, setDeletingDemoId] = useState<string | null>(null);
+
+  const handleDeleteDemo = async (id: string) => {
+    console.log('Deleting demo video with ID:', id);
+    
+    // Set the deleting state
+    setDeletingDemoId(id);
+    
+    // Check if this is a temporary upload card
+    const videoToDelete = demoVideos.find(v => v.id === id);
+    if (videoToDelete?.isLoading) {
+      console.log('Cancelling upload for video:', id);
+      // If we're deleting a video that's still uploading, we should cancel the upload
+      // For now, we'll just remove it from the UI
+      setDemoVideos(videos => videos.filter(video => video.id !== id));
+      setDeletingDemoId(null);
+      return;
+    }
+    
+    try {
+      // First get the video details to get the content_url
+      const { data: video, error: fetchError } = await supabase
+        .from('input_content')
+        .select('content_url')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching demo video details:', fetchError);
+        toast({
+          title: "Error deleting demo",
+          description: "Could not fetch demo video details",
+          variant: "destructive"
+        });
+        setDeletingDemoId(null);
+        return;
+      }
+
+      // Delete from storage if we have a content_url
+      if (video && video.content_url) {
+        console.log('Deleting storage file:', video.content_url);
+        
+        // Delete from storage
+        const { error: storageError } = await supabase
+          .storage
+          .from('input-content')
+          .remove([video.content_url]);
+
+        if (storageError) {
+          console.error('Error deleting demo from storage:', storageError);
+          // Don't return here, still try to delete the database record
+        }
+      }
+
+      // Delete from database regardless of storage deletion result
+      console.log('Deleting database record for demo:', id);
+      const { error: dbError } = await supabase
+        .from('input_content')
+        .delete()
+        .eq('id', id);
+
+      if (dbError) {
+        console.error('Error deleting demo from database:', dbError);
+        toast({
+          title: "Error deleting demo",
+          description: "Could not delete demo record",
+          variant: "destructive"
+        });
+        setDeletingDemoId(null);
+        return;
+      }
+
+      // Update UI
+      setDemoVideos(videos => videos.filter(video => video.id !== id));
+      
+      // If this was the selected demo, clear the selection
+      if (selectedDemo === id) {
+        setSelectedDemo('');
+        setSelectedDemoVideo('');
+      }
+      
+      toast({
+        title: "Demo deleted",
+        description: "Demo video has been removed successfully"
+      });
+    } catch (error) {
+      console.error('Error in handleDeleteDemo:', error);
+      toast({
+        title: "Error deleting demo",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setDeletingDemoId(null);
+    }
+  };
 
   // Effect for setting default selections
   useEffect(() => {
@@ -791,21 +899,40 @@ export default function CreateAd() {
 
   // Add isUploading state
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadingFile, setUploadingFile] = useState<File | null>(null)
 
   const handleDemoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
       const file = e.target.files[0];
+      console.log('File selected for upload:', file.name, 'size:', file.size, 'MB:', (file.size / (1024 * 1024)).toFixed(2));
+      
       // Check file size (max 100MB)
+      const fileSizeMB = file.size / (1024 * 1024);
       if (file.size > 100 * 1024 * 1024) {
+        console.error(`File too large: ${fileSizeMB.toFixed(2)}MB exceeds 100MB limit`);
         toast({
-          title: "File Too Large",
-          description: "Demo video must be under 100MB. Please compress your video and try again.",
-          variant: "destructive"
+          title: "⚠️ File Too Large",
+          description: `Your file is ${fileSizeMB.toFixed(2)}MB. Demo videos must be under 100MB. Please compress your video and try again.`,
+          variant: "destructive",
+          duration: 6000, // Show for longer
         });
+        
+        // Show a second toast with compression suggestion
+        setTimeout(() => {
+          toast({
+            title: "💡 Compression Tip",
+            description: "Try using a free online video compressor like HandBrake or an online service to reduce file size.",
+            duration: 8000,
+          });
+        }, 1000);
+        
+        // Reset the file input
+        e.target.value = '';
         return;
       }
 
       if (!selectedAppId) {
+        console.error('No app selected for upload');
         toast({
           title: "App Required",
           description: "Please select an app before uploading a demo video.",
@@ -814,69 +941,134 @@ export default function CreateAd() {
         return;
       }
       
-      setIsUploading(true)
-      setUploadProgress(0)
+      console.log('File size check passed, proceeding with upload');
       
-      const formData = new FormData()
-      formData.append('videoFile', file)
-      formData.append('appId', selectedAppId)
+      // Create a temporary loading card with a unique ID
+      const tempId = `temp-${Date.now()}`;
+      const tempVideo: DemoVideo = {
+        id: tempId,
+        content_url: '',
+        created_at: new Date().toISOString(),
+        isLoading: true,
+        uploadProgress: 0 // Start with 0% progress
+      };
       
-      const xhr = new XMLHttpRequest()
+      console.log('Creating temporary upload card with ID:', tempId);
+      
+      // Add the temporary card to the demos list first
+      setDemoVideos(prev => {
+        console.log('Current demo videos:', prev.length);
+        const updated = [tempVideo, ...prev];
+        console.log('Updated demo videos:', updated.length);
+        return updated;
+      });
+      
+      // Then set the uploading state
+      setIsUploading(true);
+      setUploadProgress(0);
+      setUploadingFile(file);
+      
+      const formData = new FormData();
+      formData.append('videoFile', file);
+      formData.append('appId', selectedAppId);
+      
+      console.log('Starting XHR upload to /api/upload-demo');
+      
+      const xhr = new XMLHttpRequest();
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100)
-          setUploadProgress(progress)
+          const progress = Math.round((event.loaded / event.total) * 100);
+          console.log('Upload progress:', progress + '%', 'loaded:', event.loaded, 'total:', event.total);
+          setUploadProgress(progress);
+          
+          // Update the temporary card with the current progress
+          setDemoVideos(prev => prev.map(video => 
+            video.id === tempId 
+              ? { ...video, uploadProgress: progress } 
+              : video
+          ));
         }
-      }
+      };
       
       xhr.onload = async () => {
+        console.log('Upload completed with status:', xhr.status);
         if (xhr.status === 200) {
-          const result = JSON.parse(xhr.responseText)
+          const result = JSON.parse(xhr.responseText);
+          console.log('Server response:', result);
           if (result.error) {
-            console.error('Demo upload error:', result.error)
+            console.error('Demo upload error from server:', result.error);
             toast({
               title: "Demo Upload Failed",
               description: `Error uploading demo video. Please report this error: ${result.error}`,
               variant: "destructive"
-            })
+            });
+            
+            // Remove the temporary card
+            setDemoVideos(prev => prev.filter(video => video.id !== tempId));
           } else {
-            console.log('Upload successful, created record:', result.record)
+            console.log('Upload successful, created record:', result.record);
             toast({
               title: "Demo Upload Success",
               description: "Your demo video has been uploaded successfully.",
-            })
+            });
+            
+            // Remove the temporary card and fetch the real one
+            setDemoVideos(prev => prev.filter(video => video.id !== tempId));
+            
             // Wait a short moment for the server to process the video
+            console.log('Waiting before fetching updated demo videos...');
             setTimeout(() => {
-              fetchDemoVideos()
-            }, 1000)
+              console.log('Fetching updated demo videos');
+              fetchDemoVideos();
+            }, 1000);
           }
         } else {
-          console.error('Upload failed with status:', xhr.status, 'Response:', xhr.responseText)
-          toast({
-            title: "Demo Upload Failed",
-            description: "Error uploading demo video. Please try again.",
-            variant: "destructive"
-          })
+          console.error('Upload failed with status:', xhr.status, 'Response:', xhr.responseText);
+          try {
+            const errorResponse = JSON.parse(xhr.responseText);
+            console.error('Parsed error response:', errorResponse);
+            toast({
+              title: "Demo Upload Failed",
+              description: errorResponse.error || "Error uploading demo video. Please try again.",
+              variant: "destructive"
+            });
+          } catch (e) {
+            console.error('Could not parse error response:', e);
+            toast({
+              title: "Demo Upload Failed",
+              description: "Error uploading demo video. Please try again.",
+              variant: "destructive"
+            });
+          }
+          
+          // Remove the temporary card
+          setDemoVideos(prev => prev.filter(video => video.id !== tempId));
         }
-        setUploadProgress(null)
-        setIsUploading(false)
-      }
+        setUploadProgress(null);
+        setIsUploading(false);
+        setUploadingFile(null);
+      };
       
-      xhr.onerror = () => {
-        console.error('Upload failed')
+      xhr.onerror = (error) => {
+        console.error('Upload failed with error:', error);
         toast({
           title: "Demo Upload Failed",
           description: "Error uploading demo video. Please check your connection and try again.",
           variant: "destructive"
-        })
-        setUploadProgress(null)
-        setIsUploading(false)
-      }
+        });
+        setUploadProgress(null);
+        setIsUploading(false);
+        setUploadingFile(null);
+        
+        // Remove the temporary card
+        setDemoVideos(prev => prev.filter(video => video.id !== tempId));
+      };
       
-      xhr.open('POST', '/api/upload-demo')
-      xhr.send(formData)
+      xhr.open('POST', '/api/upload-demo');
+      xhr.send(formData);
+      console.log('XHR request sent');
     }
-  }
+  };
 
   // Refresh demo videos when selected app changes
   useEffect(() => {
@@ -1122,6 +1314,7 @@ export default function CreateAd() {
                         <li>Show clear app interactions</li>
                         <li>Ensure good lighting</li>
                         <li>Keep your hand movements smooth</li>
+                        <li><strong>Maximum file size: 100MB</strong></li>
                       </ul>
                     </TooltipContent>
                   </Tooltip>
@@ -1146,54 +1339,83 @@ export default function CreateAd() {
                       <div className="absolute inset-0 flex flex-col items-center justify-center p-4 pointer-events-none">
                         <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
                         <p className="text-xs text-center text-muted-foreground">Upload Demo</p>
+                        <p className="text-xs text-center font-semibold text-primary mt-1">Max 100MB</p>
+                        <div className="mt-2 px-2 py-1 bg-primary/10 rounded-md">
+                          <p className="text-[10px] text-center text-primary">MP4 format recommended</p>
+                        </div>
                       </div>
-                      {isUploading && (
-                        <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-40">
-                          <div className="text-center">
-                            <Loader2 className="h-6 w-4 mb-2 animate-spin mx-auto" />
-                            <p className="text-xs">{uploadProgress ? `${uploadProgress}%` : 'Uploading...'}</p>
+                    </div>
+                    
+                    {demoVideos.map((video) => {
+                      console.log('Rendering video:', video.id, 'isLoading:', video.isLoading, 'progress:', video.uploadProgress);
+                      return (
+                        <div
+                          key={video.id}
+                          className={`relative aspect-[9/16] rounded-lg overflow-hidden group transition-all duration-200 ${
+                            video.isLoading 
+                              ? 'bg-card border-2 border-primary/30 shadow-md' 
+                              : selectedDemoVideo === video.publicUrl 
+                                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg' 
+                                : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
+                          }`}
+                        >
+                          <button
+                            onClick={() => handleDeleteDemo(video.id || '')}
+                            className={`absolute top-2 right-2 z-10 p-1 rounded-full bg-background/80 transition-opacity hover:bg-background ${
+                              deletingDemoId === video.id 
+                                ? 'opacity-100' 
+                                : 'opacity-0 group-hover:opacity-100'
+                            }`}
+                            disabled={deletingDemoId === video.id}
+                          >
+                            {deletingDemoId === video.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-foreground" />
+                            ) : (
+                              <X className="h-4 w-4 text-foreground" />
+                            )}
+                          </button>
+                          <div 
+                            className="aspect-[9/16] w-full rounded-lg overflow-hidden cursor-pointer"
+                            onClick={() => handleDemoVideoSelect(video.publicUrl || '')}
+                          >
+                            {video.isLoading ? (
+                              <div className="w-full h-full flex flex-col items-center justify-center bg-card border border-primary/20">
+                                <Loader2 className="h-8 w-8 mb-3 animate-spin text-primary" />
+                                <p className="text-sm font-medium mb-2">Uploading...</p>
+                                {video.uploadProgress !== undefined && (
+                                  <>
+                                    <div className="w-4/5 h-3 bg-muted rounded-full overflow-hidden mb-2">
+                                      <div 
+                                        className="h-full bg-primary transition-all duration-300 ease-out"
+                                        style={{ width: `${video.uploadProgress}%` }}
+                                      ></div>
+                                    </div>
+                                    <p className="text-sm font-medium text-primary">{video.uploadProgress}%</p>
+                                  </>
+                                )}
+                              </div>
+                            ) : (
+                              <video
+                                key={video.publicUrl || ''}
+                                src={video.publicUrl || ''}
+                                className="w-full h-full object-cover"
+                                preload="auto"
+                                muted
+                                loop
+                                playsInline
+                                controlsList="nodownload"
+                                onContextMenu={(e) => e.preventDefault()}
+                                onMouseEnter={(e) => e.currentTarget.play()}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.pause()
+                                  e.currentTarget.currentTime = 0
+                                }}
+                              />
+                            )}
                           </div>
                         </div>
-                      )}
-                    </div>
-                    {demoVideos.map((video) => (
-                      <div
-                        key={video.id}
-                        className={`relative aspect-[9/16] rounded-lg overflow-hidden group transition-all duration-200 ${
-                          selectedDemoVideo === video.publicUrl 
-                            ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg' 
-                            : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
-                        }`}
-                      >
-                        <button
-                          onClick={() => handleDeleteDemo(video.id || '')}
-                          className="absolute top-2 right-2 z-10 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
-                        >
-                          <X className="h-4 w-4 text-foreground" />
-                        </button>
-                        <div 
-                          className="aspect-[9/16] w-full rounded-lg overflow-hidden cursor-pointer"
-                          onClick={() => handleDemoVideoSelect(video.publicUrl || '')}
-                        >
-                          <video
-                            key={video.publicUrl || ''}
-                            src={video.publicUrl || ''}
-                            className="w-full h-full object-cover"
-                            preload="auto"
-                            muted
-                            loop
-                            playsInline
-                            controlsList="nodownload"
-                            onContextMenu={(e) => e.preventDefault()}
-                            onMouseEnter={(e) => e.currentTarget.play()}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.pause()
-                              e.currentTarget.currentTime = 0
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     
                   </>
                 )}
