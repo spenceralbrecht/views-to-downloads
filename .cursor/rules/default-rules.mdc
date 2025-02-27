@@ -1,6 +1,7 @@
 ---
 description: general info
 globs: 
+alwaysApply: false
 ---
 This project uses Bun. We are using this version (2024-12-18.acacia) of the Stripe API.
 
@@ -16,7 +17,7 @@ Try to fix the root cause of problems.
 
 Never make changes to the UI unless asked for directly. Most of the requests will be for functionality changes. Make the file changes yourself immediately.
 
-When I correct you or you learn something from our interactions, suggest a new .windsurfrules rule so that you can be reminded so you don't make the same mistake twice. 
+When I ask you to fix something reflect on 5-7 different possible sources of the problem, distill those down to 1-2 most likely sources, and then add logs to validate your assumptions before we move onto implementing the actual code fix
 
 These are the keys in the .env.local file but in the real file they all have a value assigned to them.
 

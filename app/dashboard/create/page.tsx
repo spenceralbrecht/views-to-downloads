@@ -824,7 +824,7 @@ export default function CreateAd() {
       const xhr = new XMLHttpRequest()
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
-          const progress = (event.loaded / event.total) * 100
+          const progress = Math.round((event.loaded / event.total) * 100)
           setUploadProgress(progress)
         }
       }
@@ -845,8 +845,10 @@ export default function CreateAd() {
               title: "Demo Upload Success",
               description: "Your demo video has been uploaded successfully.",
             })
-            // Refresh the demo videos list
-            fetchDemoVideos()
+            // Wait a short moment for the server to process the video
+            setTimeout(() => {
+              fetchDemoVideos()
+            }, 1000)
           }
         } else {
           console.error('Upload failed with status:', xhr.status, 'Response:', xhr.responseText)
@@ -1248,6 +1250,15 @@ export default function CreateAd() {
           subscription={subscription || { plan_name: 'starter' }}
           loading={loading}
         />
+
+        {/* Version Display */}
+        <div className="fixed bottom-2 left-2">
+          <span className="text-xs text-gray-400">
+            {process.env.VERCEL_GIT_COMMIT_SHA 
+              ? `v${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)}` 
+              : 'dev'}
+          </span>
+        </div>
       </div>
     </div>
   )
