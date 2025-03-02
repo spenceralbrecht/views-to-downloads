@@ -10,7 +10,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 const plans = [
   {
     name: "Starter",
-    price: { monthly: "19", annual: "16" },
+    price: { monthly: "15", annual: "16" },
     description: "Perfect for indie developers and startups",
     popular: false,
     features: [
@@ -22,7 +22,7 @@ const plans = [
   },
   {
     name: "Growth",
-    price: { monthly: "49", annual: "41" },
+    price: { monthly: "35", annual: "41" },
     description: "Perfect for growing app businesses",
     popular: true,
     features: [
@@ -35,7 +35,7 @@ const plans = [
   },
   {
     name: "Scale",
-    price: { monthly: "95", annual: "79" },
+    price: { monthly: "65", annual: "79" },
     description: "For professional app publishers",
     popular: false,
     features: [
