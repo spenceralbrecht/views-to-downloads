@@ -1650,8 +1650,8 @@ export default function CreateAd() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4 py-4">
-              <div className="bg-muted p-3 rounded-md text-sm">
+            <div className="space-y-4">
+              <div className="bg-muted p-3 rounded-md text-sm overflow-hidden">
                 <p className="font-medium text-destructive">{uploadError}</p>
                 
                 {uploadError?.includes("isn't appearing") ? (
@@ -1693,7 +1693,16 @@ export default function CreateAd() {
                       <li>Only MP4 video files are supported</li>
                       <li>Current file type: {uploadDebugInfo?.fileType || 'unknown'}</li>
                       <li>Convert your video to MP4 format using a tool like HandBrake</li>
-                      <li>Use an online video converter service</li>
+                      <li>
+                        Use an online converter: <a 
+                          href="https://www.freeconvert.com/mp4-converter" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:text-blue-700 underline"
+                        >
+                          FreeConvert MP4 Converter
+                        </a>
+                      </li>
                     </ul>
                   </div>
                 ) : (
