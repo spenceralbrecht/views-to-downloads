@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/tooltip"
 import type { OutputContent } from '@/types/video'
 import { Textarea } from "@/components/ui/textarea"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface Hook {
   id: string
@@ -219,79 +220,140 @@ export default function CreateAd() {
   
   // Function to fetch demo videos
   const fetchDemoVideos = async () => {
-    setLoadingDemos(true)
+    setLoadingDemos(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.error('No authenticated user found')
-        setLoadingDemos(false)
-        return
+        console.error('No authenticated user found');
+        setLoadingDemos(false);
+        return;
       }
+
+      // IMPORTANT: Store the app ID we're using for this fetch to ensure consistency
+      const appIdForFetch = selectedAppId;
+      console.log('Fetching demo videos for app ID:', appIdForFetch || 'all apps');
 
       const query = supabase
         .from('input_content')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user.id);
 
       // If an app is selected, filter by app_id
-      if (selectedAppId) {
-        query.eq('app_id', selectedAppId)
+      if (appIdForFetch) {
+        query.eq('app_id', appIdForFetch);
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false })
+      // Log the query we're about to execute
+      console.log('Fetching demo videos with query:', {
+        user_id: user.id,
+        app_id: appIdForFetch || 'not filtered'
+      });
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching demo videos:', error)
+        console.error('Error fetching demo videos:', error);
         toast({
           title: "Error Loading Demos",
           description: "Could not load your demo videos. Please try refreshing the page.",
           variant: "destructive"
-        })
+        });
       } else if (data) {
-        console.log('Fetched demo videos:', data)
-        const demoVideosWithUrls = await Promise.all(data.map(async (video) => {
-          // Get the public URL for the full path including user ID
-          const { data: publicData } = supabase
-            .storage
-            .from('input-content')
-            .getPublicUrl(video.content_url)
-          return { 
-            ...video, 
-            publicUrl: publicData.publicUrl,
-            isLoading: false, // Add loading state for each video
-            uploadProgress: undefined // Initialize uploadProgress
-          }
-        }))
-        setDemoVideos(demoVideosWithUrls)
+        console.log('Fetched demo videos:', data.length ? `${data.length} videos` : 'No videos found');
         
-        // If we have a newly uploaded video, select it automatically
-        if (demoVideosWithUrls.length > 0 && isUploading === false && uploadingFile !== null) {
-          const latestVideo = demoVideosWithUrls[0]
-          if (latestVideo.publicUrl) {
-            setSelectedDemoVideo(latestVideo.publicUrl)
+        if (data.length === 0) {
+          console.log('No demo videos found for query:', {
+            user_id: user.id,
+            app_id: appIdForFetch || 'not filtered'
+          });
+        }
+        
+        // Process the videos in batches to avoid overwhelming the browser
+        const processVideosInBatches = async (videos: any[], batchSize = 5) => {
+          const results = [];
+          for (let i = 0; i < videos.length; i += batchSize) {
+            const batch = videos.slice(i, i + batchSize);
+            const batchResults = await Promise.all(batch.map(async (video: any) => {
+              // Get the public URL for the full path including user ID
+              const { data: publicData } = supabase
+                .storage
+                .from('input-content')
+                .getPublicUrl(video.content_url);
+                
+              // We'll skip the file existence check for performance reasons
+              return { 
+                ...video, 
+                publicUrl: publicData.publicUrl,
+                isLoading: false,
+                uploadProgress: undefined
+              };
+            }));
+            results.push(...batchResults);
           }
-          setUploadingFile(null) // Clear the uploading file reference
+          return results;
+        };
+        
+        const demoVideosWithUrls = await processVideosInBatches(data);
+        
+        // Check if we already have any of these videos in our state
+        // This helps prevent the "video not found" error when a video was just uploaded
+        const currentVideos = demoVideosWithUrls.map(video => video.id);
+        const existingVideos = demoVideos.filter(video => currentVideos.includes(video.id));
+        
+        console.log(`Found ${existingVideos.length} videos that are already in state`);
+        
+        // Only update state if the app ID hasn't changed during the fetch
+        if (appIdForFetch === selectedAppId) {
+          console.log('Setting demo videos state with', demoVideosWithUrls.length, 'videos');
+          
+          // Preserve any videos that were just uploaded but might not be in the database yet
+          const justUploadedVideos = demoVideos.filter(video => 
+            !currentVideos.includes(video.id) && 
+            video.created_at && 
+            new Date(video.created_at).getTime() > Date.now() - 10000 // Videos uploaded in the last 10 seconds
+          );
+          
+          if (justUploadedVideos.length > 0) {
+            console.log('Preserving recently uploaded videos:', justUploadedVideos.length);
+            setDemoVideos([...justUploadedVideos, ...demoVideosWithUrls]);
+          } else {
+            setDemoVideos(demoVideosWithUrls);
+          }
+          
+          // If we have a newly uploaded video, select it automatically
+          if (demoVideosWithUrls.length > 0 && isUploading === false && uploadingFile !== null) {
+            const latestVideo = demoVideosWithUrls[0];
+            if (latestVideo.publicUrl) {
+              setSelectedDemoVideo(latestVideo.publicUrl);
+            }
+            setUploadingFile(null); // Clear the uploading file reference
+          }
+        } else {
+          console.warn('App ID changed during fetch, discarding results');
         }
       }
     } catch (error: any) {
-      console.error('Error in fetchDemoVideos:', error)
+      console.error('Error in fetchDemoVideos:', error);
       toast({
         title: "Error Loading Demos",
         description: "Could not load your demo videos. Please try refreshing the page.",
         variant: "destructive"
-      })
+      });
     } finally {
-      setLoadingDemos(false)
+      setLoadingDemos(false);
     }
-  }
+    
+    // Return a promise that resolves when the function completes
+    return Promise.resolve();
+  };
 
-  // Call fetchDemoVideos on mount
+  // Call fetchDemoVideos on mount and when selectedAppId changes
   useEffect(() => {
-    // Only fetch demo videos if an app is selected
     if (selectedAppId) {
-      fetchDemoVideos()
+      console.log('App ID changed, fetching demo videos for:', selectedAppId);
+      fetchDemoVideos();
     }
-  }, []) // Empty dependency array means this runs once on mount
+  }, [selectedAppId]); // Dependency on selectedAppId ensures we refetch when it changes
 
   // Fetch apps
   useEffect(() => {
@@ -901,6 +963,10 @@ export default function CreateAd() {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadingFile, setUploadingFile] = useState<File | null>(null)
 
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false)
+  const [uploadDebugInfo, setUploadDebugInfo] = useState<any>(null)
+
   const handleDemoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
       const file = e.target.files[0];
@@ -910,21 +976,35 @@ export default function CreateAd() {
       const fileSizeMB = file.size / (1024 * 1024);
       if (file.size > 100 * 1024 * 1024) {
         console.error(`File too large: ${fileSizeMB.toFixed(2)}MB exceeds 100MB limit`);
-        toast({
-          title: "⚠️ File Too Large",
-          description: `Your file is ${fileSizeMB.toFixed(2)}MB. Demo videos must be under 100MB. Please compress your video and try again.`,
-          variant: "destructive",
-          duration: 6000, // Show for longer
-        });
         
-        // Show a second toast with compression suggestion
-        setTimeout(() => {
-          toast({
-            title: "💡 Compression Tip",
-            description: "Try using a free online video compressor like HandBrake or an online service to reduce file size.",
-            duration: 8000,
-          });
-        }, 1000);
+        // Set error information for the dialog
+        setUploadError(`File size exceeds 100MB limit. Your file is ${fileSizeMB.toFixed(2)}MB.`);
+        setUploadDebugInfo({
+          fileName: file.name,
+          fileSize: `${fileSizeMB.toFixed(2)}MB`,
+          fileType: file.type,
+          maxSize: '100MB'
+        });
+        setIsErrorDialogOpen(true);
+        
+        // Reset the file input
+        e.target.value = '';
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.includes('mp4')) {
+        console.error(`Invalid file type: ${file.type}. Only MP4 is supported.`);
+        
+        // Set error information for the dialog
+        setUploadError(`Only MP4 video files are allowed. Your file is ${file.type || 'unknown type'}.`);
+        setUploadDebugInfo({
+          fileName: file.name,
+          fileSize: `${fileSizeMB.toFixed(2)}MB`,
+          fileType: file.type || 'unknown',
+          supportedType: 'video/mp4'
+        });
+        setIsErrorDialogOpen(true);
         
         // Reset the file input
         e.target.value = '';
@@ -933,13 +1013,19 @@ export default function CreateAd() {
 
       if (!selectedAppId) {
         console.error('No app selected for upload');
-        toast({
-          title: "App Required",
-          description: "Please select an app before uploading a demo video.",
-          variant: "destructive"
+        setUploadError('Please select an app before uploading a demo video.');
+        setUploadDebugInfo({
+          fileName: file.name,
+          fileSize: `${fileSizeMB.toFixed(2)}MB`,
+          fileType: file.type
         });
+        setIsErrorDialogOpen(true);
         return;
       }
+      
+      // Store the app ID at the time of upload to ensure consistency
+      const appIdForUpload = selectedAppId;
+      console.log('Uploading video for app ID:', appIdForUpload);
       
       console.log('File size check passed, proceeding with upload');
       
@@ -970,7 +1056,7 @@ export default function CreateAd() {
       
       const formData = new FormData();
       formData.append('videoFile', file);
-      formData.append('appId', selectedAppId);
+      formData.append('appId', appIdForUpload);
       
       console.log('Starting XHR upload to /api/upload-demo');
       
@@ -997,11 +1083,17 @@ export default function CreateAd() {
           console.log('Server response:', result);
           if (result.error) {
             console.error('Demo upload error from server:', result.error);
-            toast({
-              title: "Demo Upload Failed",
-              description: `Error uploading demo video. Please report this error: ${result.error}`,
-              variant: "destructive"
+            
+            // Set error information for the dialog
+            setUploadError(`Error uploading demo video: ${result.error}`);
+            setUploadDebugInfo({
+              appId: selectedAppId,
+              fileName: file.name,
+              fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
+              status: xhr.status,
+              details: result.details || 'No additional details'
             });
+            setIsErrorDialogOpen(true);
             
             // Remove the temporary card
             setDemoVideos(prev => prev.filter(video => video.id !== tempId));
@@ -1012,13 +1104,58 @@ export default function CreateAd() {
               description: "Your demo video has been uploaded successfully.",
             });
             
-            // Remove the temporary card and fetch the real one
+            // Store important information about the upload for debugging
+            const uploadInfo = {
+              recordId: result.record?.id,
+              contentUrl: result.record?.content_url,
+              publicUrl: result.publicUrl,
+              appId: result.record?.app_id,
+              uploadAppId: appIdForUpload,
+              currentAppId: selectedAppId,
+              timestamp: new Date().toISOString(),
+              videosCount: demoVideos.length
+            };
+            console.log('Upload successful, details:', uploadInfo);
+            
+            // Remove the temporary card
             setDemoVideos(prev => prev.filter(video => video.id !== tempId));
             
-            // Wait a short moment for the server to process the video
-            console.log('Waiting before fetching updated demo videos...');
+            // Check if the app ID has changed during upload
+            if (appIdForUpload !== selectedAppId) {
+              console.warn('App ID changed during upload. Uploaded to:', appIdForUpload, 'Current:', selectedAppId);
+              // Show a warning to the user
+              setUploadError("Your video was uploaded to a different app than the one currently selected. Switching to the correct app.");
+              setUploadDebugInfo(uploadInfo);
+              setIsErrorDialogOpen(true);
+              
+              // Switch to the app ID used for the upload
+              setSelectedAppId(appIdForUpload);
+              return;
+            }
+            
+            // Create a new video object with the response data
+            const newVideo = {
+              id: result.record?.id,
+              content_url: result.record?.content_url,
+              created_at: result.record?.created_at || new Date().toISOString(),
+              app_id: result.record?.app_id,
+              user_id: result.record?.user_id,
+              publicUrl: result.publicUrl,
+              isLoading: false,
+              uploadProgress: undefined
+            };
+            
+            // Add the new video directly to the state
+            setDemoVideos(prev => [newVideo, ...prev]);
+            
+            // Select the newly uploaded video
+            if (newVideo.publicUrl) {
+              setSelectedDemoVideo(newVideo.publicUrl);
+            }
+            
+            // Also refresh the videos list to ensure everything is in sync
             setTimeout(() => {
-              console.log('Fetching updated demo videos');
+              console.log('Refreshing demo videos list after successful upload');
               fetchDemoVideos();
             }, 1000);
           }
@@ -1027,18 +1164,31 @@ export default function CreateAd() {
           try {
             const errorResponse = JSON.parse(xhr.responseText);
             console.error('Parsed error response:', errorResponse);
-            toast({
-              title: "Demo Upload Failed",
-              description: errorResponse.error || "Error uploading demo video. Please try again.",
-              variant: "destructive"
+            
+            // Set error information for the dialog
+            setUploadError(errorResponse.error || "Error uploading demo video. Please try again.");
+            setUploadDebugInfo({
+              appId: selectedAppId,
+              fileName: file.name,
+              fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
+              status: xhr.status,
+              response: xhr.responseText,
+              details: errorResponse.details || 'No additional details'
             });
+            setIsErrorDialogOpen(true);
           } catch (e) {
             console.error('Could not parse error response:', e);
-            toast({
-              title: "Demo Upload Failed",
-              description: "Error uploading demo video. Please try again.",
-              variant: "destructive"
+            
+            // Set error information for the dialog
+            setUploadError("Error uploading demo video. Please try again.");
+            setUploadDebugInfo({
+              appId: selectedAppId,
+              fileName: file.name,
+              fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
+              status: xhr.status,
+              response: xhr.responseText
             });
+            setIsErrorDialogOpen(true);
           }
           
           // Remove the temporary card
@@ -1051,11 +1201,17 @@ export default function CreateAd() {
       
       xhr.onerror = (error) => {
         console.error('Upload failed with error:', error);
-        toast({
-          title: "Demo Upload Failed",
-          description: "Error uploading demo video. Please check your connection and try again.",
-          variant: "destructive"
+        
+        // Set error information for the dialog
+        setUploadError("Error uploading demo video. Please check your connection and try again.");
+        setUploadDebugInfo({
+          appId: selectedAppId,
+          fileName: file.name,
+          fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
+          error: 'Network error'
         });
+        setIsErrorDialogOpen(true);
+        
         setUploadProgress(null);
         setIsUploading(false);
         setUploadingFile(null);
@@ -1069,13 +1225,6 @@ export default function CreateAd() {
       console.log('XHR request sent');
     }
   };
-
-  // Refresh demo videos when selected app changes
-  useEffect(() => {
-    if (selectedAppId) {
-      fetchDemoVideos()
-    }
-  }, [selectedAppId])
 
   return (
     <div className="min-h-screen bg-background">
@@ -1472,6 +1621,178 @@ export default function CreateAd() {
           subscription={subscription || { plan_name: 'starter' }}
           loading={loading}
         />
+
+        {/* Error Dialog */}
+        <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {uploadError?.includes("isn't appearing") 
+                  ? "Video Uploaded Successfully" 
+                  : uploadError?.includes("Storage upload failed") || uploadError?.includes("Storage system unavailable") || uploadError?.includes("Bucket not found")
+                    ? "Upload Error"
+                    : uploadError?.includes("File size exceeds")
+                      ? "File Too Large"
+                      : uploadError?.includes("MP4 video files")
+                        ? "Unsupported File Format"
+                        : "Upload Failed"}
+              </DialogTitle>
+              <DialogDescription>
+                {uploadError?.includes("isn't appearing") 
+                  ? "Your video was uploaded successfully but may take a moment to appear in the list."
+                  : uploadError?.includes("Storage upload failed") || uploadError?.includes("Storage system unavailable") || uploadError?.includes("Bucket not found")
+                    ? "There was a problem uploading your video."
+                    : uploadError?.includes("File size exceeds")
+                      ? "The video file you selected is too large."
+                      : uploadError?.includes("MP4 video files")
+                        ? "The file format you selected is not supported."
+                        : "There was a problem uploading your demo video."}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="bg-muted p-3 rounded-md text-sm">
+                <p className="font-medium text-destructive">{uploadError}</p>
+                
+                {uploadError?.includes("isn't appearing") ? (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs text-muted-foreground">The video has been uploaded successfully, but there might be a slight delay before it appears in your list.</p>
+                    <ul className="text-xs list-disc pl-4 space-y-1">
+                      <li>Wait a few moments for the video to appear</li>
+                      <li>Click the "Refresh Videos" button below</li>
+                      <li>Make sure you're viewing the same app that you uploaded the video for</li>
+                      <li>If the video still doesn't appear, try refreshing the entire page</li>
+                    </ul>
+                  </div>
+                ) : uploadError?.includes("Storage upload failed") || uploadError?.includes("Storage system unavailable") || uploadError?.includes("Bucket not found") ? (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs text-muted-foreground">Try these solutions:</p>
+                    <ul className="text-xs list-disc pl-4 space-y-1">
+                      <li>Try refreshing the page and uploading again</li>
+                      <li>Try logging out and logging back in</li>
+                      <li>Try uploading a smaller video file (under 50MB)</li>
+                      <li>Check your internet connection</li>
+                      <li>If the problem persists, please try again later or contact support</li>
+                    </ul>
+                  </div>
+                ) : uploadError?.includes("File size exceeds") ? (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs text-muted-foreground">Required action:</p>
+                    <ul className="text-xs list-disc pl-4 space-y-1">
+                      <li>Your video must be under 100MB in size</li>
+                      <li>Current video size: {uploadDebugInfo?.fileSize || 'unknown'}</li>
+                      <li>Try compressing your video with a tool like HandBrake</li>
+                      <li>Reduce the resolution or length of your video</li>
+                      <li>Use an online video compressor service</li>
+                    </ul>
+                  </div>
+                ) : uploadError?.includes("MP4 video files") ? (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs text-muted-foreground">Required action:</p>
+                    <ul className="text-xs list-disc pl-4 space-y-1">
+                      <li>Only MP4 video files are supported</li>
+                      <li>Current file type: {uploadDebugInfo?.fileType || 'unknown'}</li>
+                      <li>Convert your video to MP4 format using a tool like HandBrake</li>
+                      <li>Use an online video converter service</li>
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs text-muted-foreground">Possible causes:</p>
+                    <ul className="text-xs list-disc pl-4 space-y-1">
+                      <li>The video file may be corrupted or in an unsupported format</li>
+                      <li>Your internet connection may have been interrupted</li>
+                      <li>The app selection may have changed during upload</li>
+                      <li>There might be a temporary server issue</li>
+                    </ul>
+                  </div>
+                )}
+                
+                {uploadDebugInfo && (
+                  <div className="mt-4 pt-2 border-t border-border">
+                    <p className="text-xs font-medium mb-1">Debug Information:</p>
+                    <pre className="text-xs overflow-auto max-h-24 p-2 bg-background rounded">
+                      {JSON.stringify(uploadDebugInfo, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <DialogFooter className="flex justify-between sm:justify-between">
+              <Button
+                variant="outline"
+                onClick={() => setIsErrorDialogOpen(false)}
+              >
+                Close
+              </Button>
+              {uploadError?.includes("isn't appearing") ? (
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    setIsErrorDialogOpen(false);
+                    // Force a complete refresh of the videos list
+                    setDemoVideos([]); // Clear the current list first
+                    setLoadingDemos(true); // Show loading state
+                    
+                    // If we have app ID info in the debug info, try switching to that app
+                    if (uploadDebugInfo?.uploadAppId && uploadDebugInfo.uploadAppId !== selectedAppId) {
+                      setSelectedAppId(uploadDebugInfo.uploadAppId);
+                    } else {
+                      // Otherwise just refresh the videos with a slight delay
+                      setTimeout(() => {
+                        fetchDemoVideos().then(() => {
+                          // After fetching, check if we have videos
+                          if (demoVideos.length === 0) {
+                            // If still no videos, try one more time with a longer delay
+                            setTimeout(() => {
+                              fetchDemoVideos();
+                            }, 2000);
+                          }
+                        });
+                      }, 500);
+                    }
+                  }}
+                >
+                  {uploadDebugInfo?.uploadAppId && uploadDebugInfo.uploadAppId !== selectedAppId 
+                    ? "Switch to Correct App" 
+                    : "Refresh Videos"}
+                </Button>
+              ) : uploadError?.includes("Storage upload failed") || uploadError?.includes("Storage system unavailable") || uploadError?.includes("Bucket not found") ? (
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    setIsErrorDialogOpen(false);
+                    // Refresh the page
+                    window.location.reload();
+                  }}
+                >
+                  Refresh Page
+                </Button>
+              ) : uploadError?.includes("File size exceeds") || uploadError?.includes("MP4 video files") ? (
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    setIsErrorDialogOpen(false);
+                  }}
+                >
+                  Try Another File
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    setIsErrorDialogOpen(false);
+                    // Refresh the demo videos list
+                    fetchDemoVideos();
+                  }}
+                >
+                  Refresh Videos
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
