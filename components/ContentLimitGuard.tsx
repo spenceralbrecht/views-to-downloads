@@ -38,7 +38,7 @@ export function ContentLimitGuard({ children }: ContentLimitGuardProps) {
   const handleUpgrade = () => {
     try {
       setError(null)
-      const stripeConfig = getStripeConfig()
+      const stripeConfig = getStripeConfig(user?.email)
       if (!stripeConfig.customerBillingLink) {
         throw new Error('Billing link not available')
       }

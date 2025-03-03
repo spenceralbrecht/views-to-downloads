@@ -61,7 +61,7 @@ export default function Dashboard() {
   const hasApp = apps.length > 0
   const hasDemoVideo = demoVideos.length > 0
   const hasHooks = hooks.length > 0
-  const billingUrl = getStripeConfig().customerBillingLink
+  const billingUrl = getStripeConfig(session?.user?.email).customerBillingLink
 
   const handleCreateUGCClick = (e: React.MouseEvent) => {
     e.preventDefault()

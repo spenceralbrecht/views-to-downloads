@@ -13,6 +13,7 @@ import { trackStripeCheckout } from '@/utils/tracking'
 import { Check } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useUser } from '@supabase/auth-helpers-react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 interface PricingModalProps {
   isOpen: boolean
@@ -33,7 +34,7 @@ interface PricingTier {
   name: string
   description: string
   features: string[]
-  getLink: () => string | undefined
+  getLink: (email?: string | null) => string | undefined
 }
 
 const pricingTiers: PricingTier[] = [
@@ -44,7 +45,7 @@ const pricingTiers: PricingTier[] = [
       'Create up to 10 videos per month',
       'Auto Generate Engaging Hooks',
     ],
-    getLink: () => getStripeConfig().checkoutLinks.starter
+    getLink: (email) => getStripeConfig(email).checkoutLinks.starter
   },
   {
     name: 'Growth',
@@ -54,7 +55,7 @@ const pricingTiers: PricingTier[] = [
       'Auto Generate Engaging Hooks',
       'Early access to new viral formats',
     ],
-    getLink: () => getStripeConfig().checkoutLinks.growth
+    getLink: (email) => getStripeConfig(email).checkoutLinks.growth
   },
   {
     name: 'Scale',
@@ -65,7 +66,7 @@ const pricingTiers: PricingTier[] = [
       'Early access to new viral formats',
       'Priority support',
     ],
-    getLink: () => getStripeConfig().checkoutLinks.scale
+    getLink: (email) => getStripeConfig(email).checkoutLinks.scale
   }
 ]
 
@@ -74,8 +75,13 @@ function PricingModal({ isOpen, onClose }: PricingModalProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const user = useUser();
+  const supabase = createClientComponentClient();
+  
+  console.log('PricingModal rendered, user from useUser hook:', user);
 
   useEffect(() => {
+    console.log('PricingModal useEffect, user from useUser hook:', user);
+    
     async function fetchPrices() {
       try {
         setError(null)
@@ -102,16 +108,27 @@ function PricingModal({ isOpen, onClose }: PricingModalProps) {
     }
   }, [isOpen])
 
-  const handlePurchaseClick = (tier: PricingTier) => {
+  const handlePurchaseClick = async (tier: PricingTier) => {
     try {
-      const link = tier.getLink()
+      console.log('handlePurchaseClick called for tier:', tier.name);
+      
+      // Get user email directly from Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email || user?.email;
+      
+      console.log('User email from session:', userEmail);
+      
+      const link = tier.getLink(userEmail);
+      console.log('Generated link:', link);
+      
       if (!link) {
         console.error(`Checkout link not found for ${tier.name} plan`)
         setError(`Unable to process ${tier.name} plan purchase. Please try again later.`)
         return
       }
-      trackStripeCheckout(user?.email);
-      window.location.href = link
+      
+      trackStripeCheckout(userEmail);
+      window.location.href = link;
     } catch (error) {
       console.error('Error handling purchase:', error)
       setError('Unable to process purchase. Please try again later.')

@@ -188,6 +188,35 @@ Each payment link is configured with:
 - Customer email collection enabled
 - Automatic tax handling (optional)
 
+### Email Parameter Handling
+The application automatically appends the logged-in user's email to all Stripe payment links to ensure consistency between the Google authentication email and the Stripe customer email. This is implemented through:
+
+1. **Email Parameter Appending**:
+   - All payment links have `?prefilled_email=user@example.com` or `&prefilled_email=user@example.com` appended
+   - The `appendEmailToLink` function in `config/stripe.ts` handles this logic
+   - Email is properly encoded using `encodeURIComponent` to handle special characters
+
+2. **Implementation Locations**:
+   - `getStripeConfig(email)` function accepts an optional email parameter
+   - All components that use Stripe links pass the user's email:
+     - PricingModal component: Uses direct session access for reliability
+     - UpgradeModal component: Uses the useUser hook
+     - ContentLimitGuard component: Uses the useUser hook
+     - Dashboard page: Uses session.user.email
+     - Sidebar billing link: Uses the user prop passed from the parent
+
+3. **Benefits**:
+   - Ensures the Stripe customer email matches the logged-in user's email
+   - Improves user experience by pre-filling the email field
+   - Reduces errors in customer identification and webhook processing
+   - Simplifies matching Stripe customers to application users
+
+4. **Implementation Details**:
+   - The email parameter is added as `prefilled_email` in the URL
+   - The function handles both URLs with existing query parameters and those without
+   - Error handling ensures the original link is returned if there's an issue with email appending
+   - Debug logging helps troubleshoot any issues with email parameter appending
+
 ### Subscription Flow
 1. **User Initiates Subscription**
    - Clicks payment link for desired plan
@@ -250,6 +279,39 @@ NEXT_PUBLIC_STRIPE_SCALE_LINK=https://buy.stripe.com/...
 1. Update your environment variables (e.g., AIRTABLE_API_KEY, AIRTABLE_BASE_ID) as required.
 2. Run `npm install` (or `yarn install`) to install dependencies.
 3. Run the development server with `npm run dev`.
+
+### Developer Notes
+
+#### Stripe Email Handling
+- The application automatically appends the logged-in user's email to all Stripe payment links
+- This is implemented in `config/stripe.ts` with the `appendEmailToLink` function
+- When modifying code that uses Stripe payment links, ensure you pass the user's email to `getStripeConfig(email)`
+- Key components that use this feature:
+  - `PricingModal.tsx`
+  - `upgrade-modal.tsx`
+  - `ContentLimitGuard.tsx`
+  - `dashboard/Sidebar.tsx`
+  - `app/dashboard/page.tsx`
+
+#### Authentication Flow and Stripe Integration
+- The application uses Supabase Auth for authentication with Google OAuth
+- User authentication state can be accessed in two ways:
+  1. Server-side: Using `createServerComponentClient` from `@supabase/auth-helpers-nextjs`
+  2. Client-side: Using `createClientComponentClient` from `@supabase/auth-helpers-nextjs` or `useUser` from `@supabase/auth-helpers-react`
+- When working with Stripe payment links:
+  - For most reliable access to user email, use `supabase.auth.getSession()` directly
+  - The `PricingModal` component uses this approach to ensure the email is available when needed
+  - Example implementation:
+    ```typescript
+    const supabase = createClientComponentClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const userEmail = session?.user?.email;
+    const link = getStripeConfig(userEmail).checkoutLinks.starter;
+    ```
+- Debugging tips:
+  - If email parameters aren't being appended to Stripe links, check browser console logs
+  - Verify that `appendEmailToLink` function is receiving a valid email
+  - Ensure the user is properly authenticated before accessing payment links
 
 ## Environment Variables
 
@@ -390,3 +452,51 @@ To test Stripe subscriptions and webhooks in your local development environment:
 7. Monitor the webhook forwarding terminal to see events being sent and responses from your local server.
 
 Note: The webhook secret changes each time you run `stripe listen`. Make sure to update your `.env.local` file with the new secret when testing.
+
+### Troubleshooting Stripe Integration
+
+#### Email Parameter Not Appearing in Stripe Checkout
+If the user's email is not being prefilled in the Stripe checkout page:
+
+1. **Check Authentication State**:
+   - Verify the user is properly authenticated
+   - Check browser console logs for `getStripeConfig called with email: null` or similar messages
+   - Ensure the component has access to the user's email before redirecting
+
+2. **Direct Session Access**:
+   - If using the `useUser()` hook and experiencing issues, try directly accessing the session:
+   ```typescript
+   const supabase = createClientComponentClient();
+   const { data: { session } } = await supabase.auth.getSession();
+   const userEmail = session?.user?.email;
+   ```
+
+3. **URL Encoding Issues**:
+   - Check if the email contains special characters that might need proper encoding
+   - The `appendEmailToLink` function should handle this, but verify in browser network tab
+
+4. **Environment Variables**:
+   - Ensure all Stripe payment links are correctly set in your environment variables
+   - Check that the links are being loaded properly in the `getStripeConfig` function
+
+5. **Browser Console Debugging**:
+   - Add `console.log` statements to track the flow:
+     - When the user clicks the payment button
+     - When `getStripeConfig` is called
+     - When `appendEmailToLink` is called
+     - The final URL before redirection
+
+#### Stripe Webhook Processing Issues
+If webhooks aren't being processed correctly:
+
+1. **Check Webhook Signatures**:
+   - Verify the webhook secret is correctly set in your environment variables
+   - Ensure the secret matches what's shown in the Stripe CLI or dashboard
+
+2. **Email Matching**:
+   - If users aren't being matched correctly, check that the email in Stripe matches the email in your auth system
+   - The email parameter appending helps ensure this consistency
+
+3. **Webhook Event Logging**:
+   - Add detailed logging in your webhook handler to see what events are being received
+   - Check for any errors in processing specific event types

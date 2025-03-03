@@ -29,7 +29,7 @@ export function UpgradeModal({ open, onOpenChange, subscription, loading }: Upgr
   // Get the next tier's payment link
   const getUpgradeLink = () => {
     try {
-      const stripeConfig = getStripeConfig();
+      const stripeConfig = getStripeConfig(user?.email);
       
       if (!stripeConfig.customerBillingLink) {
         throw new Error('Customer billing link not defined in stripeConfig');

@@ -50,7 +50,7 @@ export function Sidebar({ user }: SidebarProps) {
     },
     { 
       name: 'Billing', 
-      href: getStripeConfig().customerBillingLink || '/dashboard/billing', 
+      href: getStripeConfig(user?.email).customerBillingLink || '/dashboard/billing', 
       icon: CreditCard,
       external: true 
     },

@@ -12,6 +12,38 @@ interface StripeConfig {
   customerBillingLink: string;
 }
 
+// Helper function to append email to payment links
+export function appendEmailToLink(link: string, email: string | null | undefined): string {
+  console.log('appendEmailToLink called with:', { link, email });
+  
+  if (!link) {
+    console.log('appendEmailToLink returning empty link due to missing link');
+    return '';
+  }
+  
+  if (!email) {
+    console.log('appendEmailToLink returning original link due to missing email');
+    return link;
+  }
+  
+  try {
+    // Check if the URL already has query parameters
+    const hasQueryParams = link.includes('?');
+    const separator = hasQueryParams ? '&' : '?';
+    
+    // Properly encode the email
+    const encodedEmail = encodeURIComponent(email.trim());
+    
+    // Append the email parameter
+    const result = `${link}${separator}prefilled_email=${encodedEmail}`;
+    console.log('appendEmailToLink returning:', result);
+    return result;
+  } catch (error) {
+    console.error('Error in appendEmailToLink:', error);
+    return link; // Return original link if there's an error
+  }
+}
+
 const devConfig: StripeConfig = {
   checkoutLinks: {
     starter: process.env.NEXT_PUBLIC_STRIPE_TEST_STARTER_LINK || '',
@@ -40,7 +72,9 @@ const prodConfig: StripeConfig = {
   customerBillingLink: process.env.NEXT_PUBLIC_STRIPE_CUSTOMER_BILLING_LINK || ''
 }
 
-export function getStripeConfig(): StripeConfig {
+export function getStripeConfig(email?: string | null): StripeConfig {
+  console.log('getStripeConfig called with email:', email);
+  
   const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV
   if (!stripeEnv) {
     console.warn('NEXT_PUBLIC_STRIPE_ENV not set, defaulting to production')
@@ -71,13 +105,23 @@ export function getStripeConfig(): StripeConfig {
     console.warn('Missing Stripe customer billing link')
   }
 
-  // Log configuration for debugging
-  // console.log('Using links:', {
-  //   starter: config.checkoutLinks.starter || 'missing',
-  //   growth: config.checkoutLinks.growth || 'missing',
-  //   scale: config.checkoutLinks.scale || 'missing'
-  // })
+  // If email is provided, append it to all links
+  if (email) {
+    console.log('Email provided, appending to links:', email);
+    const result = {
+      ...config,
+      checkoutLinks: {
+        starter: appendEmailToLink(config.checkoutLinks.starter, email),
+        growth: appendEmailToLink(config.checkoutLinks.growth, email),
+        scale: appendEmailToLink(config.checkoutLinks.scale, email)
+      },
+      customerBillingLink: appendEmailToLink(config.customerBillingLink, email)
+    };
+    console.log('Modified config with email:', result);
+    return result;
+  }
 
+  console.log('No email provided, returning original config');
   return config
 }
 
