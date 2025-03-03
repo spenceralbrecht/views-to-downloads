@@ -140,6 +140,15 @@ export default function Dashboard() {
           open={isViralFormatModalOpen}
           onOpenChange={setIsViralFormatModalOpen}
         />
+        
+        {/* Version Display */}
+        <div className="mt-8 text-right">
+          <span className="text-xs text-gray-400">
+            {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA 
+              ? `v${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7)}` 
+              : 'dev'}
+          </span>
+        </div>
       </div>
     </div>
   )

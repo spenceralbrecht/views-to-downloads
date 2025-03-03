@@ -1472,15 +1472,6 @@ export default function CreateAd() {
           subscription={subscription || { plan_name: 'starter' }}
           loading={loading}
         />
-
-        {/* Version Display */}
-        <div className="fixed bottom-2 left-2">
-          <span className="text-xs text-gray-400">
-            {process.env.VERCEL_GIT_COMMIT_SHA 
-              ? `v${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)}` 
-              : 'dev'}
-          </span>
-        </div>
       </div>
     </div>
   )
