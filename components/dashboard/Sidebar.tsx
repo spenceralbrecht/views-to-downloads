@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Download, Home, Video, Smartphone, Activity, HelpCircle, CreditCard, Settings, Sparkles, BookOpen, Anchor, Menu } from 'lucide-react'
+import { Download, Home, Video, Smartphone, Activity, HelpCircle, CreditCard, Settings, Sparkles, BookOpen, Anchor, Menu, Plug } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { User } from '@supabase/supabase-js'
@@ -36,6 +36,7 @@ export function Sidebar({ user }: SidebarProps) {
     { name: 'Hooks', href: '/dashboard/hooks', icon: Anchor },
     { name: 'Apps', href: '/dashboard/apps', icon: Smartphone },
     { name: 'Guide', href: '/dashboard/guide', icon: BookOpen },
+    { name: 'Connected Accounts', href: '/dashboard/connected-accounts', icon: Plug },
   ]
 
   const bottomNav = [
@@ -296,6 +297,19 @@ export function Sidebar({ user }: SidebarProps) {
             )}
             
             <div className="space-y-4">
+              {/* Additional navigation items for mobile menu */}
+              {navigation.slice(5).map((item) => (
+                <Link 
+                  key={item.name}
+                  href={item.href}
+                  className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-foreground hover:bg-accent"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <item.icon className="mr-3 h-5 w-5 text-muted-foreground" />
+                  {item.name}
+                </Link>
+              ))}
+              
               {bottomNav.map((item) => {
                 const linkProps = {
                   href: item.href,

@@ -17,7 +17,7 @@ export default function GuidePage() {
           <CardContent className="space-y-4">
             <p>Start with consistent, quality content to establish your account's credibility:</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Post 1-3 times daily for the first two weeks</li>
+              <li>Post 1-3 times daily for at least 2-3 days</li>
               <li>Engage with similar content in your niche</li>
               <li>Maintain high completion rates by keeping videos under 30 seconds</li>
               <li>Use trending sounds and music in your niche</li>
@@ -54,6 +54,20 @@ export default function GuidePage() {
               <li>Batch create content to maintain consistency</li>
               <li>Use our AI to generate multiple variations of successful content</li>
             </ul>
+            
+            <div className="mt-6">
+              <img 
+                src="https://pub-a027e435822042eb96a9208813b48997.r2.dev/demo-posting-same-format.png" 
+                alt="Account posting the same format multiple times" 
+                className="rounded-lg w-full mb-4"
+              />
+              <p className="text-sm text-muted-foreground">
+                <strong>Persistence pays off:</strong> Many successful accounts post the same format 100+ times 
+                with small tweaks, and it still performs well. Success requires volume and persistence. 
+                Don't get discouraged if you don't see a viral video within your first 5, 10, or even 20 posts. 
+                Keep refining and posting consistently.
+              </p>
+            </div>
           </CardContent>
         </Card>
 
