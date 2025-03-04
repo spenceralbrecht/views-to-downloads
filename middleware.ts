@@ -59,6 +59,16 @@ export async function middleware(req: NextRequest) {
       return dashboardRes
     }
 
+    // Handle TikTok OAuth callback
+    if (req.nextUrl.pathname === '/api/auth/tiktok/callback') {
+      // The code verifier is stored in localStorage on the client side
+      // We need to pass it to the server via a cookie
+      // This is handled by client-side JavaScript in a script we'll add to the layout
+      
+      // Continue with the request
+      return res
+    }
+
     return res
   } catch (error) {
     console.error('Middleware - Error:', error)
@@ -70,6 +80,7 @@ export const config = {
   matcher: [
     '/',
     '/dashboard/:path*',
-    '/auth/callback'
+    '/auth/callback',
+    '/api/auth/tiktok/callback'
   ]
 }
