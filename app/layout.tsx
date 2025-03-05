@@ -28,10 +28,6 @@ export default function RootLayout({
             `
           }}
         />
-        <Script
-          src="https://feedback-fish.app/sdk.js"
-          strategy="lazyOnload"
-        />
         <script dangerouslySetInnerHTML={{
           __html: `
             // Transfer TikTok code verifier from localStorage to cookie when callback is detected
@@ -58,6 +54,11 @@ export default function RootLayout({
         </div>
         <Toaster />
         <Analytics />
+        <Script
+          src={`https://feedback.fish/ff.js?pid=8ce000788096e9`}
+          defer
+          strategy="lazyOnload"
+        />
       </body>
     </html>
   )

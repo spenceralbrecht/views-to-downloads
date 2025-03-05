@@ -46,7 +46,10 @@ export function Sidebar({ user }: SidebarProps) {
       icon: HelpCircle,
       onClick: (e: React.MouseEvent) => {
         e.preventDefault()
-        // The widget will be triggered by the data-feedback-fish attribute
+        // Call the Feedback Fish API directly
+        if (typeof window !== 'undefined' && (window as any).feedback && (window as any).feedback.fish) {
+          (window as any).feedback.fish.api.showWidget()
+        }
       }
     },
     { 
