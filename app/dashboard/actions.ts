@@ -556,6 +556,7 @@ OUTPUT: JSON object with array of 10 hooks in this exact format:
 - Include fitting emojis where natural
 - Keep each hook concise and impactful
 - Ensure immediate clarity of value proposition
+- Use emojis sparingly
 
 ## Examples
 ✅ GOOD HOOK:
