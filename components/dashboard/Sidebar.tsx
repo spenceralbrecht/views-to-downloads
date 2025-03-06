@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Download, Home, Video, Smartphone, Activity, HelpCircle, CreditCard, Settings, Sparkles, BookOpen, Anchor, Menu, Plug } from 'lucide-react'
+import { Download, Home, Video, Smartphone, Activity, HelpCircle, CreditCard, Settings, Sparkles, BookOpen, Anchor, Menu, Plug, Phone } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { User } from '@supabase/supabase-js'
@@ -17,6 +17,7 @@ import PricingModal from '@/components/PricingModal'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { trackStripeCheckout } from '@/utils/tracking'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import PremiumSupportDialog from '@/components/PremiumSupportDialog'
 
 interface SidebarProps {
   user: User | null;
@@ -26,6 +27,7 @@ export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
   const { subscription, loading } = useSubscription(user)
   const [showPricingModal, setShowPricingModal] = useState(false)
+  const [showPremiumSupportDialog, setShowPremiumSupportDialog] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const planName = subscription?.plan_name || 'starter'
   const contentUsed = subscription ? subscription.content_used_this_month : 0
@@ -55,6 +57,18 @@ export function Sidebar({ user }: SidebarProps) {
         }
       }
     },
+    // Add Premium Support option only for users with an active subscription
+    ...(subscription && subscription.plan_name !== 'starter' ? [
+      {
+        name: 'Premium Support',
+        href: '#',
+        icon: Phone,
+        onClick: (e: React.MouseEvent) => {
+          e.preventDefault()
+          setShowPremiumSupportDialog(true)
+        }
+      }
+    ] : []),
     { 
       name: 'Billing', 
       href: getStripeConfig(user?.email).customerBillingLink || '/dashboard/billing', 
@@ -368,6 +382,11 @@ export function Sidebar({ user }: SidebarProps) {
       <PricingModal 
         isOpen={showPricingModal} 
         onClose={() => setShowPricingModal(false)} 
+      />
+      
+      <PremiumSupportDialog
+        isOpen={showPremiumSupportDialog}
+        onClose={() => setShowPremiumSupportDialog(false)}
       />
     </>
   )
