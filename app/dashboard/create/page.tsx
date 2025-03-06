@@ -378,6 +378,10 @@ export default function CreateAd() {
           setSelectedAppId(data[0].id)
           // We'll fetch demo videos when selectedAppId changes via the other useEffect
         }
+      } else {
+        // No apps found
+        console.log('No apps found for user');
+        setShowNoAppsDialog(true);
       }
       setLoadingApps(false)
     }
@@ -524,6 +528,10 @@ export default function CreateAd() {
         if (data.length > 0) {
           setHook(data[0].hook_text)
           setCurrentHookIndex(0)
+        } else {
+          // No hooks found for the selected app
+          console.log('No hooks found for app:', selectedAppId);
+          setShowNoHooksDialog(true);
         }
       }
       setLoadingHooks(false)
@@ -549,9 +557,29 @@ export default function CreateAd() {
 
   // Handle video creation
   const [showNoHooksDialog, setShowNoHooksDialog] = useState(false)
+  const [showNoAppsDialog, setShowNoAppsDialog] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const handleCreateVideo = async () => {
     console.log('DEBUG: handleCreateVideo triggered', { selectedAppId, hook, selectedInfluencerVideo, selectedDemoVideo, contentRemaining, isPending });
+    
+    // Check if user has any apps
+    const { data: appsData, error: appsError } = await supabase
+      .from('apps')
+      .select('id')
+      .limit(1);
+    
+    console.log('DEBUG: appsData fetched', { appsData, appsError });
+    if (appsError) {
+      console.log('DEBUG: Error fetching apps', appsError);
+      return;
+    }
+    
+    if (!appsData || appsData.length === 0) {
+      console.log('DEBUG: No apps available');
+      setShowNoAppsDialog(true);
+      return;
+    }
+    
     if (!selectedAppId) {
       console.log('DEBUG: No selectedAppId');
       toast({
@@ -1245,6 +1273,26 @@ export default function CreateAd() {
               <AlertDialogAction asChild>
                 <Link href="/dashboard/hooks">
                   Go to Hooks Page
+                </Link>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        {/* No Apps Dialog */}
+        <AlertDialog open={showNoAppsDialog} onOpenChange={setShowNoAppsDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>No Apps Available</AlertDialogTitle>
+              <AlertDialogDescription>
+                You don't have any apps yet. Please add an app before creating videos.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction asChild>
+                <Link href="/dashboard/apps">
+                  Go to Apps Page
                 </Link>
               </AlertDialogAction>
             </AlertDialogFooter>

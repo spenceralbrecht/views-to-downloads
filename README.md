@@ -11,6 +11,7 @@ This is a web application for managing and creating UGC videos. The project is b
 - Integrated with external content creation API to create videos
 - Manage connected apps with add/delete functionality
 - Generate viral hooks for your videos
+- User-friendly popups that guide users when prerequisites are missing (e.g., no apps or hooks)
 
 ## Pages
 
@@ -154,9 +155,6 @@ The application tracks content creation across all types (videos, images, etc.) 
      - Matches user by email
      - Creates subscription record
      - Sets initial content limits
-   - `customer.subscription.updated`: Plan changes
-     - Updates plan and limits
-     - Resets usage counters
    - `invoice.paid`: Renewal processing
      - Extends subscription period
      - Resets monthly usage
@@ -258,7 +256,7 @@ For development testing:
 ### Environment Variables
 ```bash
 # Stripe Configuration
-NEXT_PUBLIC_STRIPE_ENV=development # or 'production'
+NEXT_PUBLIC_STRIPE_ENV=development # or 'production' for live environment
 STRIPE_TEST_SECRET_KEY=sk_test_... # Stripe test secret key
 STRIPE_SECRET_KEY=sk_live_... # Stripe live secret key
 STRIPE_TEST_WEBHOOK_SECRET=whsec_... # Webhook signing secret
@@ -272,54 +270,6 @@ NEXT_PUBLIC_STRIPE_TEST_SCALE_LINK=https://buy.stripe.com/test_...
 NEXT_PUBLIC_STRIPE_STARTER_LINK=https://buy.stripe.com/...
 NEXT_PUBLIC_STRIPE_GROWTH_LINK=https://buy.stripe.com/...
 NEXT_PUBLIC_STRIPE_SCALE_LINK=https://buy.stripe.com/...
-```
-
-## Local Development
-
-1. Update your environment variables (e.g., AIRTABLE_API_KEY, AIRTABLE_BASE_ID) as required.
-2. Run `npm install` (or `yarn install`) to install dependencies.
-3. Run the development server with `npm run dev`.
-
-### Developer Notes
-
-#### Stripe Email Handling
-- The application automatically appends the logged-in user's email to all Stripe payment links
-- This is implemented in `config/stripe.ts` with the `appendEmailToLink` function
-- When modifying code that uses Stripe payment links, ensure you pass the user's email to `getStripeConfig(email)`
-- Key components that use this feature:
-  - `PricingModal.tsx`
-  - `upgrade-modal.tsx`
-  - `ContentLimitGuard.tsx`
-  - `dashboard/Sidebar.tsx`
-  - `app/dashboard/page.tsx`
-
-#### Authentication Flow and Stripe Integration
-- The application uses Supabase Auth for authentication with Google OAuth
-- User authentication state can be accessed in two ways:
-  1. Server-side: Using `createServerComponentClient` from `@supabase/auth-helpers-nextjs`
-  2. Client-side: Using `createClientComponentClient` from `@supabase/auth-helpers-nextjs` or `useUser` from `@supabase/auth-helpers-react`
-- When working with Stripe payment links:
-  - For most reliable access to user email, use `supabase.auth.getSession()` directly
-  - The `PricingModal` component uses this approach to ensure the email is available when needed
-  - Example implementation:
-    ```typescript
-    const supabase = createClientComponentClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    const userEmail = session?.user?.email;
-    const link = getStripeConfig(userEmail).checkoutLinks.starter;
-    ```
-- Debugging tips:
-  - If email parameters aren't being appended to Stripe links, check browser console logs
-  - Verify that `appendEmailToLink` function is receiving a valid email
-  - Ensure the user is properly authenticated before accessing payment links
-
-## Environment Variables
-
-Add the following to your `.env.local`:
-
-```bash
-# Stripe Configuration
-NEXT_PUBLIC_STRIPE_ENV=development # or 'production' for live environment
 ```
 
 ## API Endpoints
@@ -394,6 +344,7 @@ Note: Tests use the Supabase credentials from your `.env.local` file. Make sure 
 
 ## Changelog
 
+- 2025-03-06: Added user-friendly popups when trying to create content without apps or hooks, providing direct links to the appropriate pages
 - 2025-02-05: Updated video creation API parameters to match new schema (influencerVideoUrl, demoFootageUrl, captionText, captionPosition)
 - 2025-02-05: Fixed TypeScript type error in `app/dashboard/create/page.tsx` by updating the state initialization for `items`. Changed from `useState([])` to `useState<{ id: string; loading: boolean }[]>([])` for proper typing.
 - 2025-02-05: Fixed createVideo type error by passing the required arguments in the call from the create page.
@@ -500,3 +451,42 @@ If webhooks aren't being processed correctly:
 3. **Webhook Event Logging**:
    - Add detailed logging in your webhook handler to see what events are being received
    - Check for any errors in processing specific event types
+
+## Local Development
+
+1. Update your environment variables (e.g., AIRTABLE_API_KEY, AIRTABLE_BASE_ID) as required.
+2. Run `npm install` (or `yarn install`) to install dependencies.
+3. Run the development server with `npm run dev`.
+
+### Developer Notes
+
+#### Stripe Email Handling
+- The application automatically appends the logged-in user's email to all Stripe payment links
+- This is implemented in `config/stripe.ts` with the `appendEmailToLink` function
+- When modifying code that uses Stripe payment links, ensure you pass the user's email to `getStripeConfig(email)`
+- Key components that use this feature:
+  - `PricingModal.tsx`
+  - `upgrade-modal.tsx`
+  - `ContentLimitGuard.tsx`
+  - `dashboard/Sidebar.tsx`
+  - `app/dashboard/page.tsx`
+
+#### Authentication Flow and Stripe Integration
+- The application uses Supabase Auth for authentication with Google OAuth
+- User authentication state can be accessed in two ways:
+  1. Server-side: Using `createServerComponentClient` from `@supabase/auth-helpers-nextjs`
+  2. Client-side: Using `createClientComponentClient` from `@supabase/auth-helpers-nextjs` or `useUser` from `@supabase/auth-helpers-react`
+- When working with Stripe payment links:
+  - For most reliable access to user email, use `supabase.auth.getSession()` directly
+  - The `PricingModal` component uses this approach to ensure the email is available when needed
+  - Example implementation:
+    ```typescript
+    const supabase = createClientComponentClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const userEmail = session?.user?.email;
+    const link = getStripeConfig(userEmail).checkoutLinks.starter;
+    ```
+- Debugging tips:
+  - If email parameters aren't being appended to Stripe links, check browser console logs
+  - Verify that `appendEmailToLink` function is receiving a valid email
+  - Ensure the user is properly authenticated before accessing payment links
