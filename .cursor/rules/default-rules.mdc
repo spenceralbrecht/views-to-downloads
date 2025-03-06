@@ -17,6 +17,8 @@ Try to fix the root cause of problems.
 
 Never make changes to the UI unless asked for directly. Most of the requests will be for functionality changes. Make the file changes yourself immediately.
 
+Never remove code that doesn't explicity effect the change I'm asking you to make. If you have to remove a large amount of code as me first.
+
 When I ask you to fix something reflect on 5-7 different possible sources of the problem, distill those down to 1-2 most likely sources, and then add logs to validate your assumptions before we move onto implementing the actual code fix.
 
 These are the keys in the .env.local file but in the real file they all have a value assigned to them.
