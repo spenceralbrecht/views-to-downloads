@@ -130,8 +130,8 @@ function PricingModal({ isOpen, onClose }: PricingModalProps) {
       // Track the checkout with the tier name for better analytics
       trackStripeCheckout(userEmail, tier.name);
       
-      // Redirect to Stripe checkout
-      window.location.href = link;
+      // Open Stripe checkout in a new tab
+      window.open(link, '_blank', 'noopener,noreferrer');
     } catch (error) {
       console.error('Error handling purchase:', error)
       setError('Unable to process purchase. Please try again later.')

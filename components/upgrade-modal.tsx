@@ -47,7 +47,7 @@ export function UpgradeModal({ open, onOpenChange, subscription, loading }: Upgr
       setError(null);
       const upgradeLink = getUpgradeLink();
       trackStripeCheckout(user?.email, 'Upgrade Modal');
-      window.location.href = upgradeLink;
+      window.open(upgradeLink, '_blank', 'noopener,noreferrer');
       onOpenChange(false);
     } catch (error) {
       console.error('Error handling upgrade:', error);

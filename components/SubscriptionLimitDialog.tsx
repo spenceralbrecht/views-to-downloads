@@ -42,7 +42,7 @@ export function SubscriptionLimitDialog({
             className="bg-primary hover:bg-primary/90"
             onClick={() => {
               trackStripeCheckout(user?.email, 'Subscription Limit');
-              window.location.href = upgradeLink
+              window.open(upgradeLink, '_blank', 'noopener,noreferrer');
             }}
           >
             Upgrade Now

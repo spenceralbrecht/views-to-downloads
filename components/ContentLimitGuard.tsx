@@ -37,16 +37,14 @@ export function ContentLimitGuard({ children }: ContentLimitGuardProps) {
 
   const handleUpgrade = () => {
     try {
-      setError(null)
       const stripeConfig = getStripeConfig(user?.email)
       if (!stripeConfig.customerBillingLink) {
         throw new Error('Billing link not available')
       }
       trackStripeCheckout(user?.email, 'Content Limit');
-      window.location.href = stripeConfig.customerBillingLink
+      window.open(stripeConfig.customerBillingLink, '_blank', 'noopener,noreferrer');
     } catch (error) {
-      console.error('Error handling upgrade:', error)
-      setError('Unable to process upgrade. Please try again later.')
+      console.error('Error redirecting to billing:', error)
     }
   }
 

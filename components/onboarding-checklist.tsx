@@ -27,7 +27,9 @@ export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, has
       <div className="grid gap-4">
         <div 
           onClick={() => {
-            if (!hasSubscription) {
+            if (hasSubscription) {
+              window.open(billingUrl, '_blank', 'noopener,noreferrer');
+            } else {
               trackStripeCheckout(user?.email, 'Onboarding');
               setShowPricingModal(true);
             }
