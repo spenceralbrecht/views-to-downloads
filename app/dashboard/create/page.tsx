@@ -39,6 +39,7 @@ import {
 import type { OutputContent } from '@/types/video'
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ViralFormatModal } from '@/components/ViralFormatModal'
 
 interface Hook {
   id: string
@@ -118,6 +119,7 @@ export default function CreateAd() {
   const { isSubscribed, contentRemaining, subscription, loading } = useSubscription(user)
   const { toast } = useToast()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [isViralFormatModalOpen, setIsViralFormatModalOpen] = useState(false)
 
   // State for app selection
   const [selectedAppId, setSelectedAppId] = useState<string>('')
@@ -1248,6 +1250,28 @@ export default function CreateAd() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        
+        <div className="flex items-center mb-6">
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Hook + Demo Format</h1>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="ml-2" 
+                  onClick={() => setIsViralFormatModalOpen(true)}
+                >
+                  <HelpCircle className="h-5 w-5 text-muted-foreground" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Learn more about this format</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
         <SubscriptionGuard>
           <div className="space-y-6 lg:space-y-8">
             {/* App Selection */}
@@ -1614,7 +1638,11 @@ export default function CreateAd() {
           </div>
         </div>
 
-        {/* Upgrade Modal */}
+        <ViralFormatModal
+          open={isViralFormatModalOpen}
+          onOpenChange={setIsViralFormatModalOpen}
+        />
+        
         <UpgradeModal 
           open={showUpgradeModal} 
           onOpenChange={setShowUpgradeModal}
