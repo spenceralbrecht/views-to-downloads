@@ -33,6 +33,24 @@ const nextConfig = {
           { key: "Access-Control-Allow-Methods", value: "GET,DELETE,PATCH,POST,PUT" },
           { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, stripe-signature" }
         ]
+      },
+      {
+        // Apply Content Security Policy to all pages
+        source: "/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: `
+              default-src 'self';
+              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.ads-twitter.com https://ads-twitter.com https://ads-api.twitter.com https://analytics.twitter.com https://www.googletagmanager.com https://feedback.fish;
+              connect-src 'self' https://static.ads-twitter.com https://ads-twitter.com https://ads-api.twitter.com https://analytics.twitter.com;
+              img-src 'self' data: https://static.ads-twitter.com https://ads-twitter.com https://ads-api.twitter.com https://analytics.twitter.com;
+              style-src 'self' 'unsafe-inline';
+              font-src 'self';
+              frame-src 'self';
+            `.replace(/\s+/g, ' ').trim()
+          }
+        ]
       }
     ]
   },
