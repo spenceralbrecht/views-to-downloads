@@ -44,7 +44,7 @@ export function useSubscription(user: User | null) {
           .select('*')
           .eq('user_id', user!.id)
           .eq('status', 'active')
-          .single()
+          .maybeSingle()
 
         if (error) {
           console.error('Error fetching subscription:', error)
@@ -53,6 +53,9 @@ export function useSubscription(user: User | null) {
           console.log('Subscription data:', data);
           const sub = { ...data, plan_name: data.plan_name || 'starter' };
           setSubscription(sub);
+        } else {
+          console.log('No active subscription found for user');
+          setSubscription(null);
         }
       } catch (error) {
         console.error('Error in subscription fetch:', error)
