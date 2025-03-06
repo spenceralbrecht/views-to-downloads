@@ -14,8 +14,8 @@ declare global {
  */
 export function trackStripeCheckout(email?: string | null) {
   if (typeof window !== 'undefined' && window.twq) {
-    console.log('Tracking Stripe checkout with Twitter');
-    window.twq('event', 'tw-oyx5r-oyx5s', {
+    console.log('Tracking Stripe checkout initiation with Twitter');
+    window.twq('event', 'tw-oyx5r-p663b', {
       email_address: email || null
     });
   }
