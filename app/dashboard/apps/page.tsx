@@ -19,6 +19,9 @@ type App = {
   app_description: string
 }
 
+// Loading stages for app addition process
+type LoadingStage = "fetching" | "extracting" | "analyzing" | "understanding" | undefined;
+
 export default function AppsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedApp, setSelectedApp] = useState<App | null>(null)
@@ -26,6 +29,7 @@ export default function AppsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isAddingApp, setIsAddingApp] = useState(false)
   const [isDeletingApp, setIsDeletingApp] = useState(false)
+  const [loadingStage, setLoadingStage] = useState<LoadingStage>(undefined)
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
@@ -50,7 +54,17 @@ export default function AppsPage() {
   const handleAddApp = async (appStoreUrl: string) => {
     setIsAddingApp(true)
     
+    // Start with fetching stage
+    setLoadingStage("fetching")
+    
     try {
+      // Distribute stages across the 60-second average process time
+      // First stage (fetching) starts immediately
+      // Then transition through the other stages
+      setTimeout(() => setLoadingStage("extracting"), 5000)    // After 5 seconds
+      setTimeout(() => setLoadingStage("analyzing"), 20000)    // After 20 seconds
+      setTimeout(() => setLoadingStage("understanding"), 40000) // After 40 seconds
+      
       const result = await addApp(appStoreUrl)
       
       if (result.success) {
@@ -66,6 +80,7 @@ export default function AppsPage() {
       // Keep showing skeleton for a moment to ensure smooth transition
       setTimeout(() => {
         setIsAddingApp(false)
+        setLoadingStage(undefined)
       }, 500)
     }
   }
@@ -118,7 +133,7 @@ export default function AppsPage() {
           ) : (
             <>
               {/* Show skeleton card first while adding */}
-              {isAddingApp && <AppCardSkeleton />}
+              {isAddingApp && <AppCardSkeleton loadingStage={loadingStage} />}
               
               {/* Existing app cards */}
               {apps.map(app => (

@@ -1,7 +1,26 @@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card } from "@/components/ui/card"
+import { Loader2 } from "lucide-react"
 
-export function AppCardSkeleton() {
+type LoadingStage = 
+  | "fetching" 
+  | "extracting" 
+  | "analyzing" 
+  | "understanding" 
+  | undefined;
+
+const loadingMessages = {
+  fetching: "Fetching app store link...",
+  extracting: "Extracting app data...",
+  analyzing: "Analyzing app store description...",
+  understanding: "Understanding customer profiles..."
+};
+
+interface AppCardSkeletonProps {
+  loadingStage?: LoadingStage;
+}
+
+export function AppCardSkeleton({ loadingStage }: AppCardSkeletonProps) {
   return (
     <Card className="group relative overflow-hidden border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md">
       <div className="p-4">
@@ -20,6 +39,14 @@ export function AppCardSkeleton() {
             </div>
           </div>
         </div>
+
+        {/* Loading indicator and stage message */}
+        {loadingStage && (
+          <div className="flex items-center justify-center mt-3 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            <span>{loadingMessages[loadingStage]}</span>
+          </div>
+        )}
 
         {/* Action buttons - moved closer to content */}
         <div className="flex justify-end gap-2 mt-3">

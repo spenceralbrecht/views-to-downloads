@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export function AddAppModal({ 
   open,
@@ -25,6 +25,13 @@ export function AddAppModal({
 }) {
   const [appUrl, setAppUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
+
+  // Reset error when modal is closed
+  useEffect(() => {
+    if (!open) {
+      setError(null)
+    }
+  }, [open])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
