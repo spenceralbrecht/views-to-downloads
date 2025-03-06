@@ -43,11 +43,11 @@ const nextConfig = {
             value: `
               default-src 'self';
               script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.ads-twitter.com https://ads-twitter.com https://ads-api.twitter.com https://analytics.twitter.com https://www.googletagmanager.com https://feedback.fish;
-              connect-src 'self' https://static.ads-twitter.com https://ads-twitter.com https://ads-api.twitter.com https://analytics.twitter.com;
+              connect-src 'self' https://static.ads-twitter.com https://ads-twitter.com https://ads-api.twitter.com https://analytics.twitter.com https://*.supabase.co wss://*.supabase.co;
               img-src 'self' data: https://static.ads-twitter.com https://ads-twitter.com https://ads-api.twitter.com https://analytics.twitter.com;
               style-src 'self' 'unsafe-inline';
               font-src 'self';
-              frame-src 'self';
+              frame-src 'self' https://feedback.fish;
             `.replace(/\s+/g, ' ').trim()
           }
         ]
