@@ -11,12 +11,14 @@ declare global {
 /**
  * Tracks a Stripe checkout initiation with Twitter's conversion tracking
  * @param email The user's email address
+ * @param tier Optional plan tier name (e.g., 'Starter', 'Growth', 'Scale')
  */
-export function trackStripeCheckout(email?: string | null) {
+export function trackStripeCheckout(email?: string | null, tier?: string) {
   if (typeof window !== 'undefined' && window.twq) {
-    console.log('Tracking Stripe checkout initiation with Twitter');
+    console.log(`Tracking Stripe checkout with Twitter for ${tier || 'unknown'} plan`);
     window.twq('event', 'tw-oyx5r-p663b', {
-      email_address: email || null
+      email_address: email || null,
+      content_name: tier ? `Checkout - ${tier}` : 'Checkout'
     });
   }
 } 

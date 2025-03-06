@@ -42,7 +42,7 @@ export function ContentLimitGuard({ children }: ContentLimitGuardProps) {
       if (!stripeConfig.customerBillingLink) {
         throw new Error('Billing link not available')
       }
-      trackStripeCheckout(user?.email);
+      trackStripeCheckout(user?.email, 'Content Limit');
       window.location.href = stripeConfig.customerBillingLink
     } catch (error) {
       console.error('Error handling upgrade:', error)

@@ -127,7 +127,10 @@ function PricingModal({ isOpen, onClose }: PricingModalProps) {
         return
       }
       
-      trackStripeCheckout(userEmail);
+      // Track the checkout with the tier name for better analytics
+      trackStripeCheckout(userEmail, tier.name);
+      
+      // Redirect to Stripe checkout
       window.location.href = link;
     } catch (error) {
       console.error('Error handling purchase:', error)

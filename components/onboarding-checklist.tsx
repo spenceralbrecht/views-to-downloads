@@ -28,7 +28,7 @@ export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, has
         <div 
           onClick={() => {
             if (!hasSubscription) {
-              trackStripeCheckout(user?.email);
+              trackStripeCheckout(user?.email, 'Onboarding');
               setShowPricingModal(true);
             }
           }} 

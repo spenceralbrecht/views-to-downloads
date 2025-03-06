@@ -67,16 +67,7 @@ export function Sidebar({ user }: SidebarProps) {
   const progressPercentage = (contentUsed / contentLimit) * 100
 
   const handleUpgradeClick = async (closeMobileMenu = false) => {
-    // Get user email directly from Supabase session for more reliability
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userEmail = session?.user?.email || user?.email;
-      trackStripeCheckout(userEmail);
-    } catch (error) {
-      console.error('Error getting user session:', error);
-      // Fall back to user prop if session fetch fails
-      trackStripeCheckout(user?.email);
-    }
+    // Just open the pricing modal without tracking yet
     if (closeMobileMenu) {
       setIsMobileMenuOpen(false);
     }

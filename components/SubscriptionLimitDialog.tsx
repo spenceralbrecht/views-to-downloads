@@ -41,7 +41,7 @@ export function SubscriptionLimitDialog({
           <AlertDialogAction
             className="bg-primary hover:bg-primary/90"
             onClick={() => {
-              trackStripeCheckout(user?.email);
+              trackStripeCheckout(user?.email, 'Subscription Limit');
               window.location.href = upgradeLink
             }}
           >
