@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge'
 import { useState } from 'react'
 import PricingModal from '@/components/PricingModal'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { trackStripeCheckout } from '@/utils/tracking'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 interface SidebarProps {
   user: User | null;
@@ -29,6 +31,7 @@ export function Sidebar({ user }: SidebarProps) {
   const contentUsed = subscription ? subscription.content_used_this_month : 0
   const contentLimit = subscription ? CONTENT_LIMITS[subscription.plan_name] : CONTENT_LIMITS['starter']
   const contentRemaining = subscription ? Math.max(0, contentLimit - contentUsed) : 0
+  const supabase = createClientComponentClient()
   
   const navigation = [
     { name: 'Home', href: '/dashboard', icon: Home },
@@ -62,6 +65,23 @@ export function Sidebar({ user }: SidebarProps) {
 
   // Calculate progress percentage
   const progressPercentage = (contentUsed / contentLimit) * 100
+
+  const handleUpgradeClick = async (closeMobileMenu = false) => {
+    // Get user email directly from Supabase session for more reliability
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email || user?.email;
+      trackStripeCheckout(userEmail);
+    } catch (error) {
+      console.error('Error getting user session:', error);
+      // Fall back to user prop if session fetch fails
+      trackStripeCheckout(user?.email);
+    }
+    if (closeMobileMenu) {
+      setIsMobileMenuOpen(false);
+    }
+    setShowPricingModal(true);
+  };
 
   return (
     <>
@@ -138,7 +158,7 @@ export function Sidebar({ user }: SidebarProps) {
                       <Button 
                         className="w-full btn-gradient mt-3" 
                         size="sm"
-                        onClick={() => setShowPricingModal(true)}
+                        onClick={() => handleUpgradeClick(true)}
                       >
                         Upgrade for More
                       </Button>
@@ -154,7 +174,7 @@ export function Sidebar({ user }: SidebarProps) {
                   <Button 
                     className="w-full btn-gradient" 
                     size="sm"
-                    onClick={() => setShowPricingModal(true)}
+                    onClick={() => handleUpgradeClick(true)}
                   >
                     Upgrade
                   </Button>
@@ -207,12 +227,14 @@ export function Sidebar({ user }: SidebarProps) {
               </div>
               <div className="ml-3 overflow-hidden">
                 <p className="text-sm font-medium text-foreground truncate">{user?.email}</p>
-                <button
-                  onClick={() => signOut()}
-                  className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Sign out
-                </button>
+                <form action={signOut}>
+                  <button
+                    type="submit"
+                    className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </form>
               </div>
             </div>
           </div>
@@ -288,10 +310,7 @@ export function Sidebar({ user }: SidebarProps) {
                   <Button 
                     className="w-full btn-gradient" 
                     size="sm"
-                    onClick={() => {
-                      setIsMobileMenuOpen(false)
-                      setShowPricingModal(true)
-                    }}
+                    onClick={() => handleUpgradeClick(true)}
                   >
                     Upgrade
                   </Button>
@@ -339,12 +358,14 @@ export function Sidebar({ user }: SidebarProps) {
                   </div>
                   <div className="ml-3 overflow-hidden">
                     <p className="text-sm font-medium text-foreground truncate">{user?.email}</p>
-                    <button
-                      onClick={() => signOut()}
-                      className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      Sign out
-                    </button>
+                    <form action={signOut}>
+                      <button
+                        type="submit"
+                        className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Sign out
+                      </button>
+                    </form>
                   </div>
                 </div>
               </div>
