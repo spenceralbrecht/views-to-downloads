@@ -102,14 +102,6 @@ export function ViralFormatModal({ open, onOpenChange }: ViralFormatModalProps) 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="absolute right-2 top-2 z-[100] mb-2">
-          <button
-            className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-            onClick={() => onOpenChange(false)}
-          >
-            <span className="sr-only">Close</span>
-          </button>
-        </div>
         <DialogHeader className="sticky top-0 bg-background z-50 pb-4 border-b flex-shrink-0 mt-3">
           <div className="space-y-2 pr-6">
             <DialogTitle className="text-2xl font-bold">{format.name}</DialogTitle>
