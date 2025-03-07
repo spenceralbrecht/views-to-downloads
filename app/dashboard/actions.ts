@@ -553,10 +553,9 @@ OUTPUT: JSON object with array of 10 hooks in this exact format:
 ## Hook Requirements
 - Use casual, conversational Gen-Z language
 - Incorporate relevant slang naturally (e.g., "fr fr", "ngl", "bestie")
-- Include fitting emojis where natural
 - Keep each hook concise and impactful
 - Ensure immediate clarity of value proposition
-- Use emojis sparingly
+- Rarely use emojis
 
 ## Examples
 ✅ GOOD HOOK:

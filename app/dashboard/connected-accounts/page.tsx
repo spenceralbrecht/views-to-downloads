@@ -13,6 +13,7 @@ import { ConnectedAccount } from '@/utils/tiktokService'
 import { useSearchParams } from 'next/navigation'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AddAccountModal } from '@/components/AddAccountModal'
+import { isTikTokEnabled } from '@/utils/featureFlags'
 
 export default function ConnectedAccounts() {
   const [user, setUser] = useState<User | null>(null)
@@ -125,13 +126,26 @@ export default function ConnectedAccounts() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold text-foreground">Connected Accounts</h1>
-        <Button 
-          onClick={() => setIsModalOpen(true)}
-          className="btn-gradient"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Connect Account
-        </Button>
+        {isTikTokEnabled() ? (
+          <Button 
+            onClick={() => setIsModalOpen(true)}
+            className="btn-gradient"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Connect Account
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Coming Soon</span>
+            <Button 
+              disabled={true}
+              className="opacity-70 cursor-not-allowed"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Connect Account
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Success and Error Alerts */}
@@ -208,8 +222,12 @@ export default function ConnectedAccounts() {
         <div className="text-center py-12 border rounded-lg bg-muted/10">
           <Plug className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <p className="text-muted-foreground mb-4">No accounts connected yet</p>
-          <p className="text-sm text-muted-foreground mb-6">Account connection feature coming soon!</p>
-          <Button onClick={() => setIsModalOpen(true)} disabled>Connect Account (Coming Soon)</Button>
+          <p className="text-sm text-muted-foreground mb-6">Connect your TikTok account to enhance your content creation workflow.</p>
+          {isTikTokEnabled() ? (
+            <Button onClick={() => setIsModalOpen(true)}>Connect Account</Button>
+          ) : (
+            <Button disabled className="opacity-70 cursor-not-allowed">TikTok Integration Coming Soon</Button>
+          )}
         </div>
       )}
 
