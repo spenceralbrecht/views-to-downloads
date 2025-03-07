@@ -133,10 +133,13 @@ export default function CreateAd() {
   const [hook, setHook] = useState('')
   const [textPosition, setTextPosition] = useState<'top' | 'middle' | 'bottom'>('bottom')
 
-  // Update hook text when index changes
+  // Update hook text when index changes or hooks array changes
   useEffect(() => {
     if (hooks.length > 0 && currentHookIndex >= 0 && currentHookIndex < hooks.length) {
       setHook(hooks[currentHookIndex].hook_text)
+    } else if (hooks.length === 0) {
+      // Clear hook text when no hooks are available
+      setHook('')
     }
   }, [currentHookIndex, hooks])
 
@@ -531,7 +534,9 @@ export default function CreateAd() {
         } else {
           // No hooks found for the selected app
           console.log('No hooks found for app:', selectedAppId);
-          setShowNoHooksDialog(true);
+          
+          // Check if user has any hooks at all for any app
+          checkForAnyHooks();
         }
       }
       setLoadingHooks(false)
@@ -559,6 +564,32 @@ export default function CreateAd() {
   const [showNoHooksDialog, setShowNoHooksDialog] = useState(false)
   const [showNoAppsDialog, setShowNoAppsDialog] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  
+  // Function to check if user has any hooks at all across any app
+  const checkForAnyHooks = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return false
+    
+    const { data: allHooks, error } = await supabase
+      .from('hooks')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1)
+    
+    if (error) {
+      console.error('Error checking for hooks:', error)
+      return false
+    }
+    
+    const hasNoHooksAtAll = !allHooks || allHooks.length === 0
+    
+    // Only show the dialog if user has no hooks at all
+    if (hasNoHooksAtAll) {
+      setShowNoHooksDialog(true)
+    }
+    
+    return !hasNoHooksAtAll // Return true if user has at least one hook
+  }
   const handleCreateVideo = async () => {
     console.log('DEBUG: handleCreateVideo triggered', { selectedAppId, hook, selectedInfluencerVideo, selectedDemoVideo, contentRemaining, isPending });
     
@@ -603,7 +634,19 @@ export default function CreateAd() {
     }
     if (!hooksData || hooksData.length === 0) {
       console.log('DEBUG: No hooks available for app', selectedAppId);
-      setShowNoHooksDialog(true);
+      
+      // Check if user has any hooks at all for any app
+      const hasAnyHooks = await checkForAnyHooks();
+      if (!hasAnyHooks) {
+        return; // Dialog already shown by checkForAnyHooks if needed
+      }
+      
+      // If user has hooks for other apps but not this one, just show a toast
+      toast({
+        title: "No Hooks for This App",
+        description: "Please select a different app or create hooks for this app first",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -1386,9 +1429,17 @@ export default function CreateAd() {
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <div className="flex-1 text-center">
+                    <div className="flex-1 text-center" data-component-name="HookCounter">
                       <span className="text-sm text-muted-foreground">
-                        {hooks.length > 0 ? `Hook ${currentHookIndex + 1} of ${hooks.length}` : 'No hooks available'}
+                        {hooks.length > 0 ? 
+                          `Hook ${currentHookIndex + 1} of ${hooks.length}` : 
+                          <>
+                            No hooks generated yet.{' '}
+                            <Link href="/dashboard/hooks" className="text-primary hover:underline">
+                              Generate some now
+                            </Link>
+                          </>
+                        }
                       </span>
                     </div>
                     <Button
@@ -1407,6 +1458,7 @@ export default function CreateAd() {
                       onChange={(e) => setHook(e.target.value)}
                       placeholder="Select an app to see available hooks..."
                       className="min-h-[100px] text-base"
+                      data-component-name="HookTextarea"
                     />
                   </div>
                 </div>

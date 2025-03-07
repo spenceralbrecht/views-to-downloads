@@ -270,6 +270,9 @@ NEXT_PUBLIC_STRIPE_TEST_SCALE_LINK=https://buy.stripe.com/test_...
 NEXT_PUBLIC_STRIPE_STARTER_LINK=https://buy.stripe.com/...
 NEXT_PUBLIC_STRIPE_GROWTH_LINK=https://buy.stripe.com/...
 NEXT_PUBLIC_STRIPE_SCALE_LINK=https://buy.stripe.com/...
+
+# Feature Flags
+NEXT_PUBLIC_ENABLE_TIKTOK=false # Set to 'true' to enable TikTok integration
 ```
 
 ## API Endpoints
@@ -344,6 +347,8 @@ Note: Tests use the Supabase credentials from your `.env.local` file. Make sure 
 
 ## Changelog
 
+- 2025-03-07: Added feature flag for TikTok integration. Set `NEXT_PUBLIC_ENABLE_TIKTOK=true` in `.env.local` to enable TikTok features
+- 2025-03-07: Disabled TikTok publishing buttons and updated their text to "Coming Soon"
 - 2025-03-06: Added user-friendly popups when trying to create content without apps or hooks, providing direct links to the appropriate pages
 - 2025-02-05: Updated video creation API parameters to match new schema (influencerVideoUrl, demoFootageUrl, captionText, captionPosition)
 - 2025-02-05: Fixed TypeScript type error in `app/dashboard/create/page.tsx` by updating the state initialization for `items`. Changed from `useState([])` to `useState<{ id: string; loading: boolean }[]>([])` for proper typing.

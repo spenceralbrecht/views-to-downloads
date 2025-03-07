@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import { isTikTokEnabled } from '@/utils/featureFlags'
 
 export function AddAccountModal({ 
   open,
@@ -34,12 +35,29 @@ export function AddAccountModal({
         </DialogHeader>
         
         <div className="space-y-4 py-4">
-          <Button 
-            disabled={true}
-            className="w-full"
-          >
-            Connect TikTok (Coming Soon)
-          </Button>
+          {isTikTokEnabled() ? (
+            <Button 
+              onClick={onConnectTikTok}
+              disabled={connecting}
+              className="w-full"
+            >
+              {connecting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                'Connect TikTok'
+              )}
+            </Button>
+          ) : (
+            <Button 
+              disabled={true}
+              className="w-full opacity-70 cursor-not-allowed"
+            >
+              TikTok Integration Coming Soon
+            </Button>
+          )}
           
           {/* Add more platform buttons here as needed */}
         </div>

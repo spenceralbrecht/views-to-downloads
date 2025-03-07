@@ -7,6 +7,8 @@ import { Download, Trash2, Loader2, X, AlertTriangle } from 'lucide-react'
 import { VideoCardSkeleton } from './VideoCardSkeleton'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import ReactPlayer from 'react-player'
+import { PublishToTikTokModal } from './PublishToTikTokModal'
+import { isTikTokEnabled } from '@/utils/featureFlags'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +38,7 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [playError, setPlayError] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [showTikTokModal, setShowTikTokModal] = useState(false)
   const supabase = createClientComponentClient()
 
   // Show loading skeleton for in_progress videos
@@ -223,8 +226,49 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
           <span className="text-sm text-muted-foreground">
             {new Date(video.created_at).toLocaleDateString()}
           </span>
+          {/* TikTok publish button */}
+          {isTikTokEnabled() ? (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-muted-foreground hover:text-foreground p-1" 
+              onClick={() => setShowTikTokModal(true)}
+            >
+              <img 
+                src="https://pub-a027e435822042eb96a9208813b48997.r2.dev/tiktok-logo.png" 
+                alt="TikTok" 
+                className="h-5 w-5 object-contain"
+              />
+              <span className="sr-only">Publish to TikTok</span>
+            </Button>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">Coming Soon</span>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-muted-foreground p-1 opacity-50 cursor-not-allowed" 
+                disabled={true}
+              >
+                <img 
+                  src="https://pub-a027e435822042eb96a9208813b48997.r2.dev/tiktok-logo.png" 
+                  alt="TikTok" 
+                  className="h-5 w-5 object-contain"
+                />
+                <span className="sr-only">TikTok Integration Coming Soon</span>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
+      
+      {/* TikTok publish modal */}
+      <PublishToTikTokModal
+        open={showTikTokModal}
+        onOpenChange={setShowTikTokModal}
+        videoUrl={videoUrl}
+        videoId={video.id}
+      />
     </Card>
   )
 }
