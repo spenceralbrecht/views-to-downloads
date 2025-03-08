@@ -8,6 +8,7 @@ export function VideoCardSkeleton() {
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">Processing video...</p>
+          <p className="text-[0.7rem] text-muted-foreground mt-1">(3-5 minutes)</p>
         </div>
       </div>
       <div className="p-4">

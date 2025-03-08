@@ -997,7 +997,7 @@ export default function CreateAd() {
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false)
   const [uploadDebugInfo, setUploadDebugInfo] = useState<any>(null)
 
-  const handleDemoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDemoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
       const file = e.target.files[0];
       console.log('File selected for upload:', file.name, 'size:', file.size, 'MB:', (file.size / (1024 * 1024)).toFixed(2));
@@ -1084,176 +1084,521 @@ export default function CreateAd() {
       setUploadProgress(0);
       setUploadingFile(file);
       
-      const formData = new FormData();
-      formData.append('videoFile', file);
-      formData.append('appId', appIdForUpload);
+      // Define the file path for storage - ensure user ID is included
+      // Use the session data directly from Supabase instead of the useUser hook
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !session.user || !session.user.id) {
+        console.error('User ID not available for upload from session');
+        setUploadError('Authentication issue detected');
+        setUploadDebugInfo({
+          error: 'Session auth issue',
+          details: 'Unable to access your account details for upload. Try refreshing the page.'
+        });
+        setIsErrorDialogOpen(true);
+        return;
+      }
       
-      console.log('Starting XHR upload to /api/upload-demo');
+      // Use the user ID from the session
+      const userId = session.user.id;
       
-      const xhr = new XMLHttpRequest();
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          console.log('Upload progress:', progress + '%', 'loaded:', event.loaded, 'total:', event.total);
-          setUploadProgress(progress);
+      // Create a path with the user ID folder from session
+      const timestamp = Date.now();
+      const filePath = `${userId}/${timestamp}_${file.name}`;
+      console.log('File will be uploaded to path:', filePath);
+
+      // For larger files (>6MB), use TUS resumable uploads
+      // For smaller files, continue using the API route to maintain consistency
+      if (file.size > 6 * 1024 * 1024) {
+        console.log('Using TUS resumable upload for large file:', (file.size / (1024 * 1024)).toFixed(2) + 'MB');
+        handleDirectUpload(file, filePath, appIdForUpload, tempId);
+      } else {
+        console.log('Using API route for smaller file:', (file.size / (1024 * 1024)).toFixed(2) + 'MB');
+        handleApiRouteUpload(file, appIdForUpload, tempId);
+      }
+    }
+  };
+
+  // New function to handle direct Supabase uploads using TUS protocol
+  const handleDirectUpload = async (file: File, filePath: string, appIdForUpload: string, tempId: string) => {
+    try {
+      console.log('Setting up TUS resumable upload for:', filePath);
+      
+      // Dynamic import of tus-js-client to avoid server-side rendering issues
+      const { Upload } = await import('tus-js-client');
+      
+      // Get the current user session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No authentication session found');
+      }
+      
+      // Extract project ID from Supabase URL
+      const projectId = process.env.NEXT_PUBLIC_SUPABASE_URL?.match(/https:\/\/(.*?)\.supabase\.co/)?.[1];
+      if (!projectId) {
+        throw new Error('Could not determine Supabase project ID from URL');
+      }
+      
+      // Log the path for debugging
+      console.log('Setting up TUS upload with file path:', filePath);
+      
+      // Create and configure the TUS upload
+      const upload = new Upload(file, {
+        // Supabase's TUS endpoint
+        endpoint: `https://${projectId}.supabase.co/storage/v1/upload/resumable`,
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        headers: {
+          // Include authorization header with the access token
+          authorization: `Bearer ${session.access_token}`,
+          // Allow overwriting existing files with the same name
+          'x-upsert': 'true',
+        },
+        // Upload data during creation to minimize requests
+        uploadDataDuringCreation: true,
+        // Remove fingerprint once upload completes to allow re-uploads of same file
+        removeFingerprintOnSuccess: true,
+        // Metadata required by Supabase TUS implementation
+        metadata: {
+          bucketName: 'input-content',
+          objectName: filePath,  // The full path including user ID folder
+          contentType: file.type,
+          cacheControl: '3600',
+        },
+        // Chunk size must be exactly 6MB for Supabase TUS
+        chunkSize: 6 * 1024 * 1024,
+        // Handle errors during upload
+        onError: function(error) {
+          console.error('TUS upload failed:', error);
+          handleUploadError(error, file, tempId);
+        },
+        // Track upload progress
+        onProgress: function(bytesUploaded, bytesTotal) {
+          const progress = Math.round((bytesUploaded / bytesTotal) * 100);
+          console.log(`Upload progress: ${progress}% (${bytesUploaded}/${bytesTotal} bytes)`);
+          updateUploadProgress(progress, tempId);
+        },
+        // Handle successful upload completion
+        onSuccess: async function() {
+          console.log('TUS upload completed successfully to path:', filePath);
+          updateUploadProgress(100, tempId);
+          await createDatabaseRecord(file, filePath, appIdForUpload, tempId);
+        },
+      });
+      
+      // Check if there are any previous uploads to continue
+      console.log('Checking for previous uploads to resume...');
+      const previousUploads = await upload.findPreviousUploads();
+      if (previousUploads.length) {
+        console.log('Found previous upload, resuming from last state');
+        upload.resumeFromPreviousUpload(previousUploads[0]);
+      }
+      
+      // Start the upload
+      console.log('Starting TUS upload...');
+      upload.start();
+      
+    } catch (error) {
+      console.error('Unexpected error during TUS upload setup:', error);
+      handleUploadError(error, file, tempId);
+    }
+  };
+
+  // Function to create database record after successful upload
+  const createDatabaseRecord = async (file: File, filePath: string, appIdForUpload: string, tempId: string) => {
+    try {
+      console.log('Creating database record for uploaded file');
+      
+      // Get the user ID from the session to ensure consistency with upload path
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !session.user || !session.user.id) {
+        throw new Error('User ID not available for database insert');
+      }
+      
+      // Use the user ID from the session for consistency
+      const userId = session.user.id;
+      console.log('Using user ID for database record:', userId);
+      
+      // Insert record into input_content table
+      const { data: insertedRecord, error: insertError } = await supabase
+        .from('input_content')
+        .insert({
+          user_id: userId, // Using the session user ID instead of the hook
+          content_url: filePath,
+          app_id: appIdForUpload
+        })
+        .select()
+        .single();
+        
+      if (insertError) {
+        console.error('Database insert failed:', insertError);
+        handleUploadError(insertError, file, tempId);
+        return;
+      }
+      
+      // Get the public URL for the file
+      const { data: publicUrlData } = supabase
+        .storage
+        .from('input-content')
+        .getPublicUrl(filePath);
+        
+      console.log('Successfully created input_content record:', {
+        ...insertedRecord,
+        publicUrl: publicUrlData?.publicUrl
+      });
+      
+      // Display success notification
+      toast({
+        title: "Demo Upload Success",
+        description: "Your demo video has been uploaded successfully.",
+      });
+      
+      // Clean up the UI and add the completed upload
+      handleUploadSuccess(insertedRecord, publicUrlData?.publicUrl, appIdForUpload, tempId);
+    } catch (error) {
+      console.error('Error creating database record:', error);
+      handleUploadError(error, file, tempId);
+    } finally {
+      setIsUploading(false);
+      setUploadingFile(null);
+    }
+    
+    // Return a promise that resolves when the function completes
+    return Promise.resolve();
+  };
+
+  // Function to update the progress of an uploading file in the UI
+  const updateUploadProgress = (progress: number, tempId: string) => {
+    setDemoVideos(prev => prev.map(video => 
+      video.id === tempId 
+        ? { ...video, uploadProgress: progress } 
+        : video
+    ));
+  };
+
+  // Function to handle upload success
+  const handleUploadSuccess = (
+    record: any, 
+    publicUrl: string | undefined, 
+    appIdForUpload: string, 
+    tempId: string
+  ) => {
+    // Remove the temporary card
+    setDemoVideos(prev => prev.filter(video => video.id !== tempId));
+    
+    // Check if the app ID has changed during upload
+    if (appIdForUpload !== selectedAppId) {
+      console.warn('App ID changed during upload. Uploaded to:', appIdForUpload, 'Current:', selectedAppId);
+      
+      // Show a warning to the user
+      setUploadError("Your video was uploaded to a different app than the one currently selected. Switching to the correct app.");
+      setUploadDebugInfo({
+        recordId: record?.id,
+        appId: record?.app_id,
+        uploadAppId: appIdForUpload,
+        currentAppId: selectedAppId
+      });
+      setIsErrorDialogOpen(true);
+      
+      // Switch to the app ID used for the upload
+      setSelectedAppId(appIdForUpload);
+      return;
+    }
+    
+    // Create a new video object with the response data
+    const newVideo = {
+      id: record?.id,
+      content_url: record?.content_url,
+      created_at: record?.created_at || new Date().toISOString(),
+      app_id: record?.app_id,
+      user_id: record?.user_id,
+      publicUrl: publicUrl,
+      isLoading: false,
+      uploadProgress: undefined
+    };
+    
+    // Add the new video directly to the state
+    setDemoVideos(prev => [newVideo, ...prev]);
+    
+    // Select the newly uploaded video
+    if (newVideo.publicUrl) {
+      setSelectedDemoVideo(newVideo.publicUrl);
+    }
+    
+    // Also refresh the videos list to ensure everything is in sync
+    setTimeout(() => {
+      console.log('Refreshing demo videos list after successful upload');
+      fetchDemoVideos();
+    }, 1000);
+  };
+
+  // Function to handle upload errors
+  const handleUploadError = (error: any, file: File, tempId: string) => {
+    console.error('Upload failed:', error);
+    
+    // Extract error message with fallbacks
+    let errorMessage = 'Unknown error occurred during upload';
+    let errorDetails = 'No additional details';
+    let errorCategory = 'general';
+    
+    if (typeof error === 'object' && error !== null) {
+      // Extract error message from various possible error objects
+      if ('message' in error) {
+        errorMessage = error.message;
+      } else if ('error' in error && typeof error.error === 'string') {
+        errorMessage = error.error;
+      } else if ('statusText' in error) {
+        errorMessage = error.statusText;
+      }
+      
+      // Extract any additional details
+      if ('details' in error) {
+        errorDetails = error.details;
+      } else if ('error' in error && typeof error.error === 'object' && error.error?.message) {
+        errorDetails = error.error.message;
+      }
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
+    // Categorize errors for better UI feedback
+    if (
+      errorMessage.includes('Authentication') ||
+      errorMessage.includes('auth') ||
+      errorMessage.includes('User ID not available') ||
+      errorMessage.includes('permission') ||
+      errorMessage.includes('login') ||
+      errorMessage.includes('access token') ||
+      errorMessage.includes('unauthorized')
+    ) {
+      errorCategory = 'authentication';
+      errorMessage = 'Authentication issue detected';
+      errorDetails = 'Your login session may have expired.';
+    } else if (
+      errorMessage.includes('Storage upload failed') ||
+      errorMessage.includes('bucket') ||
+      errorMessage.includes('Storage system') ||
+      errorMessage.includes('Bucket not found') ||
+      errorMessage.includes('not found in bucket') ||
+      errorMessage.includes('Object not found')
+    ) {
+      errorCategory = 'storage';
+      errorMessage = 'Storage system error';
+      errorDetails = 'We encountered an issue with our storage system.';
+    } else if (
+      errorMessage.includes('size') ||
+      errorMessage.includes('File size exceeds') ||
+      errorMessage.includes('too large') ||
+      errorMessage.includes('exceed') ||
+      file.size > 100 * 1024 * 1024
+    ) {
+      errorCategory = 'file-size';
+      errorMessage = 'File size exceeds limit';
+      errorDetails = 'Your video is too large (maximum 100MB).';
+    } else if (
+      errorMessage.includes('format') ||
+      errorMessage.includes('MP4') ||
+      errorMessage.includes('video files') ||
+      errorMessage.includes('unsupported') ||
+      (file.type !== 'video/mp4' && file.type !== '')
+    ) {
+      errorCategory = 'file-format';
+      errorMessage = 'Unsupported file format';
+      errorDetails = 'Only MP4 video files are supported.';
+    } else if (
+      errorMessage.includes('network') ||
+      errorMessage.includes('connection') ||
+      errorMessage.includes('timeout') ||
+      errorMessage.includes('offline') ||
+      errorMessage.includes('internet')
+    ) {
+      errorCategory = 'network';
+      errorMessage = 'Network connection error';
+      errorDetails = 'Check your internet connection and try again.';
+    } else if (errorMessage.includes('createResumableUploadSession is not a function')) {
+      errorCategory = 'configuration';
+      errorMessage = 'Upload configuration issue';
+      errorDetails = 'The system will use the TUS protocol for resumable uploads instead.';
+    } else if (errorMessage.includes('storage quota')) {
+      errorCategory = 'quota';
+      errorMessage = 'Storage quota exceeded';
+      errorDetails = 'You have reached your storage limit. Please delete some content and try again.';
+    }
+    
+    // Format file size for better readability
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    const fileSizeDisplay = fileSizeMB > 0.1 ? `${fileSizeMB} MB` : `${(file.size / 1024).toFixed(2)} KB`;
+    
+    // Set error information for the dialog
+    setUploadError(errorMessage);
+    setUploadDebugInfo({
+      appId: selectedAppId,
+      fileName: file.name,
+      fileSize: fileSizeDisplay,
+      fileType: file.type || 'unknown',
+      error: errorMessage,
+      details: errorDetails,
+      category: errorCategory,
+      timestamp: new Date().toISOString()
+    });
+    
+    setIsErrorDialogOpen(true);
+    
+    // Remove the temporary card
+    setDemoVideos(prev => prev.filter(video => video.id !== tempId));
+    setIsUploading(false);
+    setUploadingFile(null);
+    
+    // Show a toast notification - use concise message for toast
+    const toastMessage = errorCategory === 'file-size' ? 'File too large' :
+                          errorCategory === 'file-format' ? 'Unsupported format' :
+                          errorCategory === 'authentication' ? 'Authentication required' :
+                          'Upload failed';
+                          
+    toast({
+      title: "Upload Failed",
+      description: toastMessage,
+      variant: "destructive"
+    });
+  };
+
+  // Function to handle API route uploads (for smaller files)
+  const handleApiRouteUpload = async (file: File, appIdForUpload: string, tempId: string) => {
+    const formData = new FormData();
+    formData.append('videoFile', file);
+    formData.append('appId', appIdForUpload);
+    
+    console.log('Starting XHR upload to /api/upload-demo');
+    
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        updateUploadProgress(progress, tempId);
+      }
+    };
+    
+    xhr.onload = async () => {
+      console.log('Upload completed with status:', xhr.status);
+      if (xhr.status === 200) {
+        const result = JSON.parse(xhr.responseText);
+        console.log('Server response:', result);
+        if (result.error) {
+          console.error('Demo upload error from server:', result.error);
           
-          // Update the temporary card with the current progress
-          setDemoVideos(prev => prev.map(video => 
-            video.id === tempId 
-              ? { ...video, uploadProgress: progress } 
-              : video
-          ));
-        }
-      };
-      
-      xhr.onload = async () => {
-        console.log('Upload completed with status:', xhr.status);
-        if (xhr.status === 200) {
-          const result = JSON.parse(xhr.responseText);
-          console.log('Server response:', result);
-          if (result.error) {
-            console.error('Demo upload error from server:', result.error);
-            
-            // Set error information for the dialog
-            setUploadError(`Error uploading demo video: ${result.error}`);
-            setUploadDebugInfo({
-              appId: selectedAppId,
-              fileName: file.name,
-              fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
-              status: xhr.status,
-              details: result.details || 'No additional details'
-            });
-            setIsErrorDialogOpen(true);
-            
-            // Remove the temporary card
-            setDemoVideos(prev => prev.filter(video => video.id !== tempId));
-          } else {
-            console.log('Upload successful, created record:', result.record);
-            toast({
-              title: "Demo Upload Success",
-              description: "Your demo video has been uploaded successfully.",
-            });
-            
-            // Store important information about the upload for debugging
-            const uploadInfo = {
-              recordId: result.record?.id,
-              contentUrl: result.record?.content_url,
-              publicUrl: result.publicUrl,
-              appId: result.record?.app_id,
-              uploadAppId: appIdForUpload,
-              currentAppId: selectedAppId,
-              timestamp: new Date().toISOString(),
-              videosCount: demoVideos.length
-            };
-            console.log('Upload successful, details:', uploadInfo);
-            
-            // Remove the temporary card
-            setDemoVideos(prev => prev.filter(video => video.id !== tempId));
-            
-            // Check if the app ID has changed during upload
-            if (appIdForUpload !== selectedAppId) {
-              console.warn('App ID changed during upload. Uploaded to:', appIdForUpload, 'Current:', selectedAppId);
-              // Show a warning to the user
-              setUploadError("Your video was uploaded to a different app than the one currently selected. Switching to the correct app.");
-              setUploadDebugInfo(uploadInfo);
-              setIsErrorDialogOpen(true);
-              
-              // Switch to the app ID used for the upload
-              setSelectedAppId(appIdForUpload);
-              return;
-            }
-            
-            // Create a new video object with the response data
-            const newVideo = {
-              id: result.record?.id,
-              content_url: result.record?.content_url,
-              created_at: result.record?.created_at || new Date().toISOString(),
-              app_id: result.record?.app_id,
-              user_id: result.record?.user_id,
-              publicUrl: result.publicUrl,
-              isLoading: false,
-              uploadProgress: undefined
-            };
-            
-            // Add the new video directly to the state
-            setDemoVideos(prev => [newVideo, ...prev]);
-            
-            // Select the newly uploaded video
-            if (newVideo.publicUrl) {
-              setSelectedDemoVideo(newVideo.publicUrl);
-            }
-            
-            // Also refresh the videos list to ensure everything is in sync
-            setTimeout(() => {
-              console.log('Refreshing demo videos list after successful upload');
-              fetchDemoVideos();
-            }, 1000);
-          }
-        } else {
-          console.error('Upload failed with status:', xhr.status, 'Response:', xhr.responseText);
-          try {
-            const errorResponse = JSON.parse(xhr.responseText);
-            console.error('Parsed error response:', errorResponse);
-            
-            // Set error information for the dialog
-            setUploadError(errorResponse.error || "Error uploading demo video. Please try again.");
-            setUploadDebugInfo({
-              appId: selectedAppId,
-              fileName: file.name,
-              fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
-              status: xhr.status,
-              response: xhr.responseText,
-              details: errorResponse.details || 'No additional details'
-            });
-            setIsErrorDialogOpen(true);
-          } catch (e) {
-            console.error('Could not parse error response:', e);
-            
-            // Set error information for the dialog
-            setUploadError("Error uploading demo video. Please try again.");
-            setUploadDebugInfo({
-              appId: selectedAppId,
-              fileName: file.name,
-              fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
-              status: xhr.status,
-              response: xhr.responseText
-            });
-            setIsErrorDialogOpen(true);
-          }
+          // Set error information for the dialog
+          setUploadError(`Error uploading demo video: ${result.error}`);
+          setUploadDebugInfo({
+            appId: selectedAppId,
+            fileName: file.name,
+            fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
+            status: xhr.status,
+            details: result.details || 'No additional details'
+          });
+          setIsErrorDialogOpen(true);
           
           // Remove the temporary card
           setDemoVideos(prev => prev.filter(video => video.id !== tempId));
+          setIsUploading(false);
+          setUploadingFile(null);
+        } else {
+          // Display success notification
+          toast({
+            title: "Demo Upload Success",
+            description: "Your demo video has been uploaded successfully.",
+          });
+          
+          // Handle successful upload
+          handleUploadSuccess(
+            result.record,
+            result.publicUrl,
+            appIdForUpload,
+            tempId
+          );
+          setIsUploading(false);
+          setUploadingFile(null);
         }
-        setUploadProgress(null);
-        setIsUploading(false);
-        setUploadingFile(null);
-      };
-      
-      xhr.onerror = (error) => {
-        console.error('Upload failed with error:', error);
-        
-        // Set error information for the dialog
-        setUploadError("Error uploading demo video. Please check your connection and try again.");
-        setUploadDebugInfo({
-          appId: selectedAppId,
-          fileName: file.name,
-          fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
-          error: 'Network error'
-        });
+      } else {
+        console.error('Upload failed with status:', xhr.status, 'Response:', xhr.responseText);
+        try {
+          const errorResponse = JSON.parse(xhr.responseText);
+          console.error('Parsed error response:', errorResponse);
+          
+          // If the error is about file size being too large, switch to direct upload
+          if (xhr.status === 413 || (errorResponse.error && errorResponse.error.includes('size'))) {
+            console.log('File too large for API route, switching to direct upload');
+            setUploadError(`The file is too large for the API route. Switching to direct upload...`);
+            setIsErrorDialogOpen(true);
+            
+            // Remove the temporary card and try with direct upload
+            setDemoVideos(prev => prev.filter(video => video.id !== tempId));
+            
+            // Generate a new temp ID for the retry
+            const newTempId = `temp-${Date.now()}`;
+            const newTempVideo: DemoVideo = {
+              id: newTempId,
+              content_url: '',
+              created_at: new Date().toISOString(),
+              isLoading: true,
+              uploadProgress: 0
+            };
+            
+            // Add the new temporary card
+            setDemoVideos(prev => [newTempVideo, ...prev]);
+            
+            // Retry with direct upload
+            const filePath = `${user?.id}/${Date.now()}_${file.name}`;
+            handleDirectUpload(file, filePath, appIdForUpload, newTempId);
+            return;
+          }
+          
+          // Handle other errors
+          setUploadError(errorResponse.error || "Error uploading demo video. Please try again.");
+          setUploadDebugInfo({
+            appId: selectedAppId,
+            fileName: file.name,
+            fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
+            status: xhr.status,
+            error: errorResponse.error,
+            details: errorResponse.details || 'No additional details'
+          });
+          
+        } catch (e) {
+          setUploadError("Error uploading demo video. Please try again.");
+          setUploadDebugInfo({
+            appId: selectedAppId,
+            fileName: file.name,
+            fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
+            status: xhr.status,
+            rawResponse: xhr.responseText
+          });
+        }
         setIsErrorDialogOpen(true);
-        
-        setUploadProgress(null);
-        setIsUploading(false);
-        setUploadingFile(null);
         
         // Remove the temporary card
         setDemoVideos(prev => prev.filter(video => video.id !== tempId));
-      };
+        setIsUploading(false);
+        setUploadingFile(null);
+      }
+    };
+    
+    xhr.onerror = () => {
+      console.error('XHR error occurred during upload');
+      setUploadError("Network error occurred during upload. Please try again.");
+      setUploadDebugInfo({
+        appId: selectedAppId,
+        fileName: file.name,
+        fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
+        error: 'Network error'
+      });
+      setIsErrorDialogOpen(true);
       
-      xhr.open('POST', '/api/upload-demo');
-      xhr.send(formData);
-      console.log('XHR request sent');
-    }
+      // Remove the temporary card
+      setDemoVideos(prev => prev.filter(video => video.id !== tempId));
+      setIsUploading(false);
+      setUploadingFile(null);
+    };
+    
+    xhr.open('POST', '/api/upload-demo');
+    xhr.send(formData);
   };
 
   return (
@@ -1727,78 +2072,163 @@ export default function CreateAd() {
             </DialogHeader>
             
             <div className="space-y-4">
-              <div className="bg-muted p-3 rounded-md text-sm overflow-hidden">
-                <p className="font-medium text-destructive">{uploadError}</p>
-                
-                {uploadError?.includes("isn't appearing") ? (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-xs text-muted-foreground">The video has been uploaded successfully, but there might be a slight delay before it appears in your list.</p>
-                    <ul className="text-xs list-disc pl-4 space-y-1">
-                      <li>Wait a few moments for the video to appear</li>
-                      <li>Click the "Refresh Videos" button below</li>
-                      <li>Make sure you're viewing the same app that you uploaded the video for</li>
-                      <li>If the video still doesn't appear, try refreshing the entire page</li>
-                    </ul>
+              <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 rounded-lg text-sm">
+                {uploadError?.includes("Authentication") || uploadError?.includes("User ID not available") ? (
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-6 w-6 text-amber-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                          <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">Authentication Issue</h3>
+                        <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                          <p>We're having trouble accessing your account details for this upload.</p>
+                          <p className="font-medium mt-2">Try these solutions:</p>
+                          <ul className="list-disc space-y-1 pl-5 mt-1">
+                            <li>Refresh the page</li>
+                            <li>Sign out and sign back in</li>
+                            <li>Clear your browser cache</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                ) : uploadError?.includes("Storage upload failed") || uploadError?.includes("Storage system unavailable") || uploadError?.includes("Bucket not found") ? (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-xs text-muted-foreground">Try these solutions:</p>
-                    <ul className="text-xs list-disc pl-4 space-y-1">
-                      <li>Try refreshing the page and uploading again</li>
-                      <li>Try logging out and logging back in</li>
-                      <li>Try uploading a smaller video file (under 50MB)</li>
-                      <li>Check your internet connection</li>
-                      <li>If the problem persists, please try again later or contact support</li>
-                    </ul>
+                ) : uploadError?.includes("isn't appearing") ? (
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-6 w-6 text-blue-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                          <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">Video Not Appearing</h3>
+                        <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                          <p>The video was uploaded but isn't appearing in your list.</p>
+                          <p className="font-medium mt-2">Try these solutions:</p>
+                          <ul className="list-disc space-y-1 pl-5 mt-1">
+                            <li>Wait a few moments for the video to appear</li>
+                            <li>Click the "Refresh Videos" button below</li>
+                            <li>Check if you selected the correct app</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : uploadError?.includes("Storage upload failed") || uploadError?.includes("Storage system") || uploadError?.includes("Bucket not found") ? (
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-6 w-6 text-red-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                          <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Storage System Error</h3>
+                        <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                          <p>We encountered an issue with our storage system.</p>
+                          <p className="font-medium mt-2">Try these solutions:</p>
+                          <ul className="list-disc space-y-1 pl-5 mt-1">
+                            <li>Refresh the page</li>
+                            <li>Try uploading a smaller file</li>
+                            <li>Check your internet connection</li>
+                            <li>If the problem persists, please try again later</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : uploadError?.includes("File size exceeds") ? (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-xs text-muted-foreground">Required action:</p>
-                    <ul className="text-xs list-disc pl-4 space-y-1">
-                      <li>Your video must be under 100MB in size</li>
-                      <li>Current video size: {uploadDebugInfo?.fileSize || 'unknown'}</li>
-                      <li>Try compressing your video with a tool like HandBrake</li>
-                      <li>Reduce the resolution or length of your video</li>
-                      <li>Use an online video compressor service</li>
-                    </ul>
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-6 w-6 text-amber-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                          <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">File Size Limit Exceeded</h3>
+                        <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                          <p>Your video is too large. Maximum size: 100MB</p>
+                          <p>Current size: {uploadDebugInfo?.fileSize || 'unknown'}</p>
+                          <p className="font-medium mt-2">Try these solutions:</p>
+                          <ul className="list-disc space-y-1 pl-5 mt-1">
+                            <li>Compress your video</li>
+                            <li>Reduce the resolution or length</li>
+                            <li>Try a different, smaller file</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : uploadError?.includes("MP4 video files") ? (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-xs text-muted-foreground">Required action:</p>
-                    <ul className="text-xs list-disc pl-4 space-y-1">
-                      <li>Only MP4 video files are supported</li>
-                      <li>Current file type: {uploadDebugInfo?.fileType || 'unknown'}</li>
-                      <li>Convert your video to MP4 format using a tool like HandBrake</li>
-                      <li>
-                        Use an online converter: <a 
-                          href="https://www.freeconvert.com/mp4-converter" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-500 hover:text-blue-700 underline"
-                        >
-                          FreeConvert MP4 Converter
-                        </a>
-                      </li>
-                    </ul>
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-6 w-6 text-amber-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                          <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">Unsupported File Format</h3>
+                        <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                          <p>Only MP4 video files are supported.</p>
+                          <p>Current format: {uploadDebugInfo?.fileType || 'unknown'}</p>
+                          <p className="font-medium mt-2">Try these solutions:</p>
+                          <ul className="list-disc space-y-1 pl-5 mt-1">
+                            <li>Convert your video to MP4 format</li>
+                            <li>
+                              <a 
+                                href="https://www.freeconvert.com/mp4-converter" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 underline"
+                              >
+                                Use an online converter
+                              </a>
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-xs text-muted-foreground">Possible causes:</p>
-                    <ul className="text-xs list-disc pl-4 space-y-1">
-                      <li>The video file may be corrupted or in an unsupported format</li>
-                      <li>Your internet connection may have been interrupted</li>
-                      <li>The app selection may have changed during upload</li>
-                      <li>There might be a temporary server issue</li>
-                    </ul>
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-6 w-6 text-red-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                          <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Upload Failed</h3>
+                        <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                          <p>There was a problem uploading your demo video.</p>
+                          <p className="font-medium mt-2">Possible causes:</p>
+                          <ul className="list-disc space-y-1 pl-5 mt-1">
+                            <li>Corrupted video file</li>
+                            <li>Internet connection issues</li>
+                            <li>App selection changed during upload</li>
+                            <li>Temporary server issue</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
                 
                 {uploadDebugInfo && (
-                  <div className="mt-4 pt-2 border-t border-border">
-                    <p className="text-xs font-medium mb-1">Debug Information:</p>
-                    <pre className="text-xs overflow-auto max-h-24 p-2 bg-background rounded">
-                      {JSON.stringify(uploadDebugInfo, null, 2)}
-                    </pre>
+                  <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <details className="text-xs">
+                      <summary className="font-medium text-gray-700 dark:text-gray-300 cursor-pointer hover:text-gray-900 dark:hover:text-gray-100">
+                        Technical Details
+                      </summary>
+                      <pre className="mt-2 overflow-auto max-h-36 p-3 bg-gray-100 dark:bg-gray-800 rounded text-gray-800 dark:text-gray-200 text-xs">
+                        {JSON.stringify(uploadDebugInfo, null, 2)}
+                      </pre>
+                    </details>
                   </div>
                 )}
               </div>
