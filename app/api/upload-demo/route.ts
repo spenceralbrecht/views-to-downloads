@@ -2,6 +2,14 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
+/**
+ * API route for uploading demo videos
+ * 
+ * NOTE: For larger files (>6MB), we now use client-side TUS protocol uploads via tus-js-client
+ * directly to Supabase Storage. This enables resumable uploads and better reliability.
+ * This API route is kept for smaller files but has a practical limit of around 6MB 
+ * for optimal performance. Larger files should use the TUS client implementation.
+ */
 export async function POST(request: Request) {
   const supabase = createRouteHandlerClient({ cookies })
   
@@ -52,18 +60,20 @@ export async function POST(request: Request) {
       )
     }
 
-    const maxSize = 100 * 1024 * 1024
+    // Reduce max size to 6MB for API route - above this size, client should use TUS protocol
+    const maxSize = 6 * 1024 * 1024
     if (file.size > maxSize) {
-      console.warn('File size exceeds limit:', `${(file.size / (1024 * 1024)).toFixed(2)}MB`)
+      console.warn('File size exceeds API route recommended limit:', `${(file.size / (1024 * 1024)).toFixed(2)}MB`)
       return NextResponse.json(
         { 
-          error: 'File size exceeds 100MB limit', 
+          error: 'File size exceeds 6MB recommended limit for API route uploads', 
           details: { 
             providedSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
-            maxSize: '100MB'
+            maxSize: '6MB',
+            recommendation: 'For files larger than 6MB, use client-side TUS protocol upload for resumable uploads'
           } 
         },
-        { status: 400 }
+        { status: 413 }
       )
     }
 
@@ -199,4 +209,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-} 
+}
