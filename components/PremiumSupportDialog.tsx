@@ -21,7 +21,7 @@ export default function PremiumSupportDialog({ isOpen, onClose }: PremiumSupport
         </DialogHeader>
         <div className="py-4">
           <p className="text-base">
-            I'm Spencer, the founder and I want to hear from you. Text me at <span className="font-semibold">+1 510 730 2503</span> and I'll respond within 24 hours!
+            I'm Spencer, the founder and I want to hear from you. Text me at <span className="font-semibold">+1 512 387 3564</span> and I'll respond within 24 hours!
           </p>
         </div>
       </DialogContent>
