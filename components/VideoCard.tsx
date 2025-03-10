@@ -243,7 +243,6 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
             </Button>
           ) : (
             <div className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground">Coming Soon</span>
               <Button 
                 variant="ghost" 
                 size="icon" 
