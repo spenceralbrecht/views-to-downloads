@@ -155,9 +155,11 @@ The application tracks content creation across all types (videos, images, etc.) 
      - Matches user by email
      - Creates subscription record
      - Sets initial content limits
+     - Sends purchase event to Facebook Conversions API
    - `invoice.paid`: Renewal processing
      - Extends subscription period
      - Resets monthly usage
+     - Sends purchase event to Facebook Conversions API
    - `customer.subscription.deleted`: Cancellations
      - Updates subscription status
      - Maintains access until period end
@@ -246,34 +248,40 @@ The application automatically appends the logged-in user's email to all Stripe p
    - `status`: Subscription status
    - `current_period_end`: Access expiration date
 
-### Testing
-For development testing:
-1. Use test payment links (prefixed with NEXT_PUBLIC_STRIPE_TEST_)
-2. Test card: 4242 4242 4242 4242
-3. Any future expiry date and CVC
-4. Use your email to receive test receipts
+### Facebook Conversions API Integration
 
-### Environment Variables
-```bash
-# Stripe Configuration
-NEXT_PUBLIC_STRIPE_ENV=development # or 'production' for live environment
-STRIPE_TEST_SECRET_KEY=sk_test_... # Stripe test secret key
-STRIPE_SECRET_KEY=sk_live_... # Stripe live secret key
-STRIPE_TEST_WEBHOOK_SECRET=whsec_... # Webhook signing secret
+The application integrates with the Facebook Conversions API to track purchase events when users subscribe to a plan. This enables better attribution and conversion tracking for your Facebook ads.
 
-# Payment Links
-NEXT_PUBLIC_STRIPE_TEST_STARTER_LINK=https://buy.stripe.com/test_...
-NEXT_PUBLIC_STRIPE_TEST_GROWTH_LINK=https://buy.stripe.com/test_...
-NEXT_PUBLIC_STRIPE_TEST_SCALE_LINK=https://buy.stripe.com/test_...
+### Implementation Details
 
-# Production Payment Links
-NEXT_PUBLIC_STRIPE_STARTER_LINK=https://buy.stripe.com/...
-NEXT_PUBLIC_STRIPE_GROWTH_LINK=https://buy.stripe.com/...
-NEXT_PUBLIC_STRIPE_SCALE_LINK=https://buy.stripe.com/...
+1. **Event Tracking**: When a purchase occurs through Stripe (via a successful checkout or invoice payment), the application automatically sends a purchase event to Facebook with:
+   - Customer email (for user matching)
+   - Purchase value (subscription amount)
+   - Currency (USD by default)
+   - Order ID (Stripe session or invoice ID)
+   - Content IDs (subscription plan name)
 
-# Feature Flags
-NEXT_PUBLIC_ENABLE_TIKTOK=false # Set to 'true' to enable TikTok integration
-```
+2. **Integration Points**: Purchase events are sent to Facebook at these points:
+   - After a successful `checkout.session.completed` event (new subscriptions)
+   - After a successful `invoice.paid` event (renewals)
+
+3. **Error Handling**: If the Facebook API call fails, it's logged but doesn't interrupt the Stripe webhook processing, ensuring that subscriptions are still properly created or updated regardless of Facebook API status.
+
+### Configuration
+
+To enable Facebook Conversions API integration:
+
+1. Create a Facebook Business account and set up Meta Pixel
+2. Generate an access token with the appropriate permissions
+3. Add the following environment variables:
+   - `FACEBOOK_ACCESS_TOKEN`: Your Facebook API access token
+   - `FACEBOOK_PIXEL_ID`: Your Facebook Pixel ID
+
+### Benefits
+
+- Improved ad attribution even with browser privacy changes
+- Server-side event tracking resistant to ad blockers
+- Better conversion data for optimizing ad campaigns
 
 ## API Endpoints
 
@@ -426,6 +434,14 @@ If the user's email is not being prefilled in the Stripe checkout page:
    const { data: { session } } = await supabase.auth.getSession();
    const userEmail = session?.user?.email;
    ```
+   - The `PricingModal` component uses this approach to ensure the email is available when needed
+   - Example implementation:
+     ```typescript
+     const supabase = createClientComponentClient();
+     const { data: { session } } = await supabase.auth.getSession();
+     const userEmail = session?.user?.email;
+     const link = getStripeConfig(userEmail).checkoutLinks.starter;
+     ```
 
 3. **URL Encoding Issues**:
    - Check if the email contains special characters that might need proper encoding
@@ -495,3 +511,71 @@ If webhooks aren't being processed correctly:
   - If email parameters aren't being appended to Stripe links, check browser console logs
   - Verify that `appendEmailToLink` function is receiving a valid email
   - Ensure the user is properly authenticated before accessing payment links
+
+### Facebook Conversions API Integration
+
+The application integrates with the Facebook Conversions API to track purchase events when users subscribe to a plan. This enables better attribution and conversion tracking for your Facebook ads.
+
+### Implementation Details
+
+1. **Event Tracking**: When a purchase occurs through Stripe (via a successful checkout or invoice payment), the application automatically sends a purchase event to Facebook with:
+   - Customer email (for user matching)
+   - Purchase value (subscription amount)
+   - Currency (USD by default)
+   - Order ID (Stripe session or invoice ID)
+   - Content IDs (subscription plan name)
+
+2. **Integration Points**: Purchase events are sent to Facebook at these points:
+   - After a successful `checkout.session.completed` event (new subscriptions)
+   - After a successful `invoice.paid` event (renewals)
+
+3. **Error Handling**: If the Facebook API call fails, it's logged but doesn't interrupt the Stripe webhook processing, ensuring that subscriptions are still properly created or updated regardless of Facebook API status.
+
+### Configuration
+
+To enable Facebook Conversions API integration:
+
+1. Create a Facebook Business account and set up Meta Pixel
+2. Generate an access token with the appropriate permissions
+3. Add the following environment variables:
+   - `FACEBOOK_ACCESS_TOKEN`: Your Facebook API access token
+   - `FACEBOOK_PIXEL_ID`: Your Facebook Pixel ID
+
+### Benefits
+
+- Improved ad attribution even with browser privacy changes
+- Server-side event tracking resistant to ad blockers
+- Better conversion data for optimizing ad campaigns
+
+### Testing
+
+For development testing:
+1. Use test payment links (prefixed with NEXT_PUBLIC_STRIPE_TEST_)
+2. Test card: 4242 4242 4242 4242
+3. Any future expiry date and CVC
+4. Use your email to receive test receipts
+
+### Environment Variables
+```bash
+# Stripe Configuration
+NEXT_PUBLIC_STRIPE_ENV=development # or 'production' for live environment
+STRIPE_TEST_SECRET_KEY=sk_test_... # Stripe test secret key
+STRIPE_SECRET_KEY=sk_live_... # Stripe live secret key
+STRIPE_TEST_WEBHOOK_SECRET=whsec_... # Webhook signing secret
+
+# Payment Links
+NEXT_PUBLIC_STRIPE_TEST_STARTER_LINK=https://buy.stripe.com/test_...
+NEXT_PUBLIC_STRIPE_TEST_GROWTH_LINK=https://buy.stripe.com/test_...
+NEXT_PUBLIC_STRIPE_TEST_SCALE_LINK=https://buy.stripe.com/test_...
+
+# Production Payment Links
+NEXT_PUBLIC_STRIPE_STARTER_LINK=https://buy.stripe.com/...
+NEXT_PUBLIC_STRIPE_GROWTH_LINK=https://buy.stripe.com/...
+NEXT_PUBLIC_STRIPE_SCALE_LINK=https://buy.stripe.com/...
+
+# Feature Flags
+NEXT_PUBLIC_ENABLE_TIKTOK=false # Set to 'true' to enable TikTok integration
+
+# Facebook Conversions API
+FACEBOOK_ACCESS_TOKEN=your_facebook_access_token
+FACEBOOK_PIXEL_ID=your_facebook_pixel_id
