@@ -64,7 +64,7 @@ export default function LandingPage({
           )}
           
           {/* Hero Section */}
-          <div className="relative pt-20 pb-24 md:pt-28 md:pb-16 overflow-hidden">            
+          <div className="relative pt-20 pb-8 md:pt-28 md:pb-16 overflow-hidden">            
             <div className="max-w-5xl mx-auto text-center relative z-10">
               <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
                 Automate Viral App Content
@@ -73,7 +73,7 @@ export default function LandingPage({
                 Turn viral trends into downloads with AI content
               </p>
               
-              <div className="flex justify-center gap-4 mb-16">
+              <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-16">
                 <Button 
                   onClick={handleGoogleSignIn}
                   disabled={isLoading}
