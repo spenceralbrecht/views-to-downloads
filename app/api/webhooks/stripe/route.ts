@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { sendPurchaseEvent } from '@/utils/facebookConversions'
 
 // Initialize Stripe with the appropriate secret key based on environment
 const stripeEnv = process.env.NEXT_PUBLIC_STRIPE_ENV || 'development'
@@ -103,9 +104,10 @@ async function handleStripeWebhook(event: Stripe.Event) {
         
         // Get userId from customer email
         const userId = await getUserIdFromEmail(session.customer_details?.email)
+        const customerEmail = session.customer_details?.email
 
         if (!userId) {
-          console.log('No user found for email:', session.customer_details?.email)
+          console.log('No user found for email:', customerEmail)
           return { status: 'success', message: 'Skipped - user not found' }
         }
 
@@ -121,6 +123,8 @@ async function handleStripeWebhook(event: Stripe.Event) {
 
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
         const priceId = subscription.items.data[0].price.id
+        const price = subscription.items.data[0].price.unit_amount || 0
+        const amount = price / 100 // Convert from cents to dollars
 
         // Determine plan name from price ID
         let planName = 'starter'
@@ -149,6 +153,26 @@ async function handleStripeWebhook(event: Stripe.Event) {
         if (error) {
           console.error('Error upserting subscription:', error)
           return { status: 'error', message: 'Failed to update subscription' }
+        }
+
+        // Send purchase event to Facebook Conversions API
+        if (customerEmail) {
+          try {
+            await sendPurchaseEvent({
+              email: customerEmail,
+              value: amount,
+              currency: 'USD',
+              orderId: session.id,
+              contentIds: [planName],
+              eventSourceUrl: process.env.NEXT_PUBLIC_TEST_APP_URL || 'https://viewstodownloads.com',
+              actionSource: 'website',
+              userAgent: session.client_reference_id || 'Stripe Checkout'
+            });
+            console.log('Facebook purchase event sent for session:', session.id);
+          } catch (fbError) {
+            console.error('Error sending Facebook purchase event:', fbError);
+            // Don't fail the webhook if Facebook API fails
+          }
         }
 
         return { status: 'success', message: 'Subscription created/updated' }
@@ -224,9 +248,10 @@ async function handleStripeWebhook(event: Stripe.Event) {
         // Get userId from customer email
         const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer
         const userId = await getUserIdFromEmail(customer.email)
+        const customerEmail = customer.email
 
         if (!userId) {
-          console.log('No user found for email:', customer.email)
+          console.log('No user found for email:', customerEmail)
           return { status: 'success', message: 'Skipped - user not found' }
         }
 
@@ -268,6 +293,26 @@ async function handleStripeWebhook(event: Stripe.Event) {
             metadata: { userId }
           })
         ])
+
+        // Send purchase event to Facebook Conversions API
+        if (customerEmail && invoice.amount_paid > 0) {
+          try {
+            await sendPurchaseEvent({
+              email: customerEmail,
+              value: invoice.amount_paid / 100, // Convert from cents to dollars
+              currency: invoice.currency.toUpperCase(),
+              orderId: invoice.id,
+              contentIds: [planName],
+              eventSourceUrl: process.env.NEXT_PUBLIC_TEST_APP_URL || 'https://viewstodownloads.com',
+              actionSource: 'website',
+              userAgent: 'Stripe Invoice Payment'
+            });
+            console.log('Facebook purchase event sent for invoice:', invoice.id);
+          } catch (fbError) {
+            console.error('Error sending Facebook purchase event:', fbError);
+            // Don't fail the webhook if Facebook API fails
+          }
+        }
 
         return { status: 'success', message: 'Invoice processed and subscription updated' }
       }
