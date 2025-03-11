@@ -116,7 +116,7 @@ export default function Dashboard() {
               <CardTitle className="text-lg lg:text-xl text-foreground">UGC Avatar Generator</CardTitle>
             </CardHeader>
             <CardContent className="p-4 lg:p-6 pt-0">
-              <p className="text-sm lg:text-base text-muted-foreground">Automatically create UGC demo videos</p>
+              <p className="text-sm lg:text-base text-muted-foreground">Create your own UGC characters</p>
             </CardContent>
             <div className="absolute top-3 right-3 lg:top-4 lg:right-4 px-2 py-1 lg:px-3 lg:py-1 bg-accent rounded-full text-xs lg:text-sm text-muted-foreground">
               Not Available Yet

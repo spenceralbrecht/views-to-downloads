@@ -8,10 +8,11 @@ import Pricing from '@/components/Pricing'
 import Alternatives from '@/components/Alternatives'
 import FAQ from '@/components/FAQ'
 import { useState } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Play, X } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import Image from 'next/image'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 export default function LandingPage({
   searchParams,
@@ -19,6 +20,7 @@ export default function LandingPage({
   searchParams: { error?: string }
 }) {
   const [isLoading, setIsLoading] = useState(false)
+  const [isDemoOpen, setIsDemoOpen] = useState(false)
   const supabase = createClientComponentClient()
 
   const handleGoogleSignIn = async () => {
@@ -68,17 +70,25 @@ export default function LandingPage({
                 Automate Viral App Content
               </h1>
               <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-10 max-w-3xl mx-auto">
-                Turn viral trends into downloads with AI — No Effort Required
+                Turn viral trends into downloads with AI content
               </p>
               
-              <div className="flex justify-center mb-16">
+              <div className="flex justify-center gap-4 mb-16">
                 <Button 
                   onClick={handleGoogleSignIn}
                   disabled={isLoading}
                   size="lg" 
                   className="rounded-full px-8 py-6 text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all"
                 >
-                  {isLoading ? "Connecting..." : "Start in 30 Seconds"} <ArrowRight className="ml-2 h-5 w-5" />
+                  {isLoading ? "Connecting..." : "Get Started"} <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+                <Button 
+                  onClick={() => setIsDemoOpen(true)}
+                  size="lg" 
+                  variant="outline"
+                  className="rounded-full px-8 py-6 text-lg font-medium border-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 shadow-lg hover:shadow-xl transition-all"
+                >
+                  Demo <Play className="ml-2 h-5 w-5" />
                 </Button>
               </div>
               
@@ -142,6 +152,25 @@ export default function LandingPage({
         </div>
       </main>
       <Footer />
+
+      {/* Demo Video Modal */}
+      <Dialog open={isDemoOpen} onOpenChange={setIsDemoOpen}>
+        <DialogContent className="max-w-4xl w-full p-1 sm:p-2">
+          <DialogHeader className="p-2">
+            <DialogTitle className="text-xl">How to Get Started</DialogTitle>
+          </DialogHeader>
+          <div className="relative w-full aspect-video">
+            <video 
+              src="https://pub-a027e435822042eb96a9208813b48997.r2.dev/full-demo.mp4" 
+              controls 
+              autoPlay
+              className="w-full h-full rounded-md"
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
