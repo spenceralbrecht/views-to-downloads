@@ -1916,7 +1916,7 @@ export default function CreateAd() {
             </div>
             
             {/* Demos Section */}
-            <div>
+            <div id="upload-demo">
               <div className="flex items-center gap-2 mb-3 lg:mb-4">
                 <h2 className="text-lg font-semibold">4. Demos</h2>
                 <TooltipProvider>

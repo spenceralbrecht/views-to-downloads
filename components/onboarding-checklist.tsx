@@ -110,14 +110,14 @@ export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, has
           </div>
         </Link>
 
-        <Link href={hasDemoVideo ? '#' : '/dashboard/videos'} className={!hasDemoVideo ? 'cursor-pointer' : 'cursor-default'}>
+        <Link href={hasDemoVideo ? '#' : '/dashboard/create#upload-demo'} className={!hasDemoVideo ? 'cursor-pointer' : 'cursor-default'}>
           <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors ${!hasDemoVideo ? 'hover:bg-accent/50' : ''}`}>
             <div className="flex items-center gap-4">
               <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasDemoVideo ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
                 <Video className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="font-medium">Upload demo video</h3>
+                <h3 className="font-medium">Create your first video</h3>
                 <p className="text-sm text-muted-foreground">Estimated 1 minute</p>
               </div>
             </div>
