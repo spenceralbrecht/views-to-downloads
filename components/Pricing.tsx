@@ -30,7 +30,6 @@ const plans = [
       { text: "All 50+ UGC avatars", icon: Camera },
       { text: "Generate unlimited viral hooks", icon: Sparkles },
       { text: "Priority support", icon: Shield },
-      { text: "Performance analytics", icon: Download, comingSoon: true },
     ]
   },
   {
@@ -43,7 +42,6 @@ const plans = [
       { text: "All 50+ UGC avatars", icon: Camera },
       { text: "Generate unlimited viral hooks", icon: Sparkles },
       { text: "Dedicated support", icon: Shield },
-      { text: "Performance analytics", icon: Download, comingSoon: true },
     ]
   }
 ]
