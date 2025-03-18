@@ -31,9 +31,22 @@ export default function LandingPage({
   // Handle TikTok OAuth redirect data
   useEffect(() => {
     if (searchParams.tiktok_data) {
-      // Store the TikTok data in localStorage for retrieval after login
-      console.log('Storing TikTok data in localStorage');
-      localStorage.setItem('tiktok_pending_data', searchParams.tiktok_data);
+      try {
+        // Sanitize the data before storing it
+        // First try to decode and validate it's proper JSON
+        const rawData = searchParams.tiktok_data;
+        const decoded = Buffer.from(rawData, 'base64').toString('utf-8');
+        
+        // Try to parse it to ensure it's valid JSON
+        const parsed = JSON.parse(decoded);
+        
+        // If we got here, it's valid JSON, so we can safely store it
+        console.log('Storing valid TikTok data in localStorage');
+        localStorage.setItem('tiktok_pending_data', rawData);
+      } catch (error) {
+        console.error('Error processing TikTok data from URL:', error);
+        // Don't store invalid data
+      }
       
       // Check if the user is already logged in
       const checkSession = async () => {
