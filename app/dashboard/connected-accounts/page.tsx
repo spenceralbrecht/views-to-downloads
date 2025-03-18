@@ -3,195 +3,119 @@
 import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Loader2, Plus, CheckCircle, XCircle, Trash2 } from 'lucide-react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { User } from '@supabase/supabase-js'
-import { Loader2, Plug, CheckCircle, XCircle, Plus } from 'lucide-react'
-import Image from 'next/image'
 import { accountService } from '@/utils/accountService'
 import { tiktokService } from '@/utils/tiktokService'
 import { ConnectedAccount } from '@/utils/tiktokService'
 import { useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AddAccountModal } from '@/components/AddAccountModal'
 import { isTikTokEnabled } from '@/utils/featureFlags'
 
 export default function ConnectedAccounts() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [connecting, setConnecting] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([])
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [session, setSession] = useState<any>(null)
   const supabase = createClientComponentClient()
+  const router = useRouter()
   const searchParams = useSearchParams()
   
-  // Get success and error messages from URL
-  const success = searchParams.get('success')
-  const error = searchParams.get('error')
+  // Extract TikTok success and data parameters from URL
+  const tiktokSuccess = searchParams.get('tiktok_success')
   const tiktokData = searchParams.get('tiktok_data')
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user || null)
-      setLoading(false)
-      
-      // Fetch connected accounts
-      if (session?.user) {
+    const getSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession()
+        if (error) throw error
+        if (!data.session) {
+          router.push('/login')
+          return
+        }
+        
+        setSession(data.session)
+        
+        // Get all connected accounts
         try {
-          const accounts = await accountService.getAllConnectedAccounts(session.user.id)
+          const accounts = await accountService.getAllConnectedAccounts(data.session.user.id)
           setConnectedAccounts(accounts)
           
-          // Check for pending TikTok data in localStorage
-          const pendingTikTokData = localStorage.getItem('tiktok_pending_data')
-          if (pendingTikTokData) {
-            console.log('Found pending TikTok data in localStorage')
+          // Check for TikTok data in URL parameters first
+          if (tiktokSuccess === 'true' && tiktokData) {
+            console.log('Found TikTok data in URL parameters');
             
             try {
-              // Parse the data - add extra sanitization to handle control characters
-              let sanitizedData = pendingTikTokData;
+              // Use a more robust approach to decode the base64 data
+              // First, make sure we're working with a clean base64 string
+              // Replace any URL-unsafe characters with their base64 equivalents
+              const cleanBase64 = tiktokData
+                .replace(/-/g, '+')
+                .replace(/_/g, '/');
               
-              // Try to decode the base64 string
-              try {
-                const decoded = Buffer.from(pendingTikTokData, 'base64').toString('utf-8');
-                // Replace any control characters that might cause JSON parsing to fail
-                sanitizedData = decoded.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
-              } catch (decodeError) {
-                console.error('Error decoding base64 data:', decodeError);
-                // If we can't decode, try to sanitize the raw data
-                sanitizedData = pendingTikTokData.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
-              }
+              // Add padding if needed
+              const paddedBase64 = cleanBase64.padEnd(
+                cleanBase64.length + (4 - (cleanBase64.length % 4 || 4)) % 4, 
+                '='
+              );
               
-              const decodedData = JSON.parse(sanitizedData);
-              console.log('Parsed TikTok data:', decodedData)
+              // Decode the base64 string
+              const jsonString = Buffer.from(paddedBase64, 'base64').toString('utf-8');
+              console.log('Decoded JSON string:', jsonString.substring(0, 100) + '...');
+              
+              // Parse the JSON
+              const decodedData = JSON.parse(jsonString);
+              console.log('Parsed TikTok data:', decodedData);
               
               // Save the account
               const result = await tiktokService.saveAccount(
-                session.user.id,
+                data.session.user.id,
                 {
                   open_id: decodedData.open_id,
                   union_id: decodedData.union_id || decodedData.open_id,
                   display_name: decodedData.display_name,
                   avatar_url: decodedData.profile_picture,
                   avatar_url_100: decodedData.profile_picture
-                  // Removed optional fields that are no longer required
                 },
                 decodedData.access_token,
                 decodedData.refresh_token,
                 decodedData.expires_in
               )
               
-              console.log('Save account result:', result)
-              
-              if (result.success) {
-                // Refresh the accounts list
-                const updatedAccounts = await accountService.getAllConnectedAccounts(session.user.id)
+              if (result) {
+                // Successfully saved the account, show success message
+                setSuccessMessage(`Successfully connected TikTok account: ${decodedData.display_name}`)
+                
+                // Refresh the connected accounts list
+                const updatedAccounts = await accountService.getAllConnectedAccounts(data.session.user.id)
                 setConnectedAccounts(updatedAccounts)
                 
-                // Show success message
-                const url = new URL(window.location.href)
-                url.searchParams.set('success', 'true')
-                window.history.replaceState({}, '', url.toString())
-              } else {
-                // Show error message
-                const url = new URL(window.location.href)
-                url.searchParams.set('error', 'database_error')
-                window.history.replaceState({}, '', url.toString())
+                // Remove the URL parameters to avoid processing the data again on refresh
+                router.replace('/dashboard/connected-accounts');
               }
-              
-              // Clear the pending data
-              localStorage.removeItem('tiktok_pending_data')
             } catch (error) {
-              console.error('Error processing pending TikTok data:', error)
-              // Show error message
-              const url = new URL(window.location.href)
-              url.searchParams.set('error', 'processing_error')
-              window.history.replaceState({}, '', url.toString())
-              
-              // Clear the pending data
-              localStorage.removeItem('tiktok_pending_data')
+              console.error('Error processing TikTok data:', error)
+              setError('Failed to connect TikTok account. Please try again.')
             }
           }
         } catch (error) {
           console.error('Error fetching connected accounts:', error)
         }
+      } catch (error) {
+        console.error('Error getting session:', error)
+      } finally {
+        setIsLoading(false)
       }
     }
     
-    getUser()
-  }, [supabase])
-
-  // Handle TikTok account data if present in URL
-  useEffect(() => {
-    const handleTikTokData = async () => {
-      // Check if we have the TikTok data and a user
-      if (!tiktokData || !user) return;
-      
-      try {
-        // Decode the data
-        const decodedData = JSON.parse(Buffer.from(tiktokData, 'base64').toString('utf-8'));
-        console.log('TikTok account data received:', decodedData);
-        
-        console.log('Current user ID:', user.id);
-        
-        // Save the account to the database
-        const expiresAt = new Date();
-        expiresAt.setSeconds(expiresAt.getSeconds() + decodedData.expires_in);
-        
-        // Create metadata object for additional TikTok information
-        const metadata = {
-          // Include any additional fields from TikTok that might be useful
-          // These fields must match what's defined in the database schema
-        };
-        
-        console.log('Attempting to save TikTok account...');
-        const result = await tiktokService.saveAccount(
-          user.id,
-          {
-            open_id: decodedData.open_id,
-            union_id: decodedData.union_id || decodedData.open_id,
-            display_name: decodedData.display_name,
-            avatar_url: decodedData.profile_picture,
-            avatar_url_100: decodedData.profile_picture,
-            avatar_url_200: decodedData.profile_picture,
-            bio_description: '',
-            profile_deep_link: '',
-            is_verified: false
-          },
-          decodedData.access_token,
-          decodedData.refresh_token,
-          decodedData.expires_in
-        );
-        console.log('Save account result:', result);
-        
-        // Refresh the connected accounts list
-        console.log('Fetching updated accounts list...');
-        const accounts = await accountService.getAllConnectedAccounts(user.id);
-        console.log('Updated accounts:', accounts);
-        setConnectedAccounts(accounts);
-        
-        // Remove the tiktok_data parameter from the URL to prevent reconnecting on refresh
-        const url = new URL(window.location.href);
-        url.searchParams.delete('tiktok_data');
-        url.searchParams.set('success', 'true');
-        window.history.replaceState({}, '', url.toString());
-      } catch (error) {
-        console.error('Error handling TikTok account data:', error);
-        
-        // Remove the tiktok_data parameter from the URL
-        const url = new URL(window.location.href);
-        url.searchParams.delete('tiktok_data');
-        url.searchParams.set('error', 'server_error');
-        window.history.replaceState({}, '', url.toString());
-      }
-    };
-    
-    handleTikTokData();
-  }, [tiktokData, user, supabase])
+    getSession()
+  }, [supabase, router, searchParams])
 
   const connectTikTok = async () => {
-    if (!user) return
-    
-    setConnecting(true)
+    if (!session) return
     
     try {
       // Initiate the TikTok OAuth flow
@@ -201,7 +125,6 @@ export default function ConnectedAccounts() {
       // It will be reset when the user returns to the page
     } catch (error) {
       console.error('Error connecting to TikTok:', error)
-      setConnecting(false)
     }
   }
 
@@ -214,47 +137,7 @@ export default function ConnectedAccounts() {
     }
   }
 
-  // Get error message based on error code
-  const getErrorMessage = (errorCode: string) => {
-    switch (errorCode) {
-      case 'oauth_error':
-        return 'There was an error connecting to TikTok. Please try again.'
-      case 'missing_params':
-        return 'Missing required parameters from TikTok. Please try again.'
-      case 'server_error':
-        return 'There was a server error. Please try again later.'
-      case 'state_mismatch':
-        return 'Security validation failed. Please try again.'
-      case 'token_error':
-        return 'Failed to get access token from TikTok. Please try again.'
-      case 'profile_error':
-        return 'Failed to get your TikTok profile. Please try again.'
-      case 'missing_code_verifier':
-        return 'Authentication data was lost. Please try connecting again and make sure cookies are enabled.'
-      case 'code_challenge_method_not_supported':
-        return 'TikTok authentication method not supported. Please contact support.'
-      case 'invalid_request':
-        return 'Invalid request to TikTok. Please try again.'
-      case 'unauthorized_client':
-        return 'Unauthorized client. Please contact support.'
-      case 'access_denied':
-        return 'Access denied by TikTok. You may have declined the authorization.'
-      case 'unsupported_response_type':
-        return 'Unsupported response type. Please contact support.'
-      case 'invalid_scope':
-        return 'Invalid scope requested. Please contact support.'
-      case 'server_error':
-        return 'TikTok server error. Please try again later.'
-      case 'temporarily_unavailable':
-        return 'TikTok service is temporarily unavailable. Please try again later.'
-      case 'client_key':
-        return 'Invalid TikTok client key. Please check your TikTok developer settings and ensure your app is properly configured.'
-      default:
-        return 'An unknown error occurred. Please try again.'
-    }
-  }
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -268,7 +151,7 @@ export default function ConnectedAccounts() {
         <h1 className="text-2xl font-semibold text-foreground">Connected Accounts</h1>
         {isTikTokEnabled() ? (
           <Button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => connectTikTok()}
             className="btn-gradient"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -289,12 +172,12 @@ export default function ConnectedAccounts() {
       </div>
 
       {/* Success and Error Alerts */}
-      {success && (
+      {successMessage && (
         <Alert className="mb-6 bg-green-50 border-green-200">
           <CheckCircle className="h-4 w-4 text-green-600" />
           <AlertTitle className="text-green-800">Success</AlertTitle>
           <AlertDescription className="text-green-700">
-            Your TikTok account has been successfully connected.
+            {successMessage}
           </AlertDescription>
         </Alert>
       )}
@@ -304,7 +187,7 @@ export default function ConnectedAccounts() {
           <XCircle className="h-4 w-4 text-red-600" />
           <AlertTitle className="text-red-800">Error</AlertTitle>
           <AlertDescription className="text-red-700">
-            {getErrorMessage(error)}
+            {error}
           </AlertDescription>
         </Alert>
       )}
@@ -317,11 +200,10 @@ export default function ConnectedAccounts() {
                 <div className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="relative h-12 w-12 rounded-full overflow-hidden">
-                      <Image 
+                      <img 
                         src={account.profile_picture || 'https://placehold.co/100x100'} 
-                        alt={account.username}
-                        fill
-                        className="object-cover"
+                        alt={account.display_name || account.username}
+                        className="object-cover h-12 w-12"
                       />
                     </div>
                     <div>
@@ -333,11 +215,6 @@ export default function ConnectedAccounts() {
                   </div>
                   
                   <div className="space-y-2">
-                    {account.metadata?.follower_count && (
-                      <p className="text-sm">
-                        <span className="text-muted-foreground">Followers:</span> {account.metadata.follower_count.toLocaleString()}
-                      </p>
-                    )}
                     <p className="text-sm">
                       <span className="text-muted-foreground">Connected on:</span> {new Date(account.created_at).toLocaleDateString()}
                     </p>
@@ -360,23 +237,16 @@ export default function ConnectedAccounts() {
         </div>
       ) : (
         <div className="text-center py-12 border rounded-lg bg-muted/10">
-          <Plug className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <img src="/plug.svg" alt="Plug" className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <p className="text-muted-foreground mb-4">No accounts connected yet</p>
           <p className="text-sm text-muted-foreground mb-6">Connect your TikTok account to enhance your content creation workflow.</p>
           {isTikTokEnabled() ? (
-            <Button onClick={() => setIsModalOpen(true)}>Connect Account</Button>
+            <Button onClick={() => connectTikTok()}>Connect Account</Button>
           ) : (
             <Button disabled className="opacity-70 cursor-not-allowed">TikTok Integration Coming Soon</Button>
           )}
         </div>
       )}
-
-      <AddAccountModal
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        onConnectTikTok={connectTikTok}
-        connecting={connecting}
-      />
     </div>
   )
 } 
