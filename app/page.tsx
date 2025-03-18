@@ -7,7 +7,7 @@ import Features from '@/components/Features'
 import Pricing from '@/components/Pricing'
 import Alternatives from '@/components/Alternatives'
 import FAQ from '@/components/FAQ'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowRight, Play, X } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import Image from 'next/image'
@@ -17,11 +17,48 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 export default function LandingPage({
   searchParams,
 }: {
-  searchParams: { error?: string }
+  searchParams: { 
+    error?: string,
+    redirect?: string,
+    tiktok_success?: string,
+    tiktok_data?: string
+  }
 }) {
   const [isLoading, setIsLoading] = useState(false)
   const [isDemoOpen, setIsDemoOpen] = useState(false)
   const supabase = createClientComponentClient()
+
+  // Handle TikTok OAuth redirect data
+  useEffect(() => {
+    if (searchParams.tiktok_data) {
+      // Store the TikTok data in localStorage for retrieval after login
+      console.log('Storing TikTok data in localStorage');
+      localStorage.setItem('tiktok_pending_data', searchParams.tiktok_data);
+      
+      // Check if the user is already logged in
+      const checkSession = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          // User is logged in, redirect to dashboard
+          console.log('User is logged in, redirecting to dashboard');
+          window.location.href = '/dashboard/connected-accounts';
+        } else {
+          // Show login prompt
+          console.log('User needs to log in first');
+          // We'll rely on the sign-in button being visible
+        }
+      };
+      
+      checkSession();
+      
+      // Clean up URL to prevent repeated processing
+      const url = new URL(window.location.href);
+      url.searchParams.delete('tiktok_data');
+      url.searchParams.delete('tiktok_success');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [searchParams.tiktok_data, supabase.auth]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -174,4 +211,3 @@ export default function LandingPage({
     </div>
   )
 }
-

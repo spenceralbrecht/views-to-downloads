@@ -11,17 +11,19 @@ const TIKTOK_API_BASE_URL = 'https://open.tiktokapis.com/v2'
 export interface TikTokUser {
   open_id: string
   union_id: string
+  display_name: string
   avatar_url: string
   avatar_url_100: string
-  avatar_url_200: string
-  display_name: string
-  bio_description: string
-  profile_deep_link: string
-  is_verified: boolean
-  follower_count: number
-  following_count: number
-  likes_count: number
-  video_count: number
+  // Optional fields that might not be available in basic scope
+  avatar_url_200?: string
+  bio_description?: string
+  profile_deep_link?: string
+  is_verified?: boolean
+  // Legacy fields kept as optional for backward compatibility
+  follower_count?: number
+  following_count?: number
+  likes_count?: number
+  video_count?: number
 }
 
 export interface TikTokTokenResponse {
@@ -56,81 +58,20 @@ export interface ConnectedAccount {
   metadata?: any
 }
 
-// Helper functions for PKCE
-function generateCodeVerifier(): string {
-  const array = new Uint8Array(32);
-  if (typeof window !== 'undefined') {
-    window.crypto.getRandomValues(array);
-  }
-  return base64UrlEncode(array);
-}
-
-function base64UrlEncode(buffer: Uint8Array): string {
-  return btoa(String.fromCharCode.apply(null, [...new Uint8Array(buffer)]))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-}
-
-async function generateCodeChallenge(verifier: string): Promise<string> {
-  if (typeof window === 'undefined') return '';
-  
-  const encoder = new TextEncoder();
-  const data = encoder.encode(verifier);
-  const digest = await window.crypto.subtle.digest('SHA-256', data);
-  
-  return base64UrlEncode(new Uint8Array(digest));
-}
-
 // Service class
 export class TikTokService {
   private supabase = createClientComponentClient()
 
   /**
-   * Get the TikTok OAuth URL with PKCE
-   */
-  async getAuthUrl(): Promise<string> {
-    const scopes = ['user.info.basic', 'video.list']
-    const state = Math.random().toString(36).substring(2, 15)
-    
-    // Generate code verifier and challenge for PKCE
-    const codeVerifier = generateCodeVerifier();
-    const codeChallenge = await generateCodeChallenge(codeVerifier);
-    
-    // Store state and code verifier in localStorage to verify when the user returns
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('tiktok_auth_state', state);
-      localStorage.setItem('tiktok_code_verifier', codeVerifier);
-    }
-    
-    return `https://www.tiktok.com/v2/auth/authorize?` +
-      `client_key=${TIKTOK_CLIENT_KEY}&` +
-      `response_type=code&` +
-      `scope=${scopes.join(',')}&` +
-      `redirect_uri=${encodeURIComponent(TIKTOK_REDIRECT_URI)}&` +
-      `state=${state}&` +
-      `code_challenge=${codeChallenge}&` +
-      `code_challenge_method=S256`;
-  }
-
-  /**
-   * Initiate the TikTok OAuth flow
+   * Initiate the TikTok OAuth flow using the server-side approach
+   * This redirects to our own OAuth endpoint, which handles the PKCE flow securely
    */
   async initiateAuth(): Promise<void> {
     if (typeof window !== 'undefined') {
-      const authUrl = await this.getAuthUrl();
-      window.location.href = authUrl;
+      // Instead of building the auth URL on the client and managing PKCE ourselves,
+      // we redirect to our server-side endpoint that handles all of this securely
+      window.location.href = '/api/auth/tiktok/oauth';
     }
-  }
-
-  /**
-   * Get the code verifier from localStorage
-   */
-  getCodeVerifier(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('tiktok_code_verifier');
-    }
-    return null;
   }
 
   /**
@@ -142,33 +83,49 @@ export class TikTokService {
     accessToken: string, 
     refreshToken: string, 
     expiresIn: number
-  ): Promise<void> {
+  ): Promise<{ success: boolean, error?: any, data?: any }> {
     const expiresAt = new Date()
     expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn)
     
-    // Store additional metadata
+    // Store only essential metadata
     const metadata = {
-      bio_description: tikTokUser.bio_description,
-      profile_deep_link: tikTokUser.profile_deep_link,
-      is_verified: tikTokUser.is_verified,
-      follower_count: tikTokUser.follower_count,
-      following_count: tikTokUser.following_count,
-      likes_count: tikTokUser.likes_count,
-      video_count: tikTokUser.video_count
+      bio_description: tikTokUser.bio_description || '',
+      profile_deep_link: tikTokUser.profile_deep_link || '',
+      is_verified: tikTokUser.is_verified || false
     }
     
-    await this.supabase.from('connected_accounts').insert({
-      user_id: userId,
+    console.log('Inserting TikTok account with data:', {
       provider: 'tiktok',
       provider_account_id: tikTokUser.open_id,
       username: tikTokUser.display_name,
-      display_name: tikTokUser.display_name,
-      profile_picture: tikTokUser.avatar_url_200 || tikTokUser.avatar_url,
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      token_expires_at: expiresAt.toISOString(),
-      metadata
-    })
+      // Omitting sensitive data like tokens
+    });
+
+    try {
+      const { data, error } = await this.supabase.from('connected_accounts').insert({
+        user_id: userId,
+        provider: 'tiktok',
+        provider_account_id: tikTokUser.open_id,
+        username: tikTokUser.display_name,
+        display_name: tikTokUser.display_name,
+        profile_picture: tikTokUser.avatar_url_200 || tikTokUser.avatar_url,
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        token_expires_at: expiresAt.toISOString(),
+        metadata
+      }).select();
+      
+      if (error) {
+        console.error('Error saving TikTok account:', error);
+        return { success: false, error };
+      }
+      
+      console.log('TikTok account saved successfully:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Exception saving TikTok account:', error);
+      return { success: false, error };
+    }
   }
 
   /**
@@ -232,5 +189,44 @@ export class TikTokService {
   }
 }
 
+/**
+ * Exchange the authorization code for an access token
+ * This is extracted as a separate function so it can be used both from the callback route and the client component
+ */
+export async function exchangeCodeForToken(code: string, codeVerifier: string): Promise<TikTokTokenResponse | null> {
+  try {
+    console.log('Exchanging code for token with verifier:', codeVerifier.substring(0, 10) + '...');
+    
+    const tokenEndpoint = 'https://open.tiktokapis.com/v2/oauth/token/';
+    const response = await fetch(tokenEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_key: TIKTOK_CLIENT_KEY,
+        client_secret: TIKTOK_CLIENT_SECRET || '',
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: TIKTOK_REDIRECT_URI,
+        code_verifier: codeVerifier,
+      }).toString(),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Token exchange error:', response.status, errorData);
+      return null;
+    }
+
+    const data: TikTokTokenResponse = await response.json();
+    console.log('Token exchange successful, expires in', data.expires_in, 'seconds');
+    return data;
+  } catch (error) {
+    console.error('Error exchanging code for token:', error);
+    return null;
+  }
+}
+
 // Export a singleton instance
-export const tiktokService = new TikTokService() 
+export const tiktokService = new TikTokService()
