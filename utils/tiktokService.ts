@@ -89,9 +89,10 @@ export class TikTokService {
     
     // Store only essential metadata
     const metadata = {
-      bio_description: tikTokUser.bio_description || '',
-      profile_deep_link: tikTokUser.profile_deep_link || '',
-      is_verified: tikTokUser.is_verified || false
+      // Only include fields that are defined in the database schema
+      // and are essential for the application
+      open_id: tikTokUser.open_id,
+      union_id: tikTokUser.union_id
     }
     
     console.log('Inserting TikTok account with data:', {
@@ -108,7 +109,7 @@ export class TikTokService {
         provider_account_id: tikTokUser.open_id,
         username: tikTokUser.display_name,
         display_name: tikTokUser.display_name,
-        profile_picture: tikTokUser.avatar_url_200 || tikTokUser.avatar_url,
+        profile_picture: tikTokUser.avatar_url_100 || tikTokUser.avatar_url,
         access_token: accessToken,
         refresh_token: refreshToken,
         token_expires_at: expiresAt.toISOString(),

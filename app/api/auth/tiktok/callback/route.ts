@@ -170,13 +170,26 @@ export async function GET(request: NextRequest) {
         expires_in: tokenResponse.expires_in
       };
       
-      // Encode the account data as a base64 string to pass through the URL
-      const encodedData = Buffer.from(JSON.stringify(accountData)).toString('base64');
+      // Encode the account data as a URL-safe base64 string to pass through the URL
+      // Replace standard base64 characters with URL-safe ones and remove padding
+      const encodedData = Buffer.from(JSON.stringify(accountData))
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
       
-      // Since the middleware blocks unauthenticated access to dashboard routes,
-      // redirect to a non-dashboard page that can handle the TikTok data and then
-      // redirect to the dashboard after login
-      return NextResponse.redirect(buildRedirectUrl(`/?tiktok_success=true&tiktok_data=${encodedData}`))
+      // Check if the user is authenticated by looking for the auth token cookie
+      const authCookie = request.cookies.get('sb-zxwbqdkqgxhtdnvmukll-auth-token');
+      
+      if (authCookie) {
+        // User is authenticated, redirect directly to the connected accounts page
+        console.log('User is authenticated, redirecting to connected accounts page');
+        return NextResponse.redirect(buildRedirectUrl(`/dashboard/connected-accounts?tiktok_success=true&tiktok_data=${encodedData}`));
+      } else {
+        // User is not authenticated, redirect to the home page which will handle login
+        console.log('User is not authenticated, redirecting to home page');
+        return NextResponse.redirect(buildRedirectUrl(`/?tiktok_success=true&tiktok_data=${encodedData}`));
+      }
     } catch (error) {
       console.error('Error processing TikTok callback:', error)
       return NextResponse.redirect(buildRedirectUrl('/dashboard/connected-accounts?error=server_error'))
