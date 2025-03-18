@@ -27,6 +27,7 @@ export default function ConnectedAccounts() {
   // Get success and error messages from URL
   const success = searchParams.get('success')
   const error = searchParams.get('error')
+  const tiktokData = searchParams.get('tiktok_data')
 
   useEffect(() => {
     const getUser = async () => {
@@ -39,6 +40,67 @@ export default function ConnectedAccounts() {
         try {
           const accounts = await accountService.getAllConnectedAccounts(session.user.id)
           setConnectedAccounts(accounts)
+          
+          // Check for pending TikTok data in localStorage
+          const pendingTikTokData = localStorage.getItem('tiktok_pending_data')
+          if (pendingTikTokData) {
+            console.log('Found pending TikTok data in localStorage')
+            
+            try {
+              // Parse the data
+              const decodedData = JSON.parse(Buffer.from(pendingTikTokData, 'base64').toString('utf-8'))
+              console.log('Parsed TikTok data:', decodedData)
+              
+              // Save the account
+              const result = await tiktokService.saveAccount(
+                session.user.id,
+                {
+                  open_id: decodedData.open_id,
+                  union_id: decodedData.union_id || decodedData.open_id,
+                  display_name: decodedData.display_name,
+                  avatar_url: decodedData.profile_picture,
+                  avatar_url_100: decodedData.profile_picture,
+                  avatar_url_200: decodedData.profile_picture,
+                  bio_description: '',
+                  profile_deep_link: '',
+                  is_verified: false
+                },
+                decodedData.access_token,
+                decodedData.refresh_token,
+                decodedData.expires_in
+              )
+              
+              console.log('Save account result:', result)
+              
+              if (result.success) {
+                // Refresh the accounts list
+                const updatedAccounts = await accountService.getAllConnectedAccounts(session.user.id)
+                setConnectedAccounts(updatedAccounts)
+                
+                // Show success message
+                const url = new URL(window.location.href)
+                url.searchParams.set('success', 'true')
+                window.history.replaceState({}, '', url.toString())
+              } else {
+                // Show error message
+                const url = new URL(window.location.href)
+                url.searchParams.set('error', 'database_error')
+                window.history.replaceState({}, '', url.toString())
+              }
+              
+              // Clear the pending data
+              localStorage.removeItem('tiktok_pending_data')
+            } catch (error) {
+              console.error('Error processing pending TikTok data:', error)
+              // Show error message
+              const url = new URL(window.location.href)
+              url.searchParams.set('error', 'processing_error')
+              window.history.replaceState({}, '', url.toString())
+              
+              // Clear the pending data
+              localStorage.removeItem('tiktok_pending_data')
+            }
+          }
         } catch (error) {
           console.error('Error fetching connected accounts:', error)
         }
@@ -47,6 +109,74 @@ export default function ConnectedAccounts() {
     
     getUser()
   }, [supabase])
+
+  // Handle TikTok account data if present in URL
+  useEffect(() => {
+    const handleTikTokData = async () => {
+      // Check if we have the TikTok data and a user
+      if (!tiktokData || !user) return;
+      
+      try {
+        // Decode the data
+        const decodedData = JSON.parse(Buffer.from(tiktokData, 'base64').toString('utf-8'));
+        console.log('TikTok account data received:', decodedData);
+        
+        console.log('Current user ID:', user.id);
+        
+        // Save the account to the database
+        const expiresAt = new Date();
+        expiresAt.setSeconds(expiresAt.getSeconds() + decodedData.expires_in);
+        
+        // Create metadata object for additional TikTok information
+        const metadata = {
+          // Include any additional fields from TikTok that might be useful
+          // These fields must match what's defined in the database schema
+        };
+        
+        console.log('Attempting to save TikTok account...');
+        const result = await tiktokService.saveAccount(
+          user.id,
+          {
+            open_id: decodedData.open_id,
+            union_id: decodedData.union_id || decodedData.open_id,
+            display_name: decodedData.display_name,
+            avatar_url: decodedData.profile_picture,
+            avatar_url_100: decodedData.profile_picture,
+            avatar_url_200: decodedData.profile_picture,
+            bio_description: '',
+            profile_deep_link: '',
+            is_verified: false
+          },
+          decodedData.access_token,
+          decodedData.refresh_token,
+          decodedData.expires_in
+        );
+        console.log('Save account result:', result);
+        
+        // Refresh the connected accounts list
+        console.log('Fetching updated accounts list...');
+        const accounts = await accountService.getAllConnectedAccounts(user.id);
+        console.log('Updated accounts:', accounts);
+        setConnectedAccounts(accounts);
+        
+        // Remove the tiktok_data parameter from the URL to prevent reconnecting on refresh
+        const url = new URL(window.location.href);
+        url.searchParams.delete('tiktok_data');
+        url.searchParams.set('success', 'true');
+        window.history.replaceState({}, '', url.toString());
+      } catch (error) {
+        console.error('Error handling TikTok account data:', error);
+        
+        // Remove the tiktok_data parameter from the URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('tiktok_data');
+        url.searchParams.set('error', 'server_error');
+        window.history.replaceState({}, '', url.toString());
+      }
+    };
+    
+    handleTikTokData();
+  }, [tiktokData, user, supabase])
 
   const connectTikTok = async () => {
     if (!user) return

@@ -15,9 +15,10 @@ export async function middleware(req: NextRequest) {
     console.log('Middleware - Session exists:', !!session)
     if (error) console.error('Session error in middleware:', error)
 
-    // If this is the callback route, let it process normally
-    if (req.nextUrl.pathname === '/auth/callback') {
-      console.log('Middleware - Processing callback route')
+    // If this is the callback route or TikTok OAuth routes, let it process normally
+    if (req.nextUrl.pathname === '/auth/callback' || 
+        req.nextUrl.pathname.startsWith('/api/auth/tiktok')) {
+      console.log('Middleware - Bypassing auth check for:', req.nextUrl.pathname)
       return res
     }
 
@@ -57,16 +58,6 @@ export async function middleware(req: NextRequest) {
       })
       
       return dashboardRes
-    }
-
-    // Handle TikTok OAuth callback
-    if (req.nextUrl.pathname === '/api/auth/tiktok/callback') {
-      // The code verifier is stored in localStorage on the client side
-      // We need to pass it to the server via a cookie
-      // This is handled by client-side JavaScript in a script we'll add to the layout
-      
-      // Continue with the request
-      return res
     }
 
     return res
