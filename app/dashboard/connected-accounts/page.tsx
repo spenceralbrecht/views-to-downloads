@@ -47,8 +47,21 @@ export default function ConnectedAccounts() {
             console.log('Found pending TikTok data in localStorage')
             
             try {
-              // Parse the data
-              const decodedData = JSON.parse(Buffer.from(pendingTikTokData, 'base64').toString('utf-8'))
+              // Parse the data - add extra sanitization to handle control characters
+              let sanitizedData = pendingTikTokData;
+              
+              // Try to decode the base64 string
+              try {
+                const decoded = Buffer.from(pendingTikTokData, 'base64').toString('utf-8');
+                // Replace any control characters that might cause JSON parsing to fail
+                sanitizedData = decoded.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+              } catch (decodeError) {
+                console.error('Error decoding base64 data:', decodeError);
+                // If we can't decode, try to sanitize the raw data
+                sanitizedData = pendingTikTokData.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+              }
+              
+              const decodedData = JSON.parse(sanitizedData);
               console.log('Parsed TikTok data:', decodedData)
               
               // Save the account
@@ -59,11 +72,8 @@ export default function ConnectedAccounts() {
                   union_id: decodedData.union_id || decodedData.open_id,
                   display_name: decodedData.display_name,
                   avatar_url: decodedData.profile_picture,
-                  avatar_url_100: decodedData.profile_picture,
-                  avatar_url_200: decodedData.profile_picture,
-                  bio_description: '',
-                  profile_deep_link: '',
-                  is_verified: false
+                  avatar_url_100: decodedData.profile_picture
+                  // Removed optional fields that are no longer required
                 },
                 decodedData.access_token,
                 decodedData.refresh_token,
