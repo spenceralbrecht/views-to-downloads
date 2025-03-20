@@ -77,7 +77,6 @@ function PricingModal({ isOpen, onClose }: PricingModalProps) {
   const user = useUser();
   const supabase = createClientComponentClient();
   
-  console.log('PricingModal rendered, user from useUser hook:', user);
 
   useEffect(() => {
     console.log('PricingModal useEffect, user from useUser hook:', user);

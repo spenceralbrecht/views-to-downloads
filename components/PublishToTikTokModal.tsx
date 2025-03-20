@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,49 +14,73 @@ import { Loader2 } from 'lucide-react'
 import { tiktokService } from '@/utils/tiktokService'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { isTikTokEnabled } from '@/utils/featureFlags'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { toast } from "@/components/ui/use-toast"
+import { ConnectedAccount } from '@/utils/tiktokService'
 
 interface PublishToTikTokModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   videoUrl: string
   videoId: string
+  published?: string
+  publishedUrl?: string
+  onPublishSuccess?: () => void
 }
 
 export function PublishToTikTokModal({
   open,
   onOpenChange,
   videoUrl,
-  videoId
+  videoId,
+  published,
+  publishedUrl,
+  onPublishSuccess
 }: PublishToTikTokModalProps) {
   const [isPublishing, setIsPublishing] = useState(false)
-  const [hasConnectedAccount, setHasConnectedAccount] = useState<boolean | null>(null)
-  const [isCheckingAccount, setIsCheckingAccount] = useState(true)
+  const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("")
+  const [publishSuccess, setPublishSuccess] = useState(false)
   const supabase = createClientComponentClient()
   
-  // Check if user has connected TikTok account
-  useState(() => {
-    const checkConnectedAccount = async () => {
-      setIsCheckingAccount(true)
+  // Load connected accounts when modal opens
+  useEffect(() => {
+    const loadConnectedAccounts = async () => {
+      setIsLoading(true)
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
           const accounts = await tiktokService.getConnectedAccounts(session.user.id)
-          setHasConnectedAccount(accounts.length > 0)
-        } else {
-          setHasConnectedAccount(false)
+          setConnectedAccounts(accounts)
+          // Default select the first account if available
+          if (accounts.length > 0) {
+            setSelectedAccountId(accounts[0].id)
+          }
         }
       } catch (error) {
-        console.error('Error checking connected accounts:', error)
-        setHasConnectedAccount(false)
+        console.error('Error loading connected accounts:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load connected accounts",
+          variant: "destructive"
+        })
       } finally {
-        setIsCheckingAccount(false)
+        setIsLoading(false)
       }
     }
     
     if (open) {
-      checkConnectedAccount()
+      loadConnectedAccounts()
+      setPublishSuccess(false)
     }
-  })
+  }, [open, supabase])
   
   const handleConnectTikTok = async () => {
     try {
@@ -64,18 +88,106 @@ export function PublishToTikTokModal({
       // The page will redirect to TikTok
     } catch (error) {
       console.error('Error connecting to TikTok:', error)
+      toast({
+        title: "Error",
+        description: "Failed to connect to TikTok",
+        variant: "destructive"
+      })
     }
   }
   
+  const publishToTikTok = async (videoUrl: string, accountId: string): Promise<{publishedUrl: string, success: boolean}> => {
+    // Call our TikTok publishing API endpoint
+    const response = await fetch('/api/tiktok/publish', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        accountId,
+        videoId,
+        videoUrl
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to publish video to TikTok');
+    }
+    
+    const data = await response.json();
+    return {
+      publishedUrl: data.publishedUrl,
+      success: data.success
+    };
+  }
+  
   const handlePublish = async () => {
+    if (!selectedAccountId) {
+      toast({
+        title: "Error",
+        description: "Please select a TikTok account",
+        variant: "destructive"
+      })
+      return
+    }
+    
     setIsPublishing(true)
     try {
-      // In a real implementation, this would call an API to publish the video to TikTok
-      // For now, we'll just simulate a delay
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      onOpenChange(false)
-    } catch (error) {
+      // Publish to TikTok API - this also updates the database record if successful
+      const result = await publishToTikTok(videoUrl, selectedAccountId)
+      
+      if (result.success) {
+        setPublishSuccess(true)
+        toast({
+          title: "Success",
+          description: "Video published to TikTok successfully!",
+        })
+        
+        // Call the onPublishSuccess callback if provided
+        if (onPublishSuccess) {
+          onPublishSuccess();
+        }
+        
+        // Close the modal after short delay
+        setTimeout(() => onOpenChange(false), 1500)
+      } else {
+        // The API call worked but TikTok publishing failed
+        toast({
+          title: "Warning",
+          description: "Failed to publish to TikTok due to API error. Please check your TikTok credentials and try again.",
+          variant: "destructive"
+        })
+      }
+    } catch (error: any) {
       console.error('Error publishing to TikTok:', error)
+
+      // Check if this is a token-related error from the API response
+      const isTokenError = error.isTokenError || 
+        (error.message && (
+          error.message.toLowerCase().includes('token') || 
+          error.message.toLowerCase().includes('access') || 
+          error.message.toLowerCase().includes('authorization')
+        ));
+
+      if (isTokenError) {
+        toast({
+          title: "Authentication Error",
+          description: "Your TikTok connection has expired. Please reconnect your TikTok account.",
+          variant: "destructive",
+          action: (
+            <Button variant="outline" onClick={handleConnectTikTok}>
+              Reconnect
+            </Button>
+          ),
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to publish video to TikTok",
+          variant: "destructive"
+        })
+      }
     } finally {
       setIsPublishing(false)
     }
@@ -101,16 +213,56 @@ export function PublishToTikTokModal({
                 Coming Soon
               </Button>
             </div>
-          ) : isCheckingAccount ? (
+          ) : published === 'tiktok' && publishedUrl ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-green-50 text-green-800 rounded-md border border-green-200">
+                <p className="text-sm font-medium mb-2">This video has already been published to TikTok!</p>
+                <a 
+                  href={publishedUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:text-blue-800 underline flex items-center"
+                >
+                  <span>View on TikTok</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                </a>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                You can republish this video to a different TikTok account if needed.
+              </p>
+            </div>
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
-          ) : hasConnectedAccount ? (
+          ) : connectedAccounts.length > 0 ? (
             <div className="space-y-4">
-              <p className="text-sm">
-                Your video will be published to your connected TikTok account. You can add a caption and hashtags before publishing.
+              <p className="text-sm mb-4">
+                Select the TikTok account you want to publish to:
               </p>
-              {/* In a real implementation, we would add fields for caption, hashtags, etc. */}
+              
+              <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {connectedAccounts.map(account => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.display_name || account.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {publishSuccess && (
+                <div className="mt-4 p-3 bg-green-50 text-green-800 rounded-md border border-green-200">
+                  Video successfully published to TikTok!
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4 text-center py-4">
@@ -131,10 +283,10 @@ export function PublishToTikTokModal({
           >
             Cancel
           </Button>
-          {isTikTokEnabled() ? (
+          {isTikTokEnabled() && !(published === 'tiktok' && publishedUrl) ? (
             <Button
               onClick={handlePublish}
-              disabled={isPublishing || !hasConnectedAccount}
+              disabled={isPublishing || connectedAccounts.length === 0 || !selectedAccountId}
             >
               {isPublishing ? (
                 <>
@@ -144,6 +296,12 @@ export function PublishToTikTokModal({
               ) : (
                 'Publish to TikTok'
               )}
+            </Button>
+          ) : isTikTokEnabled() && published === 'tiktok' && publishedUrl ? (
+            <Button
+              onClick={() => onOpenChange(false)}
+            >
+              Close
             </Button>
           ) : (
             <Button

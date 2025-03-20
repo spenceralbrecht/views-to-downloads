@@ -107,7 +107,6 @@ export function getStripeConfig(email?: string | null): StripeConfig {
 
   // If email is provided, append it to all links
   if (email) {
-    console.log('Email provided, appending to links:', email);
     const result = {
       ...config,
       checkoutLinks: {

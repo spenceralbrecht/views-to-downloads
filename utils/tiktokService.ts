@@ -229,5 +229,41 @@ export async function exchangeCodeForToken(code: string, codeVerifier: string): 
   }
 }
 
+/**
+ * Refresh the TikTok access token using the refresh token
+ */
+export async function refreshTikTokToken(refreshToken: string): Promise<TikTokTokenResponse | null> {
+  try {
+    console.log('Refreshing access token...');
+    
+    const tokenEndpoint = 'https://open.tiktokapis.com/v2/oauth/token/';
+    const response = await fetch(tokenEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_key: TIKTOK_CLIENT_KEY,
+        client_secret: TIKTOK_CLIENT_SECRET || '',
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }).toString(),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Token refresh error:', response.status, errorData);
+      return null;
+    }
+
+    const data: TikTokTokenResponse = await response.json();
+    console.log('Token refresh successful, expires in', data.expires_in, 'seconds');
+    return data;
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    return null;
+  }
+}
+
 // Export a singleton instance
 export const tiktokService = new TikTokService()
