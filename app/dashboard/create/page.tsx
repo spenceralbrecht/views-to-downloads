@@ -1894,41 +1894,63 @@ export default function CreateAd() {
               <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
                 {/* Video Grid */}
                 <div className="w-full lg:w-3/4">
-                  <FilterTags 
-                    tags={uniqueTags} 
-                    selectedTags={selectedTags} 
-                    onChange={handleTagsChange} 
-                  />
-                  <VideoGrid 
-                    influencerVideos={paginatedInfluencerVideos}
-                    selectedVideo={selectedVideo}
-                    onVideoSelect={handleUGCVideoSelect}
-                  />
-                  <div className="flex justify-between mt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handlePrev}
-                      disabled={currentPage === 1}
-                      className="hover:bg-primary/5"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="flex-1 text-center">
-                      <span className="text-sm text-muted-foreground">
-                        Page {currentPage} of {totalPages}
-                      </span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleNext}
-                      disabled={currentPage === totalPages}
-                      className="hover:bg-primary/5"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
+                  <div className="mb-4">
+                    <FilterTags 
+                      tags={uniqueTags} 
+                      selectedTags={selectedTags} 
+                      onChange={handleTagsChange} 
+                    />
                   </div>
+                  {loadingInfluencerVideos ? (
+                    <div className="flex items-center justify-center h-40">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary/70" />
+                    </div>
+                  ) : filteredInfluencerVideos.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground">
+                      <p>No videos match your selected filters</p>
+                      {selectedTags.length > 0 && (
+                        <button 
+                          onClick={() => setSelectedTags([])} 
+                          className="text-xs text-primary mt-2 hover:underline"
+                        >
+                          Clear all filters
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <VideoGrid 
+                      influencerVideos={paginatedInfluencerVideos}
+                      selectedVideo={selectedVideo}
+                      onVideoSelect={handleUGCVideoSelect}
+                    />
+                  )}
+                  {!loadingInfluencerVideos && filteredInfluencerVideos.length > 0 && (
+                    <div className="flex justify-between mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePrev}
+                        disabled={currentPage === 1}
+                        className="hover:bg-primary/5"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <div className="flex-1 text-center">
+                        <span className="text-sm text-muted-foreground">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleNext}
+                        disabled={currentPage === totalPages}
+                        className="hover:bg-primary/5"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Video Preview */}
