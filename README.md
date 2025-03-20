@@ -12,6 +12,7 @@ This is a web application for managing and creating UGC videos. The project is b
 - Manage connected apps with add/delete functionality
 - Generate viral hooks for your videos
 - User-friendly popups that guide users when prerequisites are missing (e.g., no apps or hooks)
+- Influencer videos library with tagging system for easy categorization and filtering
 
 ## Pages
 
@@ -27,6 +28,38 @@ The hooks page allows users to:
 - Generate viral hooks for their connected apps
 - View and manage existing hooks
 - Add new apps if none exist
+
+### Influencer Videos
+The influencer videos page enables users to:
+- Browse a library of influencer videos with thumbnails
+- Filter videos by multiple tags (e.g., "woman", "shocked")
+- Add new videos with custom tags
+- Manage tags for existing videos
+
+## Influencer Videos System
+
+The application includes a tagging system for influencer videos that allows for better organization and filtering. The system enables users to:
+
+1. **Tag Influencer Videos**: Videos can be tagged with multiple categories for better organization and searchability.
+2. **Filter by Tags**: Users can filter influencer videos by tags to quickly find relevant content.
+3. **Manage Influencer Videos**: A dedicated page enables uploading, tagging, and managing influencer videos.
+4. **Create Content with Influencer Videos**: The create content page integrates with the influencer videos system, displaying influencer videos from the user's library with pagination support.
+
+### Database Schema
+
+The influencer videos system uses the following tables:
+
+- `influencer_vids`: Stores metadata about each influencer video, including title, description, URLs, and ownership info
+- `tags`: Contains available tags for categorizing videos
+- `influencer_vid_tags`: Junction table managing the many-to-many relationship between videos and tags
+
+### Integration
+
+The influencer videos system is integrated throughout the application:
+
+- **Dashboard Sidebar**: Direct access to the Influencer Videos management page
+- **Create Content Page**: Video selection component displays influencer videos with pagination
+- **Content Generation**: Selected influencer videos are used when generating new content
 
 ## Create Video API Integration
 
