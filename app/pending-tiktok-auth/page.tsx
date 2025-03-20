@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { exchangeCodeForToken } from '@/utils/tiktokService';
 
-export default function PendingTikTokAuth() {
+// Mark this page as dynamic to prevent static generation errors
+export const dynamic = 'force-dynamic';
+
+function TikTokAuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'error' | 'success'>('loading');
@@ -154,5 +157,23 @@ export default function PendingTikTokAuth() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PendingTikTokAuth() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full p-8 bg-white shadow-md rounded-lg">
+          <h1 className="text-2xl font-bold text-center mb-6">TikTok Authentication</h1>
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent motion-reduce:animate-[spin_1.5s_linear_infinite] mb-4" />
+            <p>Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <TikTokAuthContent />
+    </Suspense>
   );
 }
