@@ -27,6 +27,8 @@ interface VideoCardProps {
     status: string
     created_at: string
     url?: string
+    published?: string
+    published_url?: string
   }
   isPending: boolean
   onDelete: (videoId: string) => void
@@ -39,15 +41,38 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
   const [playError, setPlayError] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [showTikTokModal, setShowTikTokModal] = useState(false)
+  const [videoData, setVideoData] = useState(video)
   const supabase = createClientComponentClient()
 
+  // Function to refresh the video data after publishing
+  const refreshVideo = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('output_content')
+        .select('*')
+        .eq('id', video.id)
+        .single()
+        
+      if (error) {
+        console.error('Error refreshing video data:', error)
+        return
+      }
+      
+      if (data) {
+        setVideoData(data)
+      }
+    } catch (error) {
+      console.error('Error refreshing video data:', error)
+    }
+  }
+
   // Show loading skeleton for in_progress videos
-  if (video.status === 'in_progress' || isPending) {
+  if (videoData.status === 'in_progress' || isPending) {
     return <VideoCardSkeleton />
   }
 
   // Show failed state
-  if (video.status === 'failed') {
+  if (videoData.status === 'failed') {
     return (
       <Card className="relative bg-card shadow-sm hover:shadow-md transition-shadow duration-200 w-full">
         <div className="aspect-[9/16] flex items-center justify-center bg-muted">
@@ -59,12 +84,12 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
         <div className="p-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
-              {new Date(video.created_at).toLocaleDateString()}
+              {new Date(videoData.created_at).toLocaleDateString()}
             </span>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => onDelete(video.id)}
+              onClick={() => onDelete(videoData.id)}
               className="text-destructive hover:text-destructive/90"
             >
               <Trash2 className="h-4 w-4" />
@@ -75,12 +100,12 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
     )
   }
 
-  const videoUrl = video.url || ''
+  const videoUrl = videoData.url || ''
 
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
-      await onDelete(video.id)
+      await onDelete(videoData.id)
     } catch (error) {
       console.error('Error deleting video:', error)
     } finally {
@@ -96,7 +121,7 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `video-${video.id}.mp4`
+      a.download = `video-${videoData.id}.mp4`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -222,27 +247,27 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
       </div>
 
       <div className="p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            {new Date(video.created_at).toLocaleDateString()}
-          </span>
-          {/* TikTok publish button */}
-          {isTikTokEnabled() ? (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-muted-foreground hover:text-foreground p-1" 
-              onClick={() => setShowTikTokModal(true)}
-            >
-              <img 
-                src="https://pub-a027e435822042eb96a9208813b48997.r2.dev/tiktok-logo.png" 
-                alt="TikTok" 
-                className="h-5 w-5 object-contain"
-              />
-              <span className="sr-only">Publish to TikTok</span>
-            </Button>
-          ) : (
-            <div className="flex items-center gap-1">
+        <div className="flex flex-col space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              {new Date(videoData.created_at).toLocaleDateString()}
+            </span>
+            {/* TikTok publish button */}
+            {isTikTokEnabled() ? (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-muted-foreground hover:text-foreground p-1" 
+                onClick={() => setShowTikTokModal(true)}
+              >
+                <img 
+                  src="https://pub-a027e435822042eb96a9208813b48997.r2.dev/tiktok-logo.png" 
+                  alt="TikTok" 
+                  className="h-5 w-5 object-contain"
+                />
+                <span className="sr-only">Publish to TikTok</span>
+              </Button>
+            ) : (
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -256,7 +281,20 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
                 />
                 <span className="sr-only">TikTok Integration Coming Soon</span>
               </Button>
-            </div>
+            )}
+          </div>
+          
+          {/* Published status indicator - now below the date */}
+          {videoData.published === 'tiktok' && videoData.published_url && (
+            <a
+              href={videoData.published_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-green-600 hover:text-green-700 flex items-center"
+            >
+              <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+              Published to TikTok
+            </a>
           )}
         </div>
       </div>
@@ -266,7 +304,10 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
         open={showTikTokModal}
         onOpenChange={setShowTikTokModal}
         videoUrl={videoUrl}
-        videoId={video.id}
+        videoId={videoData.id}
+        published={videoData.published}
+        publishedUrl={videoData.published_url}
+        onPublishSuccess={refreshVideo}
       />
     </Card>
   )
