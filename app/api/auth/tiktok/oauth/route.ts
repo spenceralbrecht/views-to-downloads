@@ -1,6 +1,9 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 
+// Mark this route as dynamic to prevent static generation errors
+export const dynamic = 'force-dynamic'
+
 // TikTok API configuration
 const TIKTOK_CLIENT_KEY = process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY || 'your-tiktok-client-id'
 const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET as string
