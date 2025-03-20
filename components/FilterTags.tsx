@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Tag as TagType } from '../types/database';
 import { Tag } from './ui/Tag';
 import { getAllTags } from '../utils/influencerVideos';
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 
 interface FilterTagsProps {
   selectedTags: string[];
@@ -78,13 +80,17 @@ export default function FilterTags({ selectedTags, onChange, tags }: FilterTagsP
           <div className="text-sm text-muted-foreground">No tags available</div>
         ) : (
           availableTags.map(tag => (
-            <Tag
+            <Badge
               key={tag.id}
-              label={tag.name}
-              interactive={true}
-              selected={isTagSelected(tag.id)}
+              variant={isTagSelected(tag.id) ? "default" : "outline"}
+              className={`cursor-pointer ${isTagSelected(tag.id) ? '' : 'hover:bg-primary/10'}`}
               onClick={() => toggleTag(tag.id)}
-            />
+            >
+              {tag.name}
+              {isTagSelected(tag.id) && (
+                <X className="h-3 w-3 ml-1" />
+              )}
+            </Badge>
           ))
         )}
       </div>
