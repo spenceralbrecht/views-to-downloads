@@ -18,6 +18,10 @@ import { incrementContentUsage } from '@/utils/subscription'
 import { useToast } from "@/components/ui/use-toast"
 import { UpgradeModal } from '@/components/upgrade-modal'
 import Link from 'next/link'
+import type { OutputContent } from '@/types/video'
+import { getInfluencerVidsWithTags, findVideosByTags } from '@/utils/influencerVideos'
+import { InfluencerVidWithTags, Tag } from '@/types/database'
+import FilterTags from '@/components/FilterTags'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +40,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type { OutputContent } from '@/types/video'
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ViralFormatModal } from '@/components/ViralFormatModal'
@@ -76,33 +79,33 @@ const getOutputVideoUrl = (path: string) => {
 }
 
 const VideoGrid = memo(({ 
-  videosToShow, 
+  influencerVideos, 
   selectedVideo, 
   onVideoSelect 
 }: { 
-  videosToShow: number[], 
-  selectedVideo: number | null,
-  onVideoSelect: (num: number) => void
+  influencerVideos: InfluencerVidWithTags[], 
+  selectedVideo: string | null,
+  onVideoSelect: (id: string, videoUrl: string) => void
 }) => {
   return (
     <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
-      {videosToShow.map((videoNumber) => (
+      {influencerVideos.map((video) => (
         <div
-          key={videoNumber}
+          key={video.id}
           onClick={() => {
-            console.log('Selected video number:', videoNumber)
-            onVideoSelect(videoNumber)
+            console.log('Selected video:', video)
+            onVideoSelect(video.id, video.video_url)
           }}
           className={`relative flex-shrink-0 cursor-pointer group transition-all duration-200 rounded-lg overflow-hidden ${
-            selectedVideo === videoNumber
+            selectedVideo === video.id
               ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg'
               : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
           }`}
           style={{ width: '100px', height: '177px' }}
         >
           <img
-            src={getUGCThumbnailUrl(videoNumber)}
-            alt={`Video ${videoNumber}`}
+            src={video.thumbnail_url}
+            alt={video.title || `Influencer Video`}
             className="w-full h-full object-cover"
           />
         </div>
@@ -152,7 +155,7 @@ export default function CreateAd() {
   }
 
   // State for video selection
-  const [selectedVideo, setSelectedVideo] = useState<number | null>(null)
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null)
   const [selectedInfluencerVideo, setSelectedInfluencerVideo] = useState('')
   const [selectedDemoVideo, setSelectedDemoVideo] = useState('')
   const [selectedDemo, setSelectedDemo] = useState<string>('')
@@ -160,6 +163,86 @@ export default function CreateAd() {
   // State for demo videos
   const [demoVideos, setDemoVideos] = useState<DemoVideo[]>([])
   const [loadingDemos, setLoadingDemos] = useState(false)
+
+  // State for influencer videos
+  const [influencerVideos, setInfluencerVideos] = useState<InfluencerVidWithTags[]>([])
+  const [filteredInfluencerVideos, setFilteredInfluencerVideos] = useState<InfluencerVidWithTags[]>([])
+  const [loadingInfluencerVideos, setLoadingInfluencerVideos] = useState(false)
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+
+  // Pagination setup for the influencer videos
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 24
+  const totalPages = Math.ceil(filteredInfluencerVideos.length / pageSize)
+  
+  // Add logging for pagination
+  useEffect(() => {
+    console.log('Current influencer videos state:', influencerVideos.length)
+    console.log('Total pages:', totalPages)
+    console.log('Current page:', currentPage)
+  }, [influencerVideos, totalPages, currentPage])
+  
+  const handlePrev = () => {
+    console.log('Navigating to previous page')
+    setCurrentPage((page) => (page > 1 ? page - 1 : page))
+  }
+  
+  const handleNext = () => {
+    console.log('Navigating to next page')
+    setCurrentPage((page) => (page < totalPages ? page + 1 : page))
+  }
+  
+  // Memoize the videos array so it doesn't change when hook changes
+  const paginatedInfluencerVideos = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    const endIndex = startIndex + pageSize
+    const videos = filteredInfluencerVideos?.slice(startIndex, endIndex) || []
+    console.log('Videos to show for current page:', {
+      page: currentPage,
+      startIndex,
+      endIndex,
+      pageSize,
+      numberOfVideos: videos.length
+    })
+    return videos
+  }, [currentPage, pageSize, filteredInfluencerVideos])
+
+  // Filter videos when selected tags change
+  useEffect(() => {
+    setCurrentPage(1); // Reset to first page when filters change
+    
+    if (selectedTags.length === 0) {
+      // No filters, show all videos
+      setFilteredInfluencerVideos(influencerVideos);
+    } else {
+      // Filter videos that have at least one of the selected tags
+      const filtered = influencerVideos.filter(video => {
+        return video.tags.some(tag => selectedTags.includes(tag.id));
+      });
+      setFilteredInfluencerVideos(filtered);
+    }
+  }, [selectedTags, influencerVideos]);
+
+  // Handle tag selection changes
+  const handleTagsChange = (tags: string[]) => {
+    console.log('Tags changed:', tags);
+    setSelectedTags(tags);
+  };
+
+  // Extract unique tags from all videos
+  const uniqueTags = useMemo(() => {
+    const tagMap = new Map();
+    
+    influencerVideos.forEach(video => {
+      video.tags.forEach(tag => {
+        if (!tagMap.has(tag.id)) {
+          tagMap.set(tag.id, tag);
+        }
+      });
+    });
+    
+    return Array.from(tagMap.values());
+  }, [influencerVideos]);
 
   // State for output videos
   const [outputVideos, setOutputVideos] = useState<OutputVideo[]>([])
@@ -185,44 +268,6 @@ export default function CreateAd() {
     setAllVideos(randomizedVideos);
   }, []) // Empty dependency array means this runs once on mount
 
-  // Pagination setup for the UGC videos
-  const [currentPage, setCurrentPage] = useState(1)
-  const pageSize = 24
-  const totalPages = Math.ceil(allVideos.length / pageSize)
-  
-  // Add logging for pagination
-  useEffect(() => {
-    console.log('Current allVideos state:', allVideos);
-    console.log('Total pages:', totalPages);
-    console.log('Current page:', currentPage);
-  }, [allVideos, totalPages, currentPage])
-  
-  const handlePrev = () => {
-    console.log('Navigating to previous page');
-    setCurrentPage((page) => (page > 1 ? page - 1 : page))
-  }
-  
-  const handleNext = () => {
-    console.log('Navigating to next page');
-    setCurrentPage((page) => (page < totalPages ? page + 1 : page))
-  }
-  
-  // Memoize the videos array so it doesn't change when hook changes
-  const videosToShow = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize
-    const endIndex = startIndex + pageSize
-    const videos = allVideos?.slice(startIndex, endIndex) || []
-    console.log('Videos to show for current page:', {
-      page: currentPage,
-      startIndex,
-      endIndex,
-      pageSize,
-      numberOfVideos: videos.length,
-      actualVideos: videos.join(', ')
-    });
-    return videos;
-  }, [currentPage, pageSize, allVideos])
-  
   // Function to fetch demo videos
   const fetchDemoVideos = async () => {
     setLoadingDemos(true);
@@ -810,11 +855,9 @@ export default function CreateAd() {
     });
   };
 
-  const handleUGCVideoSelect = (num: number) => {
-    console.log('handleUGCVideoSelect called with:', num)
-    setSelectedVideo(num)
-    const videoUrl = getUGCVideoUrl(num)
-    console.log('Setting selectedInfluencerVideo to:', videoUrl)
+  const handleUGCVideoSelect = (id: string, videoUrl: string) => {
+    console.log('handleUGCVideoSelect called with:', id, videoUrl)
+    setSelectedVideo(id)
     setSelectedInfluencerVideo(videoUrl)
   }
 
@@ -993,9 +1036,9 @@ export default function CreateAd() {
   // Effect for setting default selections
   useEffect(() => {
     // Set default video selection (first video)
-    if (!selectedInfluencerVideo && videosToShow.length > 0) {
-      setSelectedVideo(videosToShow[0]);
-      setSelectedInfluencerVideo(getUGCVideoUrl(videosToShow[0]));
+    if (!selectedInfluencerVideo && influencerVideos.length > 0) {
+      setSelectedVideo(influencerVideos[0].id);
+      setSelectedInfluencerVideo(influencerVideos[0].video_url);
     }
 
     // Set default demo video (first demo)
@@ -1003,8 +1046,7 @@ export default function CreateAd() {
       setSelectedDemo(demoVideos[0].id ?? '');
       setSelectedDemoVideo(demoVideos[0].publicUrl ?? '');
     }
-  }, [demoVideos, loadingDemos, selectedDemoVideo, selectedInfluencerVideo, videosToShow])
-
+  }, [demoVideos, loadingDemos, selectedDemoVideo, selectedInfluencerVideo, influencerVideos])
 
   // Insert this function inside CreateAd (e.g., after other hooks/state declarations and before handleDeleteDemo)
   async function pollForVideoCompletion(outputId: string) {
@@ -1431,7 +1473,7 @@ export default function CreateAd() {
       errorMessage.includes('File size exceeds') ||
       errorMessage.includes('too large') ||
       errorMessage.includes('exceed') ||
-      file.size > 100 * 1024 * 1024
+      (typeof file.size === 'number' && file.size > 100 * 1024 * 1024)
     ) {
       errorCategory = 'file-size';
       errorMessage = 'File size exceeds limit';
@@ -1468,7 +1510,7 @@ export default function CreateAd() {
     
     // Format file size for better readability
     const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-    const fileSizeDisplay = fileSizeMB > 0.1 ? `${fileSizeMB} MB` : `${(file.size / 1024).toFixed(2)} KB`;
+    const fileSizeDisplay = parseFloat(fileSizeMB) > 0.1 ? `${fileSizeMB} MB` : `${(file.size / 1024).toFixed(2)} KB`;
     
     // Set error information for the dialog
     setUploadError(errorMessage);
@@ -1644,6 +1686,40 @@ export default function CreateAd() {
     xhr.send(formData);
   };
 
+  // Function to fetch influencer videos from the database
+  const fetchInfluencerVideos = async () => {
+    setLoadingInfluencerVideos(true);
+    try {
+      const videos = await getInfluencerVidsWithTags();
+      console.log('Fetched influencer videos:', videos.length || 0);
+      setInfluencerVideos(videos);
+      setFilteredInfluencerVideos(videos);
+      
+      // Set default selection if no video is selected
+      if (!selectedVideo && videos.length > 0) {
+        setSelectedVideo(videos[0].id);
+        setSelectedInfluencerVideo(videos[0].video_url);
+      }
+    } catch (error) {
+      console.error('Error fetching influencer videos:', error);
+      toast({
+        title: "Error Loading Videos",
+        description: "Could not load influencer videos. Please try refreshing the page.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingInfluencerVideos(false);
+    }
+  };
+
+  // Effect for fetching videos and demos
+  useEffect(() => {
+    // Fetch output videos, demo videos, and influencer videos when application loads
+    fetchOutputVideos()
+    fetchDemoVideos()
+    fetchInfluencerVideos()
+  }, [])
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-6 lg:py-8">
@@ -1814,30 +1890,39 @@ export default function CreateAd() {
             <div>
               <div className="flex justify-between items-center mb-3 lg:mb-4">
                 <h2 className="text-lg font-semibold text-foreground">3. Select a Video</h2>
-                <span className="text-sm text-muted-foreground">
-                  Page {currentPage} of {totalPages}
-                </span>
               </div>
               <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
                 {/* Video Grid */}
                 <div className="w-full lg:w-3/4">
+                  <FilterTags 
+                    tags={uniqueTags} 
+                    selectedTags={selectedTags} 
+                    onChange={handleTagsChange} 
+                  />
                   <VideoGrid 
-                    videosToShow={videosToShow}
+                    influencerVideos={paginatedInfluencerVideos}
                     selectedVideo={selectedVideo}
                     onVideoSelect={handleUGCVideoSelect}
                   />
-                  <div className="flex justify-center mt-4 gap-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={handlePrev} 
+                  <div className="flex justify-between mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePrev}
                       disabled={currentPage === 1}
                       className="hover:bg-primary/5"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={handleNext} 
+                    <div className="flex-1 text-center">
+                      <span className="text-sm text-muted-foreground">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleNext}
                       disabled={currentPage === totalPages}
                       className="hover:bg-primary/5"
                     >
@@ -1856,7 +1941,7 @@ export default function CreateAd() {
                         </div>
                         <video
                           key={selectedVideo}
-                          src={getUGCVideoUrl(selectedVideo)}
+                          src={selectedInfluencerVideo}
                           autoPlay
                           playsInline
                           loop
@@ -2169,7 +2254,7 @@ export default function CreateAd() {
                       </div>
                     </div>
                   </div>
-                ) : uploadError?.includes("Storage upload failed") || uploadError?.includes("Storage system") || uploadError?.includes("Bucket not found") ? (
+                ) : uploadError?.includes("Storage upload failed") || uploadError?.includes("Storage system unavailable") || uploadError?.includes("Bucket not found") ? (
                   <div className="space-y-3">
                     <div className="flex items-start">
                       <div className="flex-shrink-0 h-6 w-6 text-red-500">
