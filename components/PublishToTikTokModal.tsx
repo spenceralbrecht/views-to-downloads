@@ -97,11 +97,16 @@ export function PublishToTikTokModal({
   }
   
   const publishToTikTok = async (videoUrl: string, accountId: string): Promise<{publishedUrl: string, success: boolean}> => {
-    // Call our TikTok publishing API endpoint
-    const response = await fetch('/api/tiktok/publish', {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      throw new Error('You must be logged in to publish to TikTok')
+    }
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/tiktok-publish`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
         accountId,
@@ -110,15 +115,24 @@ export function PublishToTikTokModal({
       })
     });
     
+    const data = await response.json();
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to publish video to TikTok');
+      throw {
+        ...data,
+        message: data.error || 'Failed to publish video to TikTok'
+      };
     }
     
-    const data = await response.json();
+    if (!data.success) {
+      throw {
+        ...data,
+        message: data.error || 'TikTok API failed to process the video'
+      };
+    }
+    
     return {
       publishedUrl: data.publishedUrl,
-      success: data.success
+      success: true
     };
   }
   
@@ -134,43 +148,25 @@ export function PublishToTikTokModal({
     
     setIsPublishing(true)
     try {
-      // Publish to TikTok API - this also updates the database record if successful
       const result = await publishToTikTok(videoUrl, selectedAccountId)
       
-      if (result.success) {
-        setPublishSuccess(true)
-        toast({
-          title: "Success",
-          description: "Video published to TikTok successfully!",
-        })
-        
-        // Call the onPublishSuccess callback if provided
-        if (onPublishSuccess) {
-          onPublishSuccess();
-        }
-        
-        // Close the modal after short delay
-        setTimeout(() => onOpenChange(false), 1500)
-      } else {
-        // The API call worked but TikTok publishing failed
-        toast({
-          title: "Warning",
-          description: "Failed to publish to TikTok due to API error. Please check your TikTok credentials and try again.",
-          variant: "destructive"
-        })
+      setPublishSuccess(true)
+      toast({
+        title: "Success",
+        description: "Video published to TikTok successfully!",
+      })
+      
+      if (onPublishSuccess) {
+        onPublishSuccess();
       }
+      
+      setTimeout(() => onOpenChange(false), 1500)
+      
     } catch (error: any) {
       console.error('Error publishing to TikTok:', error)
 
-      // Check if this is a token-related error from the API response
-      const isTokenError = error.isTokenError || 
-        (error.message && (
-          error.message.toLowerCase().includes('token') || 
-          error.message.toLowerCase().includes('access') || 
-          error.message.toLowerCase().includes('authorization')
-        ));
-
-      if (isTokenError) {
+      // Check if this is a token-related error
+      if (error.isTokenError) {
         toast({
           title: "Authentication Error",
           description: "Your TikTok connection has expired. Please reconnect your TikTok account.",
@@ -181,10 +177,28 @@ export function PublishToTikTokModal({
             </Button>
           ),
         })
+      } else if (error.code === 'video_too_large') {
+        toast({
+          title: "Error",
+          description: "The video file is too large for TikTok. Maximum size is 128MB.",
+          variant: "destructive"
+        })
+      } else if (error.code === 'invalid_video_format') {
+        toast({
+          title: "Error",
+          description: "Invalid video format. TikTok accepts MP4, WebM, and other common formats.",
+          variant: "destructive"
+        })
+      } else if (error.message?.includes('Please review our integration guidelines')) {
+        toast({
+          title: "TikTok API Error",
+          description: "We're experiencing some technical difficulties with TikTok. Please try again later.",
+          variant: "destructive"
+        })
       } else {
         toast({
           title: "Error",
-          description: "Failed to publish video to TikTok",
+          description: error.message || "Failed to publish video to TikTok",
           variant: "destructive"
         })
       }

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest"
+    "test": "vitest",
+    "supabase:deploy-tiktok-function": "supabase functions deploy tiktok-publish"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
