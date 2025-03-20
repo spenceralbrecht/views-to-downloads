@@ -14,7 +14,6 @@ interface StripeConfig {
 
 // Helper function to append email to payment links
 export function appendEmailToLink(link: string, email: string | null | undefined): string {
-  console.log('appendEmailToLink called with:', { link, email });
   
   if (!link) {
     console.log('appendEmailToLink returning empty link due to missing link');
