@@ -1888,7 +1888,7 @@ export default function CreateAd() {
 
             {/* Video Selection */}
             <div>
-              <div className="flex justify-between items-center mb-3 lg:mb-4">
+              <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold text-foreground">3. Select a Video</h2>
               </div>
               <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
