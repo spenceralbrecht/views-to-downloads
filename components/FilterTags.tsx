@@ -13,6 +13,14 @@ interface FilterTagsProps {
   tags?: TagType[]; 
 }
 
+/**
+ * Capitalizes the first letter of a string
+ */
+const capitalizeFirstLetter = (string: string): string => {
+  if (!string) return string;
+  return string.charAt(0).toUpperCase() + string.slice(1);
+};
+
 export default function FilterTags({ selectedTags, onChange, tags }: FilterTagsProps) {
   const [availableTags, setAvailableTags] = useState<TagType[]>(tags || []);
   const [isLoading, setIsLoading] = useState(!tags);
@@ -86,7 +94,7 @@ export default function FilterTags({ selectedTags, onChange, tags }: FilterTagsP
               className={`cursor-pointer ${isTagSelected(tag.id) ? '' : 'hover:bg-primary/10'}`}
               onClick={() => toggleTag(tag.id)}
             >
-              {tag.name}
+              {capitalizeFirstLetter(tag.name)}
               {isTagSelected(tag.id) && (
                 <X className="h-3 w-3 ml-1" />
               )}

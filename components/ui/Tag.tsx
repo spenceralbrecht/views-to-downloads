@@ -8,6 +8,14 @@ type TagProps = {
   onClick?: () => void;
 };
 
+/**
+ * Capitalizes the first letter of a string
+ */
+const capitalizeFirstLetter = (string: string): string => {
+  if (!string) return string;
+  return string.charAt(0).toUpperCase() + string.slice(1);
+};
+
 export function Tag({ 
   label, 
   onRemove, 
@@ -24,7 +32,7 @@ export function Tag({
           : 'bg-gray-100 text-gray-800'}`}
       onClick={onClick}
     >
-      {label}
+      {capitalizeFirstLetter(label)}
       {onRemove && (
         <button
           type="button"

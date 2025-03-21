@@ -4,6 +4,7 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Sidebar } from "@/components/dashboard/Sidebar"
+import CheckoutSuccessWrapper from '@/components/dashboard/CheckoutSuccessWrapper'
 
 export default async function DashboardLayout({
   children,
@@ -21,7 +22,9 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-background">
       <Sidebar user={session.user} />
       <div className="lg:pl-64 min-h-screen pb-16 lg:pb-0">
-        {children}
+        <CheckoutSuccessWrapper>
+          {children}
+        </CheckoutSuccessWrapper>
       </div>
     </div>
   )
