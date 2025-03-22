@@ -23,6 +23,11 @@ import {
 } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
 import { ConnectedAccount } from '@/utils/tiktokService'
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { cn } from "@/lib/utils"
+import Image from "next/image"
 
 interface PublishToTikTokModalProps {
   open: boolean
@@ -32,6 +37,26 @@ interface PublishToTikTokModalProps {
   published?: string
   publishedUrl?: string
   onPublishSuccess?: () => void
+  isPhoto?: boolean
+}
+
+// Define the PostInfo interface to match TikTok requirements
+interface PostInfo {
+  title: string;
+  privacy_level: string;
+  disable_comment: boolean;
+  disable_duet: boolean;
+  disable_stitch: boolean;
+}
+
+// Define the creator info interface
+interface CreatorInfo {
+  privacy_level_options: string[];
+  creator_username?: string;
+  creator_nickname?: string;
+  disabled_comment_setting?: boolean;
+  disabled_duet_setting?: boolean;
+  disabled_stitch_setting?: boolean;
 }
 
 export function PublishToTikTokModal({
@@ -41,7 +66,8 @@ export function PublishToTikTokModal({
   videoId,
   published,
   publishedUrl,
-  onPublishSuccess
+  onPublishSuccess,
+  isPhoto = false
 }: PublishToTikTokModalProps) {
   const [isPublishing, setIsPublishing] = useState(false)
   const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([])
@@ -49,6 +75,17 @@ export function PublishToTikTokModal({
   const [selectedAccountId, setSelectedAccountId] = useState<string>("")
   const [publishSuccess, setPublishSuccess] = useState(false)
   const supabase = createClientComponentClient()
+
+  // Post info states
+  const [title, setTitle] = useState("")
+  const [privacyLevel, setPrivacyLevel] = useState<string>("")
+  const [allowComment, setAllowComment] = useState(false)
+  const [allowDuet, setAllowDuet] = useState(false)
+  const [allowStitch, setAllowStitch] = useState(false)
+  
+  // Creator info state
+  const [creatorInfo, setCreatorInfo] = useState<CreatorInfo | null>(null)
+  const [isLoadingCreatorInfo, setIsLoadingCreatorInfo] = useState(false)
   
   // Load connected accounts when modal opens
   useEffect(() => {
@@ -79,8 +116,44 @@ export function PublishToTikTokModal({
     if (open) {
       loadConnectedAccounts()
       setPublishSuccess(false)
+      
+      // Reset form values
+      setTitle("")
+      setPrivacyLevel("")
+      setAllowComment(false)
+      setAllowDuet(false)
+      setAllowStitch(false)
     }
   }, [open, supabase])
+  
+  // Load creator info when an account is selected
+  useEffect(() => {
+    const fetchCreatorInfo = async () => {
+      if (!selectedAccountId) return
+      
+      setIsLoadingCreatorInfo(true)
+      try {
+        const info = await tiktokService.getCreatorInfo(selectedAccountId)
+        setCreatorInfo(info)
+        
+        // Reset privacy level since available options may have changed
+        setPrivacyLevel("")
+      } catch (error) {
+        console.error('Error loading creator info:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load TikTok creator info",
+          variant: "destructive"
+        })
+      } finally {
+        setIsLoadingCreatorInfo(false)
+      }
+    }
+    
+    if (selectedAccountId) {
+      fetchCreatorInfo()
+    }
+  }, [selectedAccountId])
   
   const handleConnectTikTok = async () => {
     try {
@@ -96,7 +169,7 @@ export function PublishToTikTokModal({
     }
   }
   
-  const publishToTikTok = async (videoUrl: string, accountId: string): Promise<{publishedUrl: string, success: boolean}> => {
+  const publishToTikTok = async (videoUrl: string, accountId: string, postInfo: PostInfo): Promise<{publishedUrl: string, success: boolean}> => {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       throw new Error('You must be logged in to publish to TikTok')
@@ -111,7 +184,8 @@ export function PublishToTikTokModal({
       body: JSON.stringify({
         accountId,
         videoId,
-        videoUrl
+        videoUrl,
+        postInfo
       })
     });
     
@@ -137,6 +211,7 @@ export function PublishToTikTokModal({
   }
   
   const handlePublish = async () => {
+    // Validate form
     if (!selectedAccountId) {
       toast({
         title: "Error",
@@ -146,9 +221,36 @@ export function PublishToTikTokModal({
       return
     }
     
+    if (!title.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a title for your post",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    if (!privacyLevel) {
+      toast({
+        title: "Error",
+        description: "Please select a privacy setting",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    // Prepare post info according to TikTok API requirements
+    const postInfo: PostInfo = {
+      title: title.trim(),
+      privacy_level: privacyLevel,
+      disable_comment: !allowComment,
+      disable_duet: !allowDuet,
+      disable_stitch: !allowStitch
+    }
+    
     setIsPublishing(true)
     try {
-      const result = await publishToTikTok(videoUrl, selectedAccountId)
+      const result = await publishToTikTok(videoUrl, selectedAccountId, postInfo)
       
       setPublishSuccess(true)
       toast({
@@ -207,9 +309,32 @@ export function PublishToTikTokModal({
     }
   }
   
+  // Function to render privacy options based on creator info
+  const renderPrivacyOptions = () => {
+    if (!creatorInfo?.privacy_level_options || creatorInfo.privacy_level_options.length === 0) {
+      return (
+        <SelectItem value="PUBLIC_TO_EVERYONE">Public</SelectItem>
+      )
+    }
+    
+    return creatorInfo.privacy_level_options.map(option => {
+      let displayName = option;
+      
+      // Map API values to user-friendly names
+      if (option === 'PUBLIC_TO_EVERYONE') displayName = 'Public';
+      else if (option === 'MUTUAL_FOLLOW_FRIENDS') displayName = 'Friends';
+      else if (option === 'SELF_ONLY') displayName = 'Private';
+      else if (option === 'FOLLOWER_OF_CREATOR') displayName = 'Followers';
+      
+      return (
+        <SelectItem key={option} value={option}>{displayName}</SelectItem>
+      )
+    })
+  }
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Publish to TikTok</DialogTitle>
           <DialogDescription>
@@ -254,23 +379,152 @@ export function PublishToTikTokModal({
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : connectedAccounts.length > 0 ? (
-            <div className="space-y-4">
-              <p className="text-sm mb-4">
-                Select the TikTok account you want to publish to:
-              </p>
-              
-              <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select an account" />
-                </SelectTrigger>
-                <SelectContent>
+            <div className="space-y-5">
+              <div>
+                <p className="text-sm mb-3">
+                  Select the TikTok account you want to publish to:
+                </p>
+                
+                <div className="grid grid-cols-1 gap-3">
                   {connectedAccounts.map(account => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.display_name || account.username}
-                    </SelectItem>
+                    <div
+                      key={account.id}
+                      className={cn(
+                        "flex items-center p-3 border rounded-lg cursor-pointer transition-all",
+                        selectedAccountId === account.id 
+                          ? "border-primary bg-primary/5 shadow-sm" 
+                          : "border-border hover:border-primary/50"
+                      )}
+                      onClick={() => setSelectedAccountId(account.id)}
+                    >
+                      {account.profile_picture ? (
+                        <div className="relative w-10 h-10 rounded-full overflow-hidden mr-3 flex-shrink-0">
+                          <Image
+                            src={account.profile_picture}
+                            alt={account.display_name || account.username}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mr-3 flex-shrink-0">
+                          <span className="text-sm font-medium">
+                            {(account.display_name || account.username || "TikTok").charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex-grow">
+                        <div className="font-medium">
+                          {account.display_name || account.username}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          @{account.username || account.provider_account_id}
+                        </div>
+                      </div>
+                      {selectedAccountId === account.id && (
+                        <div className="w-4 h-4 rounded-full bg-primary flex-shrink-0"></div>
+                      )}
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              </div>
+              
+              {selectedAccountId && isLoadingCreatorInfo ? (
+                <div className="flex items-center justify-center py-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary mr-2" />
+                  <span className="text-sm text-muted-foreground">Loading settings...</span>
+                </div>
+              ) : selectedAccountId && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
+                    <Input 
+                      id="title" 
+                      value={title} 
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Enter title for your post"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="privacy">Privacy Setting <span className="text-red-500">*</span></Label>
+                    <Select value={privacyLevel} onValueChange={setPrivacyLevel}>
+                      <SelectTrigger id="privacy">
+                        <SelectValue placeholder="Select privacy setting" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {renderPrivacyOptions()}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Interaction Settings</Label>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label 
+                          htmlFor="allow-comment" 
+                          className={cn(
+                            "cursor-pointer",
+                            creatorInfo?.disabled_comment_setting ? "opacity-50" : ""
+                          )}
+                        >
+                          Allow Comments
+                        </Label>
+                        <Switch 
+                          id="allow-comment" 
+                          checked={allowComment} 
+                          onCheckedChange={(checked) => setAllowComment(!!checked)}
+                          disabled={creatorInfo?.disabled_comment_setting}
+                          className={creatorInfo?.disabled_comment_setting ? "opacity-50" : ""}
+                        />
+                      </div>
+                      
+                      {!isPhoto && (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <Label 
+                              htmlFor="allow-duet"
+                              className={cn(
+                                "cursor-pointer",
+                                creatorInfo?.disabled_duet_setting ? "opacity-50" : ""
+                              )}
+                            >
+                              Allow Duet
+                            </Label>
+                            <Switch 
+                              id="allow-duet" 
+                              checked={allowDuet} 
+                              onCheckedChange={(checked) => setAllowDuet(!!checked)}
+                              disabled={creatorInfo?.disabled_duet_setting}
+                              className={creatorInfo?.disabled_duet_setting ? "opacity-50" : ""}
+                            />
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <Label 
+                              htmlFor="allow-stitch" 
+                              className={cn(
+                                "cursor-pointer",
+                                creatorInfo?.disabled_stitch_setting ? "opacity-50" : ""
+                              )}
+                            >
+                              Allow Stitch
+                            </Label>
+                            <Switch 
+                              id="allow-stitch" 
+                              checked={allowStitch} 
+                              onCheckedChange={(checked) => setAllowStitch(!!checked)}
+                              disabled={creatorInfo?.disabled_stitch_setting}
+                              className={creatorInfo?.disabled_stitch_setting ? "opacity-50" : ""}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
               
               {publishSuccess && (
                 <div className="mt-4 p-3 bg-green-50 text-green-800 rounded-md border border-green-200">
@@ -300,7 +554,13 @@ export function PublishToTikTokModal({
           {isTikTokEnabled() && !(published === 'tiktok' && publishedUrl) ? (
             <Button
               onClick={handlePublish}
-              disabled={isPublishing || connectedAccounts.length === 0 || !selectedAccountId}
+              disabled={
+                isPublishing || 
+                connectedAccounts.length === 0 || 
+                !selectedAccountId || 
+                !title.trim() || 
+                !privacyLevel
+              }
             >
               {isPublishing ? (
                 <>

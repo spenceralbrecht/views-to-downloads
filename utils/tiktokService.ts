@@ -188,6 +188,50 @@ export class TikTokService {
       }
     ]
   }
+
+  /**
+   * Get TikTok creator info for a connected account
+   * This is used to determine available privacy options and interaction settings
+   */
+  async getCreatorInfo(accountId: string): Promise<any> {
+    try {
+      const { data, error } = await this.supabase
+        .from('connected_accounts')
+        .select('*')
+        .eq('id', accountId)
+        .single()
+      
+      if (error) {
+        throw new Error(error.message)
+      }
+      
+      if (!data || !data.access_token) {
+        throw new Error('Account not found or missing access token')
+      }
+      
+      // Call our server-side API endpoint that proxies to TikTok API
+      const response = await fetch('/api/tiktok/creator-info', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          accountId
+        })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to get creator info')
+      }
+      
+      const creatorInfo = await response.json()
+      return creatorInfo.data
+    } catch (error) {
+      console.error('Error getting creator info:', error)
+      throw error
+    }
+  }
 }
 
 /**

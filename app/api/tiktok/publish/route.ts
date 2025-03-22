@@ -130,7 +130,7 @@ async function updateOutputContent(videoId: string, publishedUrl: string) {
  * This follows the PULL_FROM_URL approach where we provide a video URL
  * and TikTok pulls and processes the video from that URL.
  */
-async function directPostToTikTok(accessToken: string, videoUrl: string, username: string) {
+async function directPostToTikTok(accessToken: string, videoUrl: string, username: string, postInfo?: any) {
   try {
     console.log('Initiating TikTok direct post')
     
@@ -165,11 +165,11 @@ async function directPostToTikTok(accessToken: string, videoUrl: string, usernam
       },
       body: JSON.stringify({
         post_info: {
-          title: 'Created with Views to Downloads',
-          privacy_level: 'PUBLIC_TO_EVERYONE',
-          disable_duet: false,
-          disable_comment: false,
-          disable_stitch: false
+          title: postInfo?.title || 'Created with Views to Downloads',
+          privacy_level: postInfo?.privacy_level || 'PUBLIC_TO_EVERYONE',
+          disable_duet: postInfo?.disable_duet ?? false,
+          disable_comment: postInfo?.disable_comment ?? false,
+          disable_stitch: postInfo?.disable_stitch ?? false
         },
         source_info: {
           source: 'PULL_FROM_URL',
@@ -350,7 +350,7 @@ export async function POST(request: NextRequest) {
   try {
     // Parse request body
     const body = await request.json()
-    const { accountId, videoId, videoUrl } = body
+    const { accountId, videoId, videoUrl, postInfo } = body
     
     console.log('Publishing request received:', { accountId, videoId, videoUrl })
     
@@ -393,7 +393,7 @@ export async function POST(request: NextRequest) {
       // Try to use the appropriate TikTok API based on the available scope
       if (isDirectPost) {
         // Attempt direct post (requires video.publish scope)
-        publishedUrl = await directPostToTikTok(accessToken, videoUrl, username)
+        publishedUrl = await directPostToTikTok(accessToken, videoUrl, username, postInfo)
       } else {
         // Fallback to draft upload (requires video.upload scope)
         publishedUrl = await uploadDraftToTikTok(accessToken, videoUrl, username)
