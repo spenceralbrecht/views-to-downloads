@@ -10,6 +10,9 @@ import { addApp, getApps, deleteApp } from "../actions"
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from 'next/navigation'
 import { PostgrestError } from '@supabase/supabase-js'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useUser } from '@/lib/hooks/index'
+import type { LoadingStage } from '@/lib/types'
 
 type App = {
   id: string
@@ -18,9 +21,6 @@ type App = {
   app_store_url: string
   app_description: string
 }
-
-// Loading stages for app addition process
-type LoadingStage = "fetching" | "extracting" | "analyzing" | "understanding" | undefined;
 
 export default function AppsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -33,6 +33,8 @@ export default function AppsPage() {
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+  const supabase = createClientComponentClient()
+  const user = useUser()
 
   useEffect(() => {
     const loadApps = async () => {
@@ -51,37 +53,129 @@ export default function AppsPage() {
     loadApps()
   }, [toast])
 
-  const handleAddApp = async (appStoreUrl: string) => {
+  const handleAddApp = async (url: string) => {
     setIsAddingApp(true)
-    
-    // Start with fetching stage
-    setLoadingStage("fetching")
-    
+    setLoadingStage('analyzing')
+
     try {
-      // Distribute stages across the 60-second average process time
-      // First stage (fetching) starts immediately
-      // Then transition through the other stages
-      setTimeout(() => setLoadingStage("extracting"), 5000)    // After 5 seconds
-      setTimeout(() => setLoadingStage("analyzing"), 20000)    // After 20 seconds
-      setTimeout(() => setLoadingStage("understanding"), 40000) // After 40 seconds
-      
-      const result = await addApp(appStoreUrl)
-      
-      if (result.success) {
-        // Refresh the apps list
-        const { data: newApps, error: refreshError } = await getApps()
-        if (!refreshError && newApps) {
-          setApps(newApps)
-        }
+      const result = await addApp(url)
+      if (result.error) {
+        toast({
+          title: "Error adding app",
+          description: result.error,
+          variant: "destructive",
+        })
+        return { error: result.error }
       }
-      
-      return result
+
+      // Refresh the apps list
+      const { data: newApps, error: fetchError } = await getApps()
+      if (fetchError) throw fetchError
+      if (newApps) {
+        setApps(newApps)
+      }
+
+      toast({
+        title: "App added successfully",
+        description: "Your app has been added to your dashboard.",
+      })
+
+      return { success: true }
+    } catch (error: any) {
+      console.error('Error adding app:', error)
+      toast({
+        title: "Error adding app",
+        description: error?.message || "Please try again later",
+        variant: "destructive",
+      })
+      return { error: error?.message || "Failed to add app" }
     } finally {
-      // Keep showing skeleton for a moment to ensure smooth transition
-      setTimeout(() => {
-        setIsAddingApp(false)
-        setLoadingStage(undefined)
-      }, 500)
+      setIsAddingApp(false)
+      setLoadingStage(undefined)
+    }
+  }
+
+  const handleAddManualApp = async (appData: {
+    app_name: string
+    icp: string
+    features: string
+    main_problem: string
+    app_logo_file?: File
+  }) => {
+    setIsAddingApp(true)
+    setLoadingStage('adding')
+
+    try {
+      // Format the description with all the manual inputs
+      const formattedDescription = [
+        '# Main Problem Solved',
+        appData.main_problem,
+        '',
+        '# Key Features',
+        appData.features,
+        '',
+        '# Ideal Customer Profile',
+        appData.icp
+      ].join('\n\n');
+
+      // Handle file upload if there's an app icon
+      let app_logo_url = undefined;
+      if (appData.app_logo_file) {
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('app-icons')
+          .upload(`${user?.id}/${Date.now()}-${appData.app_logo_file.name}`, appData.app_logo_file);
+
+        if (uploadError) throw uploadError;
+
+        // Get the public URL for the uploaded file
+        const { data: { publicUrl } } = supabase.storage
+          .from('app-icons')
+          .getPublicUrl(uploadData.path);
+
+        app_logo_url = publicUrl;
+      }
+
+      // Add the manual app to your database
+      const { data: newApp, error } = await supabase
+        .from('apps')
+        .insert([
+          {
+            app_name: appData.app_name,
+            app_description: formattedDescription,
+            app_logo_url,
+            owner_id: user?.id,
+            is_manual: true
+          }
+        ])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Refresh the apps list
+      const { data: newApps, error: fetchError } = await getApps()
+      if (fetchError) throw fetchError
+      if (newApps) {
+        setApps(newApps)
+      }
+
+      toast({
+        title: "App added successfully",
+        description: "Your app has been added to your dashboard.",
+      })
+
+      return { success: true }
+    } catch (error: any) {
+      console.error('Error adding manual app:', error)
+      toast({
+        title: "Error adding app",
+        description: error?.message || "Please try again later",
+        variant: "destructive",
+      })
+      return { error: error?.message || "Failed to add app" }
+    } finally {
+      setIsAddingApp(false)
+      setLoadingStage(undefined)
     }
   }
 
@@ -157,6 +251,7 @@ export default function AppsPage() {
           open={isModalOpen}
           onOpenChange={setIsModalOpen}
           onAddApp={handleAddApp}
+          onAddManualApp={handleAddManualApp}
           isPending={isPending || isAddingApp}
         />
 
