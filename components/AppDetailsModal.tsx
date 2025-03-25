@@ -55,8 +55,8 @@ export function AppDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] h-[85vh] flex flex-col p-0">
-        <DialogHeader className="p-6 pb-2">
+      <DialogContent className="sm:max-w-[600px] h-[85vh] flex flex-col">
+        <DialogHeader className="p-6 pb-2 flex-shrink-0">
           <div className="flex items-center gap-4">
             {app.app_logo_url ? (
               <div className="h-16 w-16 relative rounded-lg overflow-hidden flex-shrink-0">
@@ -76,42 +76,29 @@ export function AppDetailsModal({
               <DialogTitle className="text-xl font-semibold">
                 {app.app_name || 'Unnamed App'}
               </DialogTitle>
-              <a 
-                href={app.app_store_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 text-sm"
-              >
-                View in App Store
-              </a>
+              {app.app_store_url && (
+                <a 
+                  href={app.app_store_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 text-sm"
+                >
+                  View in App Store
+                </a>
+              )}
             </div>
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 p-6 pt-2">
+        <ScrollArea className="flex-1 px-6">
           <ReactMarkdown 
-            className="prose max-w-none prose-headings:mt-6 prose-headings:mb-4 prose-h1:text-xl prose-h2:text-lg prose-h3:text-base prose-p:my-4 prose-p:leading-relaxed prose-li:my-2 prose-ol:my-4 prose-ul:my-4"
-            components={{
-              // Add extra spacing between numbered sections
-              p: ({node, ...props}) => {
-                const content = props.children?.toString() || '';
-                // Check if paragraph starts with a number followed by a period (like "1. Title")
-                if (/^\d+\. /.test(content)) {
-                  return <p {...props} className="font-semibold text-base mt-6 mb-2" />
-                }
-                return <p {...props} />
-              },
-              // Ensure lists have proper spacing
-              ol: ({node, ...props}) => <ol {...props} className="list-decimal pl-6 my-4" />,
-              ul: ({node, ...props}) => <ul {...props} className="list-disc pl-6 my-4" />,
-              li: ({node, ...props}) => <li {...props} className="my-2" />
-            }}
+            className="prose dark:prose-invert max-w-none prose-headings:mt-6 prose-headings:mb-4 prose-h1:text-xl prose-h2:text-lg prose-h3:text-base prose-p:my-4 prose-p:leading-relaxed prose-li:my-2 prose-ol:my-4 prose-ul:my-4"
           >
             {app.app_description}
           </ReactMarkdown>
         </ScrollArea>
 
-        <div className="p-6 pt-4 border-t flex justify-end">
+        <div className="p-6 pt-4 border-t flex justify-end flex-shrink-0">
           <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
             <AlertDialogTrigger asChild>
               <Button

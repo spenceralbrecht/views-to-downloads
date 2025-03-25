@@ -95,9 +95,9 @@ export function AddAppModal({
                 <button
                   type="button"
                   onClick={handleManualAdd}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
                 >
-                  Add app manually
+                  Add manually
                 </button>
               </div>
               <Button 
