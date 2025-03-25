@@ -42,20 +42,15 @@ export function ManualAppModal({
   // Create preview URL when image file changes
   useEffect(() => {
     if (imageFile) {
-      const url = URL.createObjectURL(imageFile)
-      setPreviewUrl(url)
-      return () => URL.revokeObjectURL(url)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string)
+      }
+      reader.readAsDataURL(imageFile)
+    } else {
+      setPreviewUrl(null)
     }
   }, [imageFile])
-
-  // Cleanup preview URL when component unmounts or modal closes
-  useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl)
-      }
-    }
-  }, [previewUrl])
 
   // Reset form when modal closes
   useEffect(() => {
@@ -98,14 +93,22 @@ export function ManualAppModal({
   }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0]
+    const file = e.target.files?.[0]
+    if (file) {
       // Validate file size (10MB limit)
       if (file.size > 10 * 1024 * 1024) {
         setError('Image file is too large. Please choose a file under 10MB.')
         return
       }
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please upload an image file.')
+        return
+      }
+
       setImageFile(file)
+      setError(null)
     }
   }
 
@@ -183,7 +186,8 @@ export function ManualAppModal({
               <div className="mt-1.5">
                 <div className="flex items-center gap-4">
                   {previewUrl && (
-                    <div className="w-16 h-16 relative border rounded-lg overflow-hidden">
+                    <div className="w-16 h-16 relative border rounded-lg overflow-hidden bg-gray-50">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={previewUrl}
                         alt="App icon preview"
