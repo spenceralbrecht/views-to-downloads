@@ -1,0 +1,1 @@
+export type LoadingStage = 'fetching' | 'extracting' | 'analyzing' | 'understanding' | 'adding' | undefined 
