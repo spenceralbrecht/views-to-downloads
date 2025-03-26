@@ -8,6 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Label } from "@/components/ui/label"
+import { SaveInfluencerModal } from '../../../components/SaveInfluencerModal'
+import { supabase } from '../../../lib/supabaseClient'
 
 // Initialize fal client with API key directly
 fal.config({
@@ -24,6 +27,7 @@ interface ImageResultsViewProps {
   } | null
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
+  onSaveSuccess?: () => void
 }
 
 interface FalImage {
@@ -41,14 +45,24 @@ interface FalResponse {
 export function ImageResultsView({ 
   promptData, 
   isLoading, 
-  setIsLoading 
+  setIsLoading,
+  onSaveSuccess
 }: ImageResultsViewProps) {
   const [images, setImages] = useState<FalImage[]>([])
   const [error, setError] = useState<string | null>(null)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<FalImage | null>(null)
-  const [influencerName, setInfluencerName] = useState('')
+  const [showSaveModal, setShowSaveModal] = useState(false)
+  const [currentInfluencer, setCurrentInfluencer] = useState({
+    imageUrl: '',
+    data: {
+      name: '',
+      age: '',
+      gender: '',
+      ethnicity: '',
+      emotion: '',
+      location: ''
+    }
+  })
 
   useEffect(() => {
     let isMounted = true
@@ -118,20 +132,19 @@ export function ImageResultsView({
     }
   }, [promptData, isLoading, setIsLoading])
 
-  const handleSaveClick = (image: FalImage) => {
-    setSelectedImage(image)
-    setSaveDialogOpen(true)
-  }
-
-  const handleSaveConfirm = () => {
-    // TODO: Implement save functionality
-    console.log('Saving influencer:', {
-      name: influencerName,
-      imageUrl: selectedImage?.url
+  const handleSaveInfluencer = (imageUrl: string) => {
+    setCurrentInfluencer({
+      imageUrl,
+      data: {
+        name: '',
+        age: promptData?.age || '',
+        gender: promptData?.gender || '',
+        ethnicity: promptData?.ethnicity || '',
+        emotion: promptData?.emotion || '',
+        location: promptData?.location || ''
+      }
     })
-    setSaveDialogOpen(false)
-    setInfluencerName('')
-    setSelectedImage(null)
+    setShowSaveModal(true)
   }
 
   if (error) {
@@ -193,7 +206,7 @@ export function ImageResultsView({
               {hoveredIndex === index && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <Button 
-                    onClick={() => handleSaveClick(image)}
+                    onClick={() => handleSaveInfluencer(image.url)}
                     className="bg-white text-black hover:bg-white/90 text-xs p-2 h-auto"
                   >
                     Save this Influencer
@@ -211,44 +224,18 @@ export function ImageResultsView({
         )}
       </div>
 
-      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save Influencer</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="relative w-32 h-32 mx-auto">
-              {selectedImage && (
-                <Image
-                  src={selectedImage.url}
-                  alt="Selected influencer"
-                  fill
-                  className="object-cover rounded-md"
-                />
-              )}
-            </div>
-            <Input
-              placeholder="Enter influencer name"
-              value={influencerName}
-              onChange={(e) => setInfluencerName(e.target.value)}
-              className="w-full"
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSaveConfirm}
-              disabled={!influencerName.trim()}
-              className="bg-[#4287f5]"
-            >
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SaveInfluencerModal
+        open={showSaveModal}
+        onOpenChange={setShowSaveModal}
+        imageUrl={currentInfluencer.imageUrl}
+        influencerData={currentInfluencer.data}
+        onSuccess={() => {
+          setShowSaveModal(false);
+          if (onSaveSuccess) {
+            onSaveSuccess();
+          }
+        }}
+      />
     </>
   )
 } 

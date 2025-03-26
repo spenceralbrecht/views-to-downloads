@@ -1,12 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { ChipSelect } from './ChipSelect'
 import { ImageResultsView } from './ImageResultsView'
 import { Skeleton } from '@/components/ui/skeleton'
 
-export function InfluencerPrompt() {
+interface InfluencerPromptProps {
+  onSaveSuccess?: () => void
+}
+
+export function InfluencerPrompt({ onSaveSuccess }: InfluencerPromptProps) {
   const [age, setAge] = useState<string>('')
   const [gender, setGender] = useState<string>('')
   const [ethnicity, setEthnicity] = useState<string>('')
@@ -20,6 +24,15 @@ export function InfluencerPrompt() {
     emotion?: string
     location?: string
   } | null>(null)
+  const [galleryKey, setGalleryKey] = useState(0)
+
+  // Callback function to refresh the gallery component
+  const handleSaveSuccess = useCallback(() => {
+    setGalleryKey(prevKey => prevKey + 1);
+    if (onSaveSuccess) {
+      onSaveSuccess();
+    }
+  }, [onSaveSuccess]);
 
   const ageOptions = [
     { label: '16-18', value: '16-18' },
@@ -133,6 +146,7 @@ export function InfluencerPrompt() {
             promptData={promptData} 
             isLoading={isLoading}
             setIsLoading={setIsLoading}
+            onSaveSuccess={handleSaveSuccess}
           />
         )}
       </div>
