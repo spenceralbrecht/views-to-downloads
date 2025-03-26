@@ -40,6 +40,7 @@ export function Sidebar({ user }: SidebarProps) {
     { name: 'Videos', href: '/dashboard/videos', icon: Video },
     { name: 'Hooks', href: '/dashboard/hooks', icon: Anchor },
     { name: 'Apps', href: '/dashboard/apps', icon: Smartphone },
+    { name: 'Influencers', href: '/dashboard/influencers', icon: UserIcon },
     { name: 'Guide', href: '/dashboard/guide', icon: BookOpen },
     { name: 'Connected Accounts', href: '/dashboard/connected-accounts', icon: Plug },
   ]
