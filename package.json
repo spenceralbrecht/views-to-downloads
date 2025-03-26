@@ -11,6 +11,7 @@
     "supabase:deploy-tiktok-function": "supabase functions deploy tiktok-publish"
   },
   "dependencies": {
+    "@fal-ai/client": "^1.3.0",
     "@hookform/resolvers": "^3.10.0",
     "@mendable/firecrawl-js": "^1.18.2",
     "@radix-ui/react-accordion": "^1.2.3",
