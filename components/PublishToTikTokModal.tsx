@@ -625,7 +625,27 @@ export function PublishToTikTokModal({
                           </div>
                           
                           <p className="text-sm text-muted-foreground pt-2">
-                            By posting, you agree to our <span className="text-blue-500 hover:underline cursor-pointer">Music Usage Confirmation</span>.
+                            {(brandedContent && yourBrand) || brandedContent ? (
+                              <>
+                                By posting, you agree to TikTok's{' '}
+                                <a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                  Branded Content Policy
+                                </a>{' '}
+                                and{' '}
+                                <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                  Music Usage Confirmation
+                                </a>
+                                .
+                              </>
+                            ) : (
+                              <>
+                                By posting, you agree to TikTok's{' '}
+                                <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                  Music Usage Confirmation
+                                </a>
+                                .
+                              </>
+                            )}
                           </p>
                         </>
                       )}
