@@ -2,141 +2,140 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
+import { ChipSelect } from './ChipSelect'
+import { ImageResultsView } from './ImageResultsView'
+import { Skeleton } from '@/components/ui/skeleton'
 
-interface InfluencerPromptProps {
-  onSubmit: (data: {
-    age?: string
-    gender?: string
-    ethnicity?: string
-    emotion?: string
-    feature?: string
-  }) => void
-}
-
-export function InfluencerPrompt({ onSubmit }: InfluencerPromptProps) {
+export function InfluencerPrompt() {
   const [age, setAge] = useState<string>('')
   const [gender, setGender] = useState<string>('')
   const [ethnicity, setEthnicity] = useState<string>('')
   const [emotion, setEmotion] = useState<string>('')
-  const [feature, setFeature] = useState<string>('')
+  const [location, setLocation] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [promptData, setPromptData] = useState<{
+    age?: string
+    gender?: string
+    ethnicity?: string
+    emotion?: string
+    location?: string
+  } | null>(null)
+
+  const ageOptions = [
+    { label: '16-18', value: '16-18' },
+    { label: '18-22', value: '18-22' },
+    { label: '22-26', value: '22-26' },
+    { label: '26-30', value: '26-30' },
+    { label: '30-40', value: '30-40' },
+    { label: '40-50', value: '40-50' }
+  ]
+
+  const genderOptions = [
+    { label: 'Male', value: 'male' },
+    { label: 'Female', value: 'female' }
+  ]
+
+  const ethnicityOptions = [
+    { label: 'Hispanic', value: 'hispanic' },
+    { label: 'White', value: 'white' },
+    { label: 'Black', value: 'black' },
+    { label: 'Asian', value: 'asian' }
+  ]
+
+  const emotionOptions = [
+    { label: 'Happy', value: 'happy' },
+    { label: 'Excited', value: 'excited' },
+    { label: 'Calm', value: 'calm' },
+    { label: 'Sad', value: 'sad' },
+    { label: 'Angry', value: 'angry' }
+  ]
+
+  const locationOptions = [
+    { label: 'Car', value: 'car' },
+    { label: 'Desk', value: 'desk' },
+    { label: 'Bedroom', value: 'bedroom' },
+    { label: 'Park', value: 'park' },
+    { label: 'City Sidewalk', value: 'city sidewalk' }
+  ]
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit({ age, gender, ethnicity, emotion, feature })
+    const data = { age, gender, ethnicity, emotion, location }
+    setPromptData(data)
+    setIsLoading(true)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="text-xl font-semibold mb-6">
-        Who's your influencer today?
+    <div className="flex flex-col md:flex-row md:gap-6">
+      <div className="w-full md:w-1/3 md:max-w-md">
+        <form onSubmit={handleSubmit} className="space-y-6">
+
+          <div className="space-y-6">
+            <ChipSelect 
+              label="Age" 
+              options={ageOptions} 
+              value={age} 
+              onChange={setAge} 
+            />
+            
+            <ChipSelect 
+              label="Sex" 
+              options={genderOptions} 
+              value={gender} 
+              onChange={setGender} 
+            />
+            
+            <ChipSelect 
+              label="Ethnicity" 
+              options={ethnicityOptions} 
+              value={ethnicity} 
+              onChange={setEthnicity} 
+            />
+            
+            <ChipSelect 
+              label="Emotion" 
+              options={emotionOptions} 
+              value={emotion} 
+              onChange={setEmotion} 
+            />
+            
+            <ChipSelect 
+              label="Location" 
+              options={locationOptions} 
+              value={location} 
+              onChange={setLocation} 
+            />
+          </div>
+
+          <div className="pt-4">
+            <Button 
+              type="submit" 
+              className="w-full md:w-auto bg-[#4287f5]"
+              disabled={!age || !gender || !ethnicity || !emotion || isLoading}
+            >
+              {isLoading ? 'Generating...' : 'Create'}
+            </Button>
+          </div>
+        </form>
       </div>
 
-      <div className="flex flex-wrap gap-4">
-        <div className="w-full md:w-auto">
-          <Label htmlFor="age">Age</Label>
-          <Select value={age} onValueChange={setAge}>
-            <SelectTrigger id="age" className="w-[180px]">
-              <SelectValue placeholder="Select age" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="18">18 year old</SelectItem>
-              <SelectItem value="20">20 year old</SelectItem>
-              <SelectItem value="25">25 year old</SelectItem>
-              <SelectItem value="27">27 year old</SelectItem>
-              <SelectItem value="30">30 year old</SelectItem>
-              <SelectItem value="35">35 year old</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="w-full md:w-auto">
-          <Label htmlFor="gender">Gender</Label>
-          <Select value={gender} onValueChange={setGender}>
-            <SelectTrigger id="gender" className="w-[180px]">
-              <SelectValue placeholder="Select gender" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="woman">woman</SelectItem>
-              <SelectItem value="man">man</SelectItem>
-              <SelectItem value="girl">girl</SelectItem>
-              <SelectItem value="boy">boy</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="w-full md:w-auto">
-          <Label htmlFor="ethnicity">Ethnicity</Label>
-          <Select value={ethnicity} onValueChange={setEthnicity}>
-            <SelectTrigger id="ethnicity" className="w-[180px]">
-              <SelectValue placeholder="Select ethnicity" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="asian">asian</SelectItem>
-              <SelectItem value="black">black</SelectItem>
-              <SelectItem value="hispanic">hispanic</SelectItem>
-              <SelectItem value="white">white</SelectItem>
-              <SelectItem value="middle eastern">middle eastern</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="w-full md:w-auto">
-          <Label htmlFor="emotion">Emotion</Label>
-          <Select value={emotion} onValueChange={setEmotion}>
-            <SelectTrigger id="emotion" className="w-[180px]">
-              <SelectValue placeholder="Select emotion" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="happy">happy</SelectItem>
-              <SelectItem value="sad">sad</SelectItem>
-              <SelectItem value="excited">excited</SelectItem>
-              <SelectItem value="nervous">nervous</SelectItem>
-              <SelectItem value="confident">confident</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="w-full md:w-auto">
-          <Label htmlFor="feature">Feature</Label>
-          <Select value={feature} onValueChange={setFeature}>
-            <SelectTrigger id="feature" className="w-[180px]">
-              <SelectValue placeholder="Select feature" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="biting lip">biting lip</SelectItem>
-              <SelectItem value="smiling">smiling</SelectItem>
-              <SelectItem value="winking">winking</SelectItem>
-              <SelectItem value="serious face">serious face</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="w-full md:w-2/3 mt-8 md:mt-0">
+        {!promptData && !isLoading ? (
+          <div className="grid grid-cols-4 gap-3">
+            {[...Array(4)].map((_, index) => (
+              <div key={index} className="relative aspect-[9/16] overflow-hidden rounded-md border-border border">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <ImageResultsView 
+            promptData={promptData} 
+            isLoading={isLoading}
+            setIsLoading={setIsLoading}
+          />
+        )}
       </div>
-
-      <div className="text-sm pt-2 pb-4">
-        <div className="flex flex-wrap gap-2">
-          {age && <span className="bg-muted rounded-full px-3 py-1 text-xs">{age}</span>}
-          {gender && <span className="bg-muted rounded-full px-3 py-1 text-xs">{gender}</span>}
-          {ethnicity && <span className="bg-muted rounded-full px-3 py-1 text-xs">{ethnicity}</span>}
-          {emotion && <span className="bg-muted rounded-full px-3 py-1 text-xs">{emotion}</span>}
-          {feature && <span className="bg-muted rounded-full px-3 py-1 text-xs">{feature}</span>}
-        </div>
-      </div>
-
-      <Button 
-        type="submit" 
-        className="w-full md:w-auto bg-[#4287f5]"
-        disabled={!age || !gender || !ethnicity || !emotion}
-      >
-        Create
-      </Button>
-    </form>
+    </div>
   )
 } 
