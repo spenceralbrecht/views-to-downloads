@@ -1166,10 +1166,16 @@ export default function CreateAd() {
           setSelectedDemoVideo('');
           setHook('');
 
+          // Get the status from the API response
+          const videoStatus = result.video.status || 'in_progress';
+          const isCompleted = videoStatus === 'completed';
+          
+          console.log(`DEBUG: Video status from API: ${videoStatus}, isCompleted: ${isCompleted}`);
+          
           // Create new video object to replace the placeholder
           const newVideo: OutputVideo = {
             id: result.video.outputId,
-            status: 'in_progress',
+            status: videoStatus, // Use actual status from API
             created_at: new Date().toISOString(),
             user_id: currentUser.id,
             url: ''
@@ -1183,12 +1189,60 @@ export default function CreateAd() {
             return [newVideo, ...filtered];
           });
 
-          // Start polling for video completion
-          pollForVideoCompletion(result.video.outputId);
+          // If the video is already completed according to the API response,
+          // fetch the complete video details immediately
+          if (isCompleted) {
+            console.log('DEBUG: Video already marked as completed in API response, fetching details immediately');
+            
+            // Fetch the video details right away to get the URL
+            const { data: videoData } = await supabase
+              .from('output_content')
+              .select('*')
+              .eq('id', result.video.outputId)
+              .single();
+            
+            if (videoData) {
+              console.log('DEBUG: Fetched completed video details:', videoData);
+              
+              // If the video has a URL, update it in the state
+              if (videoData.url) {
+                try {
+                  const videoPath = videoData.url.includes('output-content/')
+                    ? videoData.url.split('output-content/')[1]
+                    : videoData.url;
+                  
+                  const { data: { publicUrl } } = supabase
+                    .storage
+                    .from('output-content')
+                    .getPublicUrl(videoPath);
+                  
+                  console.log('DEBUG: Updated video public URL:', publicUrl);
+                  
+                  // Update the video in state with the URL and status
+                  setOutputVideos(prev => prev.map(video => 
+                    video.id === result.video.outputId
+                      ? { ...video, url: publicUrl, status: 'completed' }
+                      : video
+                  ));
+                } catch (error) {
+                  console.error('Error processing video URL:', error);
+                }
+              }
+            }
+            
+            // Still call fetchOutputVideos to ensure everything is up to date
+            fetchOutputVideos();
+          } else {
+            // If not already completed, start polling for video completion
+            console.log('DEBUG: Video not yet completed, starting polling');
+            pollForVideoCompletion(result.video.outputId);
+          }
 
           toast({
             title: "Video creation started",
-            description: "Your video is being processed and will appear in the list below when ready.",
+            description: isCompleted 
+              ? "Your video has been created successfully!" 
+              : "Your video is being processed and will appear in the list below when ready.",
           });
         } else {
           console.log('DEBUG: Unexpected response format:', result);
@@ -1449,19 +1503,56 @@ export default function CreateAd() {
           console.log(`🎥 [POLL] Video processing completed for output_id ${outputId}`);
           console.log(`🎥 [POLL] Final video URL: ${data.url}`);
           
-          if (typeof fetchOutputVideos === 'function') {
-            console.log(`🎥 [POLL] Refreshing video list after completion`);
-            fetchOutputVideos();
+          // Process the video URL and update the state directly
+          if (data.url) {
+            try {
+              const videoPath = data.url.includes('output-content/')
+                ? data.url.split('output-content/')[1]
+                : data.url;
+              
+              const { data: { publicUrl } } = supabase
+                .storage
+                .from('output-content')
+                .getPublicUrl(videoPath);
+              
+              console.log(`🎥 [POLL] Generated public URL: ${publicUrl}`);
+              
+              // Directly update the video in the state
+              setOutputVideos(prev => prev.map(video => 
+                video.id === outputId
+                  ? { ...video, url: publicUrl, status: 'completed' }
+                  : video
+              ));
+              
+              console.log(`🎥 [POLL] Updated video state with URL`);
+              
+              // Show a toast notification for the completion
+              toast({
+                title: "Video Ready",
+                description: "Your video has been created successfully!",
+              });
+            } catch (urlError) {
+              console.error(`🎥 [POLL] Error processing video URL:`, urlError);
+            }
           }
+          
+          // Also call fetchOutputVideos as a backup to ensure everything is up to date
+          console.log(`🎥 [POLL] Refreshing video list after completion`);
+          fetchOutputVideos();
         } else if (data.status === 'failed') {
           clearInterval(intervalId);
           console.error(`🎥 [POLL] Video processing FAILED for output_id ${outputId}`);
           console.error(`🎥 [POLL] Failure reason:`, data.error_message || 'No error message provided');
           
+          // Update the video status in the state to show the failure
+          setOutputVideos(prev => prev.map(video => 
+            video.id === outputId
+              ? { ...video, status: 'failed' }
+              : video
+          ));
+          
           // Still refresh the list to show the failed status
-          if (typeof fetchOutputVideos === 'function') {
-            fetchOutputVideos();
-          }
+          fetchOutputVideos();
           
           // Show a toast notification about the failure
           toast({
