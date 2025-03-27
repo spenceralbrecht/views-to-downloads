@@ -289,45 +289,83 @@ interface VideoCreationRequest {
 }
 
 interface VideoCreationResponse {
-  status: string;
-  video_url: string;
-  details: {
-    duration: number;
-  };
+  video_url?: string
+  video_id?: string
+  id?: string
+  outputId?: string
+  success?: boolean
+  [key: string]: any
 }
 
 async function callVideoCreationAPI(params: VideoCreationRequest): Promise<VideoCreationResponse> {
-  console.log('Calling video creation API with params:', JSON.stringify(params, null, 2));
-  
+  const API_URL = process.env.NEXT_PUBLIC_VIDEO_CREATION_API_URL || 'https://content-creation-api-python.onrender.com/api/create-video';
+  const API_KEY = process.env.VIDEO_CREATION_API_KEY || '';
+
+  console.log('🔌 [API-DEBUG] ======= STARTING VIDEO CREATION API CALL =======');
+  console.log('🔌 [API-DEBUG] Preparing API call to video creation service');
+  console.log('🔌 [API-DEBUG] API URL:', API_URL);
+  console.log('🔌 [API-DEBUG] Full influencer video URL:', params.influencerVideoUrl);
+  console.log('🔌 [API-DEBUG] Full demo footage URL:', params.demoFootageUrl);
+  console.log('🔌 [API-DEBUG] Other parameters:', JSON.stringify({
+    captionText: params.captionText,
+    captionPosition: params.captionPosition,
+    userUuid: params.userUuid,
+    appId: params.appId,
+    fontOutline: params.fontOutline
+  }, null, 2));
+
   try {
-    const response = await fetch('https://content-creation-api-python.onrender.com/api/create-video', {
+    console.log('🔌 [API-DEBUG] Initiating fetch request to API');
+    const startTime = Date.now();
+    
+    const requestBody = {
+      influencer_video_url: params.influencerVideoUrl,
+      demo_footage_url: params.demoFootageUrl,
+      caption_text: params.captionText || '',
+      caption_position: params.captionPosition || 'bottom',
+      user_uuid: params.userUuid || '',
+      app_id: params.appId || '',
+      font_outline: params.fontOutline || false
+    };
+    
+    console.log('🔌 [API-DEBUG] Full request body:', JSON.stringify(requestBody, null, 2));
+    
+    const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(params),
+      body: JSON.stringify(requestBody),
     });
+    
+    const requestDuration = Date.now() - startTime;
+    console.log(`🔌 [API-DEBUG] Request completed in ${requestDuration}ms with status: ${response.status}`);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Video creation API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText
-      });
-      throw new Error(`API call failed: ${response.status} ${response.statusText} - ${errorText}`);
+      console.error(`🔌 [API-DEBUG] Error response: ${response.status} ${response.statusText}`);
+      
+      let errorData;
+      try {
+        errorData = await response.json();
+        console.error('🔌 [API-DEBUG] Error response body:', JSON.stringify(errorData, null, 2));
+      } catch (parseError) {
+        const errorText = await response.text();
+        console.error('🔌 [API-DEBUG] Error response text:', errorText);
+        errorData = { error: errorText };
+      }
+      
+      throw new Error(`Failed to create video: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    console.log('Video creation API response:', JSON.stringify(data, null, 2));
-    
-    if (!data.video_url) {
-      throw new Error('API response missing video_url');
-    }
+    console.log('🔌 [API-DEBUG] Processing successful response');
+    const result = await response.json();
+    console.log('🔌 [API-DEBUG] Full response data:', JSON.stringify(result, null, 2));
+    console.log('🔌 [API-DEBUG] ======= VIDEO CREATION API CALL COMPLETED =======');
 
-    return data;
+    return result;
   } catch (error) {
-    console.error('Error in callVideoCreationAPI:', error);
+    console.error('🔌 [API-DEBUG] ======= VIDEO CREATION API CALL FAILED =======');
+    console.error('🔌 [API-DEBUG] Error in API call:', error);
     throw error;
   }
 }
@@ -348,13 +386,30 @@ export async function createVideo({
   app_id: string
 }) {
   try {
+    console.log('⚙️ [SERVER-DEBUG] ======= STARTING CREATE VIDEO WORKFLOW =======');
+    console.log('⚙️ [SERVER-DEBUG] createVideo function called on server-side');
+    console.log('⚙️ [SERVER-DEBUG] Full influencer video URL:', influencerVideoUrl);
+    console.log('⚙️ [SERVER-DEBUG] Full demo footage URL:', demoFootageUrl);
+    console.log('⚙️ [SERVER-DEBUG] Other parameters:', JSON.stringify({
+      captionText,
+      captionPosition,
+      userUuid,
+      appId
+    }, null, 2));
+
     const supabase = createServerActionClient({ cookies })
     
     // Get current user
+    console.log('⚙️ [SERVER-DEBUG] Getting current user');
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('User not authenticated')
+    if (!user) {
+      console.error('⚙️ [SERVER-DEBUG] User not authenticated');
+      throw new Error('User not authenticated')
+    }
+    console.log('⚙️ [SERVER-DEBUG] User authenticated:', user.id);
 
     // Check if user has an active subscription
+    console.log('⚙️ [SERVER-DEBUG] Checking user subscription');
     const { data: subscription, error: subscriptionError } = await supabase
       .from('subscriptions')
       .select('*')
@@ -363,47 +418,51 @@ export async function createVideo({
       .single()
 
     if (subscriptionError || !subscription) {
+      console.error('⚙️ [SERVER-DEBUG] No active subscription found:', subscriptionError);
       throw new Error('Active subscription required')
     }
+    console.log('⚙️ [SERVER-DEBUG] Active subscription verified');
 
     try {
+      // Call API
+      console.log('⚙️ [SERVER-DEBUG] Preparing to call video creation API');
+      console.log('⚙️ [SERVER-DEBUG] Full influencer video URL:', influencerVideoUrl);
+      console.log('⚙️ [SERVER-DEBUG] Full demo footage URL:', demoFootageUrl);
+
       // Call the external API to create the video
-      const response = await fetch('https://content-creation-api-python.onrender.com/api/create-video', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          influencerVideoUrl,
-          demoFootageUrl,
-          captionText,
-          captionPosition,
-          userUuid: user.id,
-          appId,
-          fontOutline: true
-        })
-      })
+      console.log('⚙️ [SERVER-DEBUG] Invoking callVideoCreationAPI function');
+      const response = await callVideoCreationAPI({
+        influencerVideoUrl,
+        demoFootageUrl,
+        captionText,
+        captionPosition,
+        userUuid,
+        appId,
+        fontOutline: true
+      });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null)
-        console.error('Video creation API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorData
-        })
-        
-        throw new Error(`Failed to create video: ${response.status} ${response.statusText}`)
-      }
-
-      const result = await response.json()
-      console.log('Video creation result:', result)
-
-      return { success: true, video: { ...result, status: 'completed' } }
+      console.log('⚙️ [SERVER-DEBUG] Video creation API response received');
+      console.log('⚙️ [SERVER-DEBUG] Full response data:', JSON.stringify(response, null, 2));
+      
+      const result = { 
+        success: true, 
+        video: { 
+          outputId: response.outputId || response.video_id || response.id || 'unknown', 
+          status: 'completed' 
+        } 
+      };
+      
+      console.log('⚙️ [SERVER-DEBUG] Returning result to client:', JSON.stringify(result, null, 2));
+      console.log('⚙️ [SERVER-DEBUG] ======= CREATE VIDEO WORKFLOW COMPLETED SUCCESSFULLY =======');
+      return result;
     } catch (error) {
-      throw error
+      console.error('⚙️ [SERVER-DEBUG] ======= CREATE VIDEO WORKFLOW FAILED =======');
+      console.error('⚙️ [SERVER-DEBUG] Error in API call:', error);
+      throw error;
     }
   } catch (error) {
-    console.error('Error creating video:', error)
+    console.error('⚙️ [SERVER-DEBUG] ======= CREATE VIDEO WORKFLOW FAILED =======');
+    console.error('⚙️ [SERVER-DEBUG] Error in createVideo:', error)
     return { error: error instanceof Error ? error.message : 'Failed to create video' }
   }
 }
@@ -502,7 +561,7 @@ export async function generateHooks(appId: string) {
     // Get app details
     const { data: app, error: appError } = await supabase
       .from('apps')
-      .select('app_description')
+      .select('app_description, app_name')
       .eq('id', appId)
       .single()
     
@@ -611,7 +670,7 @@ Your entire response must be a single JSON object with a "hooks" array containin
       const { data: savedHooks, error: insertError } = await supabase
         .from('hooks')
         .insert(
-          parsed.hooks.map(hook => ({
+          parsed.hooks.map((hook: string) => ({
             app_id: appId,
             user_id: user.id,
             hook_text: hook
@@ -678,5 +737,85 @@ export async function deleteHook(hookId: string) {
   } catch (error) {
     console.error('Error deleting hook:', error)
     return { success: false, error: 'Failed to delete hook' }
+  }
+}
+
+export async function generateVideoPromptServer(hook: string): Promise<{ prompt: string }> {
+  try {
+    console.log('📝 [SERVER-OPENAI-DEBUG] ======= STARTING VIDEO PROMPT GENERATION =======');
+    console.log('📝 [SERVER-OPENAI-DEBUG] Hook text:', hook);
+    
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+    
+    console.log('📝 [SERVER-OPENAI-DEBUG] Initializing OpenAI API call with gpt-4o model');
+    const startTime = Date.now();
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are a video prompt expert. Create prompts for AI video generation that match the emotional context of hooks used in social media videos. The prompts should describe how the person in the video would react or emote based on the hook content, without mentioning the hook text itself."
+        },
+        {
+          role: "user",
+          content: `Create a prompt for a video where the person is reacting to this hook: "${hook}". The prompt should describe the emotional state, facial expressions, and subtle movements of the person, based on the context and emotion of the hook. The prompt will be used to animate a static image of a person.`
+        }
+      ],
+      max_tokens: 150
+    });
+
+    const requestDuration = Date.now() - startTime;
+    console.log(`📝 [SERVER-OPENAI-DEBUG] Response received from OpenAI in ${requestDuration}ms`);
+    console.log('📝 [SERVER-OPENAI-DEBUG] Full response:', JSON.stringify(response, null, 2));
+    
+    const prompt = response.choices[0]?.message?.content || "";
+    console.log('📝 [SERVER-OPENAI-DEBUG] Generated video prompt:', prompt);
+    console.log('📝 [SERVER-OPENAI-DEBUG] ======= VIDEO PROMPT GENERATION COMPLETED =======');
+    
+    return { prompt };
+  } catch (error) {
+    console.error('📝 [SERVER-OPENAI-DEBUG] ======= VIDEO PROMPT GENERATION FAILED =======');
+    console.error('📝 [SERVER-OPENAI-DEBUG] Error generating video prompt:', error);
+    return { prompt: "Person with neutral expression, slight head movement and blinking" };
+  }
+}
+
+export async function generateVideoPrompt(hook: string): Promise<{ prompt: string }> {
+  try {
+    console.log('📝 [SERVER-OPENAI-DEBUG] Starting video prompt generation');
+    console.log('📝 [SERVER-OPENAI-DEBUG] Hook text:', hook);
+    
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+    
+    console.log('📝 [SERVER-OPENAI-DEBUG] Initializing OpenAI API call with gpt-4o model');
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are a video prompt expert. Create prompts for AI video generation that match the emotional context of hooks used in social media videos. The prompts should describe how the person in the video would react or emote based on the hook content, without mentioning the hook text itself."
+        },
+        {
+          role: "user",
+          content: `Create a prompt for a video where the person is reacting to this hook: "${hook}". The prompt should describe the emotional state, facial expressions, and subtle movements of the person, based on the context and emotion of the hook. The prompt will be used to animate a static image of a person.`
+        }
+      ],
+      max_tokens: 150
+    });
+
+    console.log('📝 [SERVER-OPENAI-DEBUG] Response received from OpenAI');
+    
+    const prompt = response.choices[0]?.message?.content || "";
+    console.log('📝 [SERVER-OPENAI-DEBUG] Generated video prompt:', prompt);
+    
+    return { prompt };
+  } catch (error) {
+    console.error('📝 [SERVER-OPENAI-DEBUG] Error generating video prompt:', error);
+    return { prompt: "Person with neutral expression, slight head movement and blinking" };
   }
 }
