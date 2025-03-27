@@ -1,7 +1,7 @@
 ---
-description: general info
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 This project uses Bun and not npm. We are using this version (2024-12-18.acacia) of the Stripe API.
 
@@ -21,188 +21,103 @@ Never remove code that doesn't explicity effect the change I'm asking you to mak
 
 When I ask you to fix something reflect on 5-7 different possible sources of the problem, distill those down to 1-2 most likely sources, and then add logs to validate your assumptions before we move onto implementing the actual code fix.
 
-These are the keys in the .env.local file but in the real file they all have a value assigned to them.
-
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-
-# AWS Credentials
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_REGION=
-AWS_S3_BUCKET_NAME=
-
-FIRECRAWL_API_KEY=
-OPENAI_API_KEY=
-
-# Stripe
-NEXT_PUBLIC_STRIPE_ENV=
-STRIPE_TEST_SECRET_KEY=
-STRIPE_SECRET_KEY=
-STRIPE_TEST_WEBHOOK_SECRET=
-# STRIPE_TEST_WEBHOOK_SECRET=
-NEXT_PUBLIC_STRIPE_TEST_CUSTOMER_BILLING_LINK=
-NEXT_PUBLIC_STRIPE_TEST_STARTER_PRICE_ID=
-NEXT_PUBLIC_STRIPE_TEST_GROWTH_PRICE_ID=
-NEXT_PUBLIC_STRIPE_TEST_SCALE_PRICE_ID=
-NEXT_PUBLIC_TEST_APP_URL=
-
-# Production Environment Price IDs
-NEXT_PUBLIC_STRIPE_CUSTOMER_BILLING_LINK=
-NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID=
-NEXT_PUBLIC_STRIPE_GROWTH_PRICE_ID=
-NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID=
-
-# Test Environment Payment Links
-NEXT_PUBLIC_STRIPE_TEST_STARTER_LINK=
-NEXT_PUBLIC_STRIPE_TEST_GROWTH_LINK=
-NEXT_PUBLIC_STRIPE_TEST_SCALE_LINK=
-
-# Production Environment Payment Links
-NEXT_PUBLIC_STRIPE_STARTER_LINK=
-NEXT_PUBLIC_STRIPE_GROWTH_LINK=
-NEXT_PUBLIC_STRIPE_SCALE_LINK=
-
 Here is the database schema:
 
 # **Database Schema Overview**
 This document provides an overview of the database structure, explaining each table, its fields, and relationships. The database is designed to handle applications, user-generated content, and automation hooks.
 
 ---
+**Supabase Database Schema Guide for Junior Developers**
 
-## **1. Tables and Relationships**
-The database consists of four main tables:
-
-1. **apps** - Stores application-related information.
-2. **input_content** - Stores user input content linked to apps.
-3. **output_content** - Stores processed output content linked to apps.
-4. **hooks** - Stores automation rules for apps.
-
-Each of these tables is linked to `auth.users` (Supabase authentication users) via the `user_id` field.
+Welcome to the Supabase project! This guide will walk you through the database schema to help you understand how everything fits together. This is a high-level overview with explanations for each table and how they relate to one another.
 
 ---
 
-## **2. Tables and Fields Breakdown**
+### Core Concepts
 
-### **(A) apps**
-Stores information about different applications.
-
-| Column        | Type       | Description                           |
-|--------------|-----------|---------------------------------------|
-| id           | `uuid`    | Primary key, unique identifier for the app. |
-| created_at   | `timestamptz` | Timestamp when the app was created. |
-| owner_id     | `uuid`    | Foreign key referencing `auth.users.id`, indicating the owner of the app. |
-| app_store_url | `text`    | URL to the app in the app store. |
-| app_description | `text`    | Description of the app. |
-| app_name     | `text`    | Name of the app. |
-| app_logo_url | `text`    | URL to the app logo. |
-
-**Relationships:**
-- `owner_id` → `auth.users.id` (each app is owned by a user).
+- **Supabase** is an open-source Firebase alternative. It provides a Postgres database, authentication, storage, and more.
+- This project uses a relational database structure. Tables are connected using foreign keys.
+- Most tables reference the `auth.users` table to associate data with specific users.
 
 ---
 
-### **(B) input_content**
-Stores content submitted by users to an application.
+## 📁 Tables Overview
 
-| Column      | Type       | Description                           |
-|------------|-----------|---------------------------------------|
-| id         | `uuid`    | Primary key, unique identifier for input content. |
-| created_at | `timestamptz` | Timestamp when the input content was created. |
-| user_id    | `uuid`    | Foreign key referencing `auth.users.id`, indicating which user submitted the content. |
-| app_id     | `uuid`    | Foreign key referencing `apps.id`, linking content to an application. |
-| content_url | `text`    | URL to the submitted content. |
+### 1. **apps**
+This table represents different applications using the system.
+- `owner_id`: References the user who owns the app.
+- `is_manual`: Indicates whether the app was added manually or through an app store link.
+- Other fields include name, description, store URL, and logo URL.
 
-**Relationships:**
-- `user_id` → `auth.users.id`
-- `app_id` → `apps.id`
+### 2. **input_content**
+This stores raw user-submitted content (like URLs or text prompts).
+- Linked to `apps` and `users` via foreign keys.
 
----
+### 3. **output_content**
+Contains the results generated from the input content.
+- Stores whether it's published, a URL to view it, and status.
+- Linked to `apps` and `users`.
 
-### **(C) output_content**
-Stores processed content generated from user input.
+### 4. **hooks**
+Stores short-form video **captions** that are added to influencer videos.
+- Each hook is tied to a specific app and user.
 
-| Column      | Type       | Description                           |
-|------------|-----------|---------------------------------------|
-| id         | `uuid`    | Primary key, unique identifier for output content. |
-| created_at | `timestamptz` | Timestamp when the output content was created. |
-| app_id     | `uuid`    | Foreign key referencing `apps.id`, linking output to an application. |
-| user_id    | `uuid`    | Foreign key referencing `auth.users.id`, indicating the user associated with the output. |
-| url        | `text`    | URL to the processed output content. |
-| status     | `text`    | Status of the output (e.g., "completed", "pending"). |
+### 5. **influencer_vids**
+Holds **default AI-generated influencer videos** provided by the platform.
+- Each entry has a `video_url` and `thumbnail_url`.
 
-**Relationships:**
-- `user_id` → `auth.users.id`
-- `app_id` → `apps.id`
+### 6. **influencer_vid_tags**
+A join table that links videos to tags (many-to-many relationship).
+- Each row links one video to one tag.
 
----
+### 7. **tags**
+Contains descriptive tags used to categorize influencer videos.
+- Each tag has a `name` and `category`.
 
-### **(D) hooks**
-Stores automation triggers associated with apps.
+### 8. **formats**
+Represents different content formats.
+- Includes name, difficulty, how it works, example content, and any required fields.
 
-| Column     | Type       | Description                           |
-|-----------|-----------|---------------------------------------|
-| id        | `uuid`    | Primary key, unique identifier for the hook. |
-| created_at | `timestamptz` | Timestamp when the hook was created. |
-| app_id    | `uuid`    | Foreign key referencing `apps.id`, linking the hook to an application. |
-| user_id   | `uuid`    | Foreign key referencing `auth.users.id`, indicating which user created the hook. |
-| hook_text | `text`    | Description of the hook or automation rule. |
+### 9. **generated_influencers**
+Stores **AI-generated influencer profiles created by users**.
+- Includes attributes like name, image, age, gender, ethnicity, emotion, and feature.
 
-**Relationships:**
-- `user_id` → `auth.users.id`
-- `app_id` → `apps.id`
+### 10. **subscriptions**
+Tracks user subscriptions for paid features.
+- Includes Stripe IDs, status, and usage metrics.
 
----
-
-# `subscriptions` Table Schema
-
-The `subscriptions` table manages user subscriptions and integrates with Stripe for payment processing.
-
-## **Primary Key**
-- **`id` (UUID, Primary Key)**: Unique identifier for each subscription record.
-
-## **Foreign Key**
-- **`user_id` (UUID, Foreign Key)**: Links to the user who owns the subscription.
-
-## **Stripe-Related Fields**
-- **`stripe_customer_id` (TEXT)**: The Stripe customer ID associated with the user.
-- **`stripe_subscription_id` (TEXT)**: The Stripe subscription ID corresponding to this record.
-- **`stripe_price_id` (TEXT)**: The Stripe price ID associated with the subscription plan.
-
-## **Subscription Details**
-- **`plan_name` (TEXT)**: The name of the subscription plan (e.g., "Basic", "Premium").
-- **`status` (TEXT)**: The current status of the subscription (e.g., "active", "canceled", "past_due").
-
-## **Subscription Period**
-- **`current_period_start` (TIMESTAMPTZ)**: Timestamp indicating the start of the current billing cycle.
-- **`current_period_end` (TIMESTAMPTZ)**: Timestamp marking the end of the current billing cycle.
-
-## **Timestamps**
-- **`created_at` (TIMESTAMPTZ)**: The timestamp when the subscription record was created.
-- **`updated_at` (TIMESTAMPTZ)**: The timestamp when the subscription record was last updated.
-
-## **Usage**
-This table enables tracking of user subscriptions, including linking users to their Stripe subscription details, monitoring the current billing cycle, and handling subscription status changes. It is a key part of subscription-based services where users are billed periodically.
-
-## **3. Relationships Diagram**
-Here’s a summary of how the tables connect:
-
-- **Users (`auth.users.id`)** own **Apps (`apps.owner_id`)**.
-- **Users (`auth.users.id`)** submit **Input Content (`input_content.user_id`)**.
-- **Input Content (`input_content.app_id`)** is linked to **Apps (`apps.id`)**.
-- **Apps (`apps.id`)** generate **Output Content (`output_content.app_id`)**.
-- **Users (`auth.users.id`)** own **Hooks (`hooks.user_id`)**, which are linked to **Apps (`hooks.app_id`)**.
+### 11. **connected_accounts**
+Stores OAuth-based connections to external platforms (e.g., TikTok, Twitter).
+- Includes tokens, usernames, and provider details.
 
 ---
 
-## **4. Summary**
-This schema enables:
-✅ Users to manage multiple apps.  
-✅ Users to submit input content linked to apps.  
-✅ Apps to process and generate output content.  
-✅ Users to define automation hooks for apps.  
+## 🔗 Relationships
+- `apps`, `input_content`, `output_content`, `hooks`, and `generated_influencers` all link to `auth.users.id`
+- `input_content` and `output_content` both link to `apps.id`
+- `influencer_vid_tags` links `influencer_vids.id` and `tags.id`
+- `subscriptions` and `connected_accounts` are linked to users for account management and payment tracking
+
+---
+
+## 📃 Example Flow
+1. A user signs in via Supabase Auth.
+2. They create an app manually or by providing an app store link.
+3. They upload some content to `input_content`.
+4. The system processes it and stores the result in `output_content`.
+5. They can add captions to videos using the `hooks` table.
+6. They can choose from default `influencer_vids` or generate new `generated_influencers`.
+7. If they’re on a subscription, usage is tracked in `subscriptions`.
+
+---
+
+## ✉️ Tips for Working with the Schema
+- Use Supabase's dashboard to view, query, and modify data.
+- Use foreign keys to write JOIN queries between tables.
+- Use UUIDs consistently for primary and foreign keys.
+- Refer to `created_at` to track when a record was added.
+
+
 
 This relational setup ensures scalability and maintains a clear structure for managing applications and their associated user-generated content.
 

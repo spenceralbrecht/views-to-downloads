@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Loader2, X, HelpCircle, Upload } from 'lucid
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { uploadDemoVideo, createVideo } from '../actions'
+import { uploadDemoVideo, createVideo, generateVideoPromptServer } from '../actions'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { VideoCard } from '@/components/VideoCard'
 import { AppSelect } from '@/components/app-select'
@@ -43,10 +43,26 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ViralFormatModal } from '@/components/ViralFormatModal'
+import { InfluencerTabs } from '@/components/InfluencerTabs'
+import Image from 'next/image'
+import { fal } from "@fal-ai/client";
 
 interface Hook {
   id: string
   hook_text: string
+}
+
+// Initialize fal client with proper key
+fal.config({
+  credentials: process.env.NEXT_PUBLIC_FAL_KEY || ''
+});
+
+// Log initialization status to help with debugging
+const falApiKey = process.env.NEXT_PUBLIC_FAL_KEY;
+console.log('🔍 [FAL-CONFIG] API key status:', falApiKey ? `Present (length: ${falApiKey.length})` : 'Missing');
+if (!falApiKey) {
+  console.error('🔍 [FAL-CONFIG] WARNING: Fal API key is missing or empty! Check your .env.local file.');
+  console.error('🔍 [FAL-CONFIG] Expected environment variable: NEXT_PUBLIC_FAL_KEY');
 }
 
 // Get UGC video URL (from Cloudflare R2)
@@ -78,42 +94,230 @@ const getOutputVideoUrl = (path: string) => {
   return `${baseUrl}/output/${path}`
 }
 
-const VideoGrid = memo(({ 
-  influencerVideos, 
-  selectedVideo, 
-  onVideoSelect 
-}: { 
-  influencerVideos: InfluencerVidWithTags[], 
-  selectedVideo: string | null,
-  onVideoSelect: (id: string, videoUrl: string) => void
-}) => {
-  return (
-    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
-      {influencerVideos.map((video) => (
-        <div
-          key={video.id}
-          onClick={() => {
-            console.log('Selected video:', video)
-            onVideoSelect(video.id, video.video_url)
-          }}
-          className={`relative flex-shrink-0 cursor-pointer group transition-all duration-200 rounded-lg overflow-hidden ${
-            selectedVideo === video.id
-              ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg'
-              : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
-          }`}
-          style={{ width: '100px', height: '177px' }}
-        >
-          <img
-            src={video.thumbnail_url}
-            alt={video.title || `Influencer Video`}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      ))}
-    </div>
-  )
-})
-VideoGrid.displayName = 'VideoGrid'
+// Generate a prompt for the video based on the hook using OpenAI
+const generateVideoPrompt = async (hook: string): Promise<string> => {
+  try {
+    console.log('📝 [CLIENT-DEBUG] Starting video prompt generation');
+    console.log('📝 [CLIENT-DEBUG] Hook text:', hook);
+    
+    console.log('📝 [CLIENT-DEBUG] Calling server action for prompt generation');
+    const result = await generateVideoPromptServer(hook);
+    
+    console.log('📝 [CLIENT-DEBUG] Server action completed');
+    console.log('📝 [CLIENT-DEBUG] Generated video prompt:', result.prompt);
+    
+    return result.prompt;
+  } catch (error) {
+    console.error('📝 [CLIENT-DEBUG] Error generating video prompt:', error);
+    return "Person with neutral expression, slight head movement and blinking";
+  }
+};
+
+// Generate a video from a static image using Fal AI
+const generateVideoFromImage = async (imageUrl: string, prompt: string): Promise<string> => {
+  try {
+    console.log('🔍 [FAL-DEBUG] ======= STARTING FAL API VIDEO GENERATION =======');
+    console.log('🔍 [FAL-DEBUG] Starting video generation from static image');
+    console.log('🔍 [FAL-DEBUG] Full Image URL:', imageUrl);
+    console.log('🔍 [FAL-DEBUG] Animation prompt:', prompt);
+    
+    // Verify API key is present first
+    const apiKey = process.env.NEXT_PUBLIC_FAL_KEY;
+    if (!apiKey) {
+      throw new Error('Fal API key is missing. Please add NEXT_PUBLIC_FAL_KEY to your .env.local file.');
+    }
+    
+    console.log('🔍 [FAL-DEBUG] Initializing Fal API call with image-to-video model');
+    console.log('🔍 [FAL-DEBUG] Request payload:', JSON.stringify({
+      input: {
+        prompt,
+        image_url: imageUrl
+      }
+    }, null, 2));
+    
+    // Start the request and get a requestId
+    console.log('🔍 [FAL-DEBUG] Submitting request to Fal API...');
+    
+    try {
+      const initialResponse = await fal.queue.submit("fal-ai/veo2/image-to-video", {
+        input: {
+          prompt,
+          image_url: imageUrl
+        }
+      });
+      
+      const requestId = initialResponse.request_id;
+      console.log('🔍 [FAL-DEBUG] Request submitted with ID:', requestId);
+      
+      // Poll for status until complete
+      let status = "PENDING";
+      let attempts = 0;
+      const maxAttempts = 30; // Limit the number of attempts
+      const pollingInterval = 2000; // 2 seconds between checks
+      
+      console.log('🔍 [FAL-DEBUG] Starting to poll for request status');
+      
+      while (status !== "COMPLETED" && status !== "FAILED" && attempts < maxAttempts) {
+        attempts++;
+        
+        // Wait for the polling interval
+        await new Promise(resolve => setTimeout(resolve, pollingInterval));
+        
+        // Check status
+        try {
+          const statusResponse = await fal.queue.status("fal-ai/veo2/image-to-video", {
+            requestId: requestId
+          });
+          
+          status = statusResponse.status;
+          console.log(`🔍 [FAL-DEBUG] Poll attempt ${attempts}/${maxAttempts}: Status: ${status}`);
+          console.log('🔍 [FAL-DEBUG] Status details:', JSON.stringify(statusResponse, null, 2));
+          
+          // If there are logs, print them (with type safety)
+          if (statusResponse && typeof statusResponse === 'object' && 'logs' in statusResponse && Array.isArray(statusResponse.logs)) {
+            statusResponse.logs.forEach((log: any) => {
+              if (log && typeof log === 'object' && 'message' in log) {
+                console.log(`🔍 [FAL-DEBUG] Processing log: ${log.message}`);
+              }
+            });
+          }
+        } catch (statusError) {
+          console.error('🔍 [FAL-DEBUG] Error checking status:', statusError);
+          // Continue polling despite status check error
+        }
+      }
+      
+      if (status !== "COMPLETED") {
+        console.error('🔍 [FAL-DEBUG] Request did not complete successfully:', status);
+        throw new Error(`Request did not complete successfully. Final status: ${status}`);
+      }
+      
+      // Fetch the final result using the requestId
+      console.log('🔍 [FAL-DEBUG] Request completed. Fetching final result...');
+      const result = await fal.queue.result("fal-ai/veo2/image-to-video", {
+        requestId: requestId
+      });
+      
+      // Access the result data and log it in full
+      console.log('🔍 [FAL-DEBUG] ======= FAL API RESPONSE RECEIVED =======');
+      console.log('🔍 [FAL-DEBUG] Full response data:', JSON.stringify(result.data, null, 2));
+      console.log('🔍 [FAL-DEBUG] Response request ID:', result.requestId);
+      
+      // Use type assertion to access the data structure
+      // This is necessary because the FAL AI types might not reflect the actual response
+      const responseData = result.data as any;
+      console.log('🔍 [FAL-DEBUG] Response data type:', typeof responseData);
+      console.log('🔍 [FAL-DEBUG] Response data keys:', Object.keys(responseData));
+      
+      let videoUrl = "";
+      
+      // Based on the observed response structure in the logs
+      // The video URL is in responseData.video.url
+      if (responseData.video && responseData.video.url) {
+        videoUrl = responseData.video.url;
+        console.log('🔍 [FAL-DEBUG] Found video URL in responseData.video.url:', videoUrl);
+      }
+      // Try additional paths based on the Fal AI documentation
+      else if (responseData.videos && responseData.videos.length > 0) {
+        videoUrl = responseData.videos[0];
+        console.log('🔍 [FAL-DEBUG] Found video URL in responseData.videos[0]:', videoUrl);
+      } else if (responseData.video_url) {
+        videoUrl = responseData.video_url;
+        console.log('🔍 [FAL-DEBUG] Found video URL in responseData.video_url:', videoUrl);
+      } else if (responseData.output && responseData.output.video) {
+        videoUrl = responseData.output.video;
+        console.log('🔍 [FAL-DEBUG] Found video URL in responseData.output.video:', videoUrl);
+      } else if (responseData.video_urls && responseData.video_urls.length > 0) {
+        videoUrl = responseData.video_urls[0];
+        console.log('🔍 [FAL-DEBUG] Found video URL in responseData.video_urls[0]:', videoUrl);
+      }
+      
+      if (!videoUrl) {
+        console.error('🔍 [FAL-DEBUG] No video URL found in the response:', responseData);
+        
+        // Try to extract deeper nested structures that might contain the URL
+        // This is a deeper inspection of the response object
+        if (typeof responseData === 'object') {
+          const flattenedPaths: Record<string, string> = {};
+          
+          // Function to recursively scan the object for potential URL paths
+          const findPaths = (obj: any, path: string = '') => {
+            if (!obj || typeof obj !== 'object') return;
+            
+            Object.entries(obj).forEach(([key, value]) => {
+              const currentPath = path ? `${path}.${key}` : key;
+              
+              // Check if this value looks like a URL
+              if (typeof value === 'string' && 
+                  (value.startsWith('http://') || value.startsWith('https://')) &&
+                  (value.endsWith('.mp4') || value.includes('video'))) {
+                flattenedPaths[currentPath] = value;
+                console.log(`🔍 [FAL-DEBUG] Found potential video URL at path ${currentPath}:`, value);
+              }
+              
+              // Recursively search nested objects
+              if (value && typeof value === 'object') {
+                findPaths(value, currentPath);
+              }
+            });
+          };
+          
+          // Scan the response for URLs
+          findPaths(responseData);
+          
+          // If we found any URLs, use the first one
+          const urlPaths = Object.keys(flattenedPaths);
+          if (urlPaths.length > 0) {
+            videoUrl = flattenedPaths[urlPaths[0]];
+            console.log(`🔍 [FAL-DEBUG] Using URL found at path ${urlPaths[0]}:`, videoUrl);
+          }
+        }
+        
+        // If we still don't have a URL, throw an error
+        if (!videoUrl) {
+          throw new Error('No video URL found in the response');
+        }
+      }
+      
+      console.log('🔍 [FAL-DEBUG] Generated video URL:', videoUrl);
+      
+      // Validate the video URL by checking if it's accessible
+      console.log('🔍 [FAL-DEBUG] Validating video URL is accessible...');
+      try {
+        const videoCheck = await fetch(videoUrl, { method: 'HEAD' });
+        console.log(`🔍 [FAL-DEBUG] Video URL validation status: ${videoCheck.status}`);
+        if (!videoCheck.ok) {
+          console.error(`🔍 [FAL-DEBUG] Video URL validation failed: ${videoCheck.status}`);
+          throw new Error(`Video URL validation failed: ${videoCheck.status}`);
+        }
+        console.log('🔍 [FAL-DEBUG] Video URL validated successfully');
+      } catch (validationError) {
+        console.error('🔍 [FAL-DEBUG] Error validating video URL:', validationError);
+        // Continue anyway, as some URLs might not support HEAD requests
+      }
+      
+      console.log('🔍 [FAL-DEBUG] ======= FAL API VIDEO GENERATION COMPLETED SUCCESSFULLY =======');
+      return videoUrl;
+    } catch (falApiError: any) {
+      // Handle Fal API specific errors
+      console.error('🔍 [FAL-DEBUG] Fal API error:', falApiError);
+      if (falApiError.status === 401) {
+        throw new Error('Authentication failed with Fal API. Please check your API key.');
+      } else if (falApiError.message) {
+        throw new Error(`Fal API error: ${falApiError.message}`);
+      } else {
+        throw falApiError; // Re-throw if we can't add any helpful context
+      }
+    }
+  } catch (error: any) {
+    console.error('🔍 [FAL-DEBUG] ======= FAL API VIDEO GENERATION FAILED =======');
+    console.error('🔍 [FAL-DEBUG] Error generating video from image:', error);
+    
+    // Return a formatted error for better UX
+    const errorMessage = error.message || 'Unknown error during video generation';
+    throw new Error(`Fal AI video generation failed: ${errorMessage}`);
+  }
+};
 
 export default function CreateAd() {
   const supabase = createClientComponentClient()
@@ -159,6 +363,7 @@ export default function CreateAd() {
   const [selectedInfluencerVideo, setSelectedInfluencerVideo] = useState('')
   const [selectedDemoVideo, setSelectedDemoVideo] = useState('')
   const [selectedDemo, setSelectedDemo] = useState<string>('')
+  const [isCustomInfluencer, setIsCustomInfluencer] = useState(false)
 
   // State for demo videos
   const [demoVideos, setDemoVideos] = useState<DemoVideo[]>([])
@@ -169,6 +374,7 @@ export default function CreateAd() {
   const [filteredInfluencerVideos, setFilteredInfluencerVideos] = useState<InfluencerVidWithTags[]>([])
   const [loadingInfluencerVideos, setLoadingInfluencerVideos] = useState(false)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [activeTab, setActiveTab] = useState<'your' | 'base'>('base')
 
   // Pagination setup for the influencer videos
   const [currentPage, setCurrentPage] = useState(1)
@@ -246,8 +452,21 @@ export default function CreateAd() {
 
   // State for output videos
   const [outputVideos, setOutputVideos] = useState<OutputVideo[]>([])
-  const [loadingOutputs, setLoadingOutputs] = useState(true)
-  const [pendingVideo, setPendingVideo] = useState<any>(null)
+  const [loadingOutputVideos, setLoadingOutputVideos] = useState(false)
+
+  // Check if Fal API key is configured on page load
+  useEffect(() => {
+    const falApiKey = process.env.NEXT_PUBLIC_FAL_KEY;
+    if (!falApiKey) {
+      console.error('🔍 [FAL-CONFIG] Fal API key missing - showing warning toast');
+      toast({
+        title: "Animation Service Unavailable",
+        description: "Custom influencer animation is disabled. Please check your API configuration.",
+        variant: "destructive",
+        duration: 6000,
+      });
+    }
+  }, [toast]);
 
   // Move randomization to a state that's set only once on mount
   const [allVideos, setAllVideos] = useState<number[]>([])
@@ -469,7 +688,7 @@ export default function CreateAd() {
       }
     });
     setOutputVideos(outputVideosWithUrls.filter(video => video !== null));
-    setLoadingOutputs(false);
+    setLoadingOutputVideos(false);
   };
 
   // Add real-time subscription for video status updates
@@ -636,7 +855,7 @@ export default function CreateAd() {
     return !hasNoHooksAtAll // Return true if user has at least one hook
   }
   const handleCreateVideo = async () => {
-    console.log('DEBUG: handleCreateVideo triggered', { selectedAppId, hook, selectedInfluencerVideo, selectedDemoVideo, contentRemaining, isPending });
+    console.log('DEBUG: handleCreateVideo triggered', { selectedAppId, hook, selectedInfluencerVideo, selectedDemoVideo, contentRemaining, isPending, isCustomInfluencer });
     
     // Check if user has any apps
     const { data: appsData, error: appsError } = await supabase
@@ -708,8 +927,8 @@ export default function CreateAd() {
     if (!selectedInfluencerVideo) {
       console.log('DEBUG: No influencer video selected');
       toast({
-        title: "UGC Video Required",
-        description: "Please select an influencer video from the grid",
+        title: "Influencer Required",
+        description: "Please select an influencer from the grid",
         variant: "destructive"
       });
       return;
@@ -772,28 +991,164 @@ export default function CreateAd() {
       return;
     }
 
-    // Use the selected influencer video URL directly
-    const influencerVideoUrl = selectedInfluencerVideo;
-    console.log('Final influencerVideoUrl for payload:', influencerVideoUrl);
-
-    const payload = {
-      influencerVideoUrl,
-      demoFootageUrl: selectedDemoVideo,
-      captionText: hook,
-      captionPosition: textPosition,
-      userUuid: currentUser.id,
-      app_id: selectedAppId
-    };
-    console.log('Video creation request body:', JSON.stringify(payload));
-
     // Set creating state
-    setIsCreating(true)
+    setIsCreating(true);
+    
+    // Create a placeholder for the in-progress video so loading UI appears immediately
+    const tempOutputId = `temp-${Date.now()}`;
+    const tempVideo: OutputVideo = {
+      id: tempOutputId,
+      status: 'in_progress',
+      created_at: new Date().toISOString(),
+      user_id: currentUser.id,
+      url: ''
+    };
+    
+    // Add the placeholder to the videos list
+    setOutputVideos(prev => [tempVideo, ...prev]);
+    console.log('DEBUG: Added temporary placeholder video with ID:', tempOutputId);
 
     startTransition(async () => {
       try {
-        console.log('DEBUG: Calling createVideo with', payload);
+        let influencerVideoUrl = selectedInfluencerVideo;
+        let animatedSuccess = false;
+        
+        // If using custom influencer (static image), we need to generate a video
+        if (isCustomInfluencer) {
+          // Check if Fal API is configured before attempting animation
+          const falApiKey = process.env.NEXT_PUBLIC_FAL_KEY;
+          
+          if (!falApiKey) {
+            // No API key - show error and use static image instead
+            console.error('🎬 [CUSTOM-INFLUENCER] Cannot animate - FAL API key is missing');
+            toast({
+              title: "Animation Not Available",
+              description: "Custom influencer animation is disabled due to missing API configuration.",
+              variant: "destructive"
+            });
+            console.log('🎬 [CUSTOM-INFLUENCER] Using static image instead:', selectedInfluencerVideo);
+            // Keep the static image URL
+            influencerVideoUrl = selectedInfluencerVideo;
+          } else {
+            // Show a toast to inform user of the process
+            toast({
+              title: "Animating Custom Influencer",
+              description: "We're creating a video from your influencer image. This will take a moment.",
+            });
+            
+            console.log('🎬 [CUSTOM-INFLUENCER] Starting custom influencer animation process');
+            console.log('🎬 [CUSTOM-INFLUENCER] Is custom influencer:', isCustomInfluencer);
+            console.log('🎬 [CUSTOM-INFLUENCER] Static image URL:', selectedInfluencerVideo);
+            console.log('🎬 [CUSTOM-INFLUENCER] Hook text:', hook);
+            
+            try {
+              // 1. Generate a video prompt based on the hook using server action
+              console.log('🎬 [CUSTOM-INFLUENCER] Step 1: Generating video prompt from hook');
+              const { prompt: videoPrompt } = await generateVideoPromptServer(hook);
+              console.log('🎬 [CUSTOM-INFLUENCER] Prompt generation successful:', videoPrompt);
+              
+              // 2. Generate the video from the static image
+              console.log('🎬 [CUSTOM-INFLUENCER] Step 2: Generating video from static image');
+              console.log('🎬 [CUSTOM-INFLUENCER] Starting Fal API video generation - will wait for completion');
+              
+              try {
+                // This will now use the proper queue.submit/status/result pattern
+                influencerVideoUrl = await generateVideoFromImage(selectedInfluencerVideo, videoPrompt);
+                console.log('🎬 [CUSTOM-INFLUENCER] Video generation completed successfully');
+                console.log('🎬 [CUSTOM-INFLUENCER] Generated video URL:', influencerVideoUrl);
+                animatedSuccess = true;
+                
+                // Validate the generated URL to ensure it exists and is accessible
+                console.log('🎬 [CUSTOM-INFLUENCER] Validating generated video URL:', influencerVideoUrl);
+                const urlCheck = await fetch(influencerVideoUrl, { method: 'HEAD' });
+                if (!urlCheck.ok) {
+                  throw new Error(`Generated video URL is not accessible: ${urlCheck.status}`);
+                }
+                
+                // Let the user know the animation is complete
+                toast({
+                  title: "Animation Complete",
+                  description: "Your custom influencer has been animated successfully!",
+                });
+              } catch (falError: any) {
+                // Handle authentication/authorization errors specially
+                if (falError.message && (
+                  falError.message.includes('Unauthorized') || 
+                  falError.message.includes('Authentication failed') ||
+                  falError.message.includes('401')
+                )) {
+                  console.error('🎬 [CUSTOM-INFLUENCER] Authentication failed with Fal API:', falError);
+                  toast({
+                    title: "API Authentication Failed",
+                    description: "Could not authenticate with the animation service. Please check your API key.",
+                    variant: "destructive"
+                  });
+                  // Fall back to static image
+                  console.log('🎬 [CUSTOM-INFLUENCER] Falling back to static image due to authentication error');
+                } else {
+                  // Generic error, show toast but continue with static image
+                  console.error('🎬 [CUSTOM-INFLUENCER] Error in video generation:', falError);
+                  toast({
+                    title: "Animation Failed",
+                    description: "We couldn't animate your custom influencer. Using static image instead.",
+                    variant: "destructive"
+                  });
+                }
+                // Continue with the original image URL if video generation fails
+                influencerVideoUrl = selectedInfluencerVideo;
+                console.log('🎬 [CUSTOM-INFLUENCER] Falling back to static image URL:', influencerVideoUrl);
+              }
+            } catch (error) {
+              console.error('🎬 [CUSTOM-INFLUENCER] Error in custom influencer processing:', error);
+              toast({
+                title: "Animation Failed",
+                description: "We couldn't animate your custom influencer. Using static image instead.",
+                variant: "destructive"
+              });
+              
+              // Continue with the original image URL if video generation fails
+              influencerVideoUrl = selectedInfluencerVideo;
+              console.log('🎬 [CUSTOM-INFLUENCER] Falling back to static image URL:', influencerVideoUrl);
+            }
+          }
+        }
+        
+        // Only proceed with video creation if we have a valid influencer video URL
+        // For static images that failed animation, show an error
+        if (isCustomInfluencer && !animatedSuccess && influencerVideoUrl === selectedInfluencerVideo) {
+          console.error('🔄 [VIDEO-CREATION] Cannot use static image for video creation - animation failed');
+          toast({
+            title: "Video Creation Failed",
+            description: "We cannot use a static image for video creation. Please try again or select a video influencer.",
+            variant: "destructive"
+          });
+          
+          // Remove the temporary placeholder since we're not proceeding
+          setOutputVideos(prev => prev.filter(v => v.id !== tempOutputId));
+          setIsCreating(false);
+          return;
+        }
+        
+        // Proceed with video creation using either the original or newly generated video URL
+        console.log('🔄 [VIDEO-CREATION] Starting final video creation with API');
+        console.log('🔄 [VIDEO-CREATION] Final influencerVideoUrl for payload:', influencerVideoUrl);
+        console.log('🔄 [VIDEO-CREATION] Demo footage URL:', selectedDemoVideo);
+        console.log('🔄 [VIDEO-CREATION] Hook text:', hook);
+        console.log('🔄 [VIDEO-CREATION] Text position:', textPosition);
+
+        const payload = {
+          influencerVideoUrl,
+          demoFootageUrl: selectedDemoVideo,
+          captionText: hook,
+          captionPosition: textPosition,
+          userUuid: currentUser.id,
+          app_id: selectedAppId
+        };
+        console.log('🔄 [VIDEO-CREATION] Video creation request body:', JSON.stringify(payload));
+
+        console.log('🔄 [VIDEO-CREATION] Calling createVideo API');
         const result = await createVideo(payload);
-        console.log('DEBUG: createVideo result', result);
+        console.log('🔄 [VIDEO-CREATION] createVideo API response:', JSON.stringify(result, null, 2));
 
         if ('error' in result) {
           console.log('DEBUG: Error creating video', result.error);
@@ -802,13 +1157,16 @@ export default function CreateAd() {
             description: result.error,
             variant: "destructive"
           });
+          
+          // Remove the temporary placeholder since creation failed
+          setOutputVideos(prev => prev.filter(v => v.id !== tempOutputId));
         } else if (result.success && result.video) {
           console.log('DEBUG: Video created successfully with outputId:', result.video.outputId);
           setSelectedVideo(null);
           setSelectedDemoVideo('');
           setHook('');
 
-          // Create new video object and add to list
+          // Create new video object to replace the placeholder
           const newVideo: OutputVideo = {
             id: result.video.outputId,
             status: 'in_progress',
@@ -817,11 +1175,12 @@ export default function CreateAd() {
             url: ''
           };
           console.log('DEBUG: Adding new video to list:', newVideo);
+          
+          // Replace the temporary placeholder with the real video
           setOutputVideos(prev => {
-            console.log('DEBUG: Previous videos:', prev);
-            const updated = [newVideo, ...prev];
-            console.log('DEBUG: Updated videos list:', updated);
-            return updated;
+            console.log('DEBUG: Replacing temporary placeholder with real video');
+            const filtered = prev.filter(v => v.id !== tempOutputId);
+            return [newVideo, ...filtered];
           });
 
           // Start polling for video completion
@@ -838,6 +1197,9 @@ export default function CreateAd() {
             description: "Unexpected response from server",
             variant: "destructive"
           });
+          
+          // Remove the temporary placeholder since creation failed
+          setOutputVideos(prev => prev.filter(v => v.id !== tempOutputId));
         }
       } catch (error: any) {
         console.error('DEBUG: Exception in createVideo', error);
@@ -846,6 +1208,9 @@ export default function CreateAd() {
           description: error.message,
           variant: "destructive"
         });
+        
+        // Remove the temporary placeholder since an exception occurred
+        setOutputVideos(prev => prev.filter(v => v.id !== tempOutputId));
       } finally {
         // Reset creating state after a short delay to allow for visual feedback
         setTimeout(() => {
@@ -855,10 +1220,11 @@ export default function CreateAd() {
     });
   };
 
-  const handleUGCVideoSelect = (id: string, videoUrl: string) => {
-    console.log('handleUGCVideoSelect called with:', id, videoUrl)
+  const handleUGCVideoSelect = (id: string, videoUrl: string, isCustom = false) => {
+    console.log('handleUGCVideoSelect called with:', id, videoUrl, isCustom ? '(custom influencer)' : '(base influencer)')
     setSelectedVideo(id)
     setSelectedInfluencerVideo(videoUrl)
+    setIsCustomInfluencer(isCustom)
   }
 
   const handleDemoVideoSelect = (url: string) => {
@@ -1051,24 +1417,66 @@ export default function CreateAd() {
   // Insert this function inside CreateAd (e.g., after other hooks/state declarations and before handleDeleteDemo)
   async function pollForVideoCompletion(outputId: string) {
     const pollInterval = 5000; // Poll every 5 seconds
+    console.log(`🎥 [POLL] Starting to poll for video with ID: ${outputId}`);
+    
     const intervalId = setInterval(async () => {
+      console.log(`🎥 [POLL] Checking status of video with ID: ${outputId}`);
+      
       const { data, error } = await supabase
         .from('output_content')
         .select('*')
         .eq('id', outputId)
         .single();
+        
       if (error) {
-        console.error('Error polling video completion:', error);
+        console.error(`🎥 [POLL] Error polling video completion for ID ${outputId}:`, error);
         return;
       }
-      if (data && data.status === 'completed') {
-        clearInterval(intervalId);
-        console.log('Video processing completed for output_id', outputId);
-        if (typeof fetchOutputVideos === 'function') {
-          fetchOutputVideos();
+      
+      console.log(`🎥 [POLL] Current status for video ${outputId}:`, data?.status);
+      
+      if (data) {
+        // Log additional details about the video
+        console.log(`🎥 [POLL] Video details:`, {
+          id: data.id,
+          status: data.status,
+          url: data.url,
+          created_at: data.created_at
+        });
+        
+        if (data.status === 'completed') {
+          clearInterval(intervalId);
+          console.log(`🎥 [POLL] Video processing completed for output_id ${outputId}`);
+          console.log(`🎥 [POLL] Final video URL: ${data.url}`);
+          
+          if (typeof fetchOutputVideos === 'function') {
+            console.log(`🎥 [POLL] Refreshing video list after completion`);
+            fetchOutputVideos();
+          }
+        } else if (data.status === 'failed') {
+          clearInterval(intervalId);
+          console.error(`🎥 [POLL] Video processing FAILED for output_id ${outputId}`);
+          console.error(`🎥 [POLL] Failure reason:`, data.error_message || 'No error message provided');
+          
+          // Still refresh the list to show the failed status
+          if (typeof fetchOutputVideos === 'function') {
+            fetchOutputVideos();
+          }
+          
+          // Show a toast notification about the failure
+          toast({
+            title: "Video Creation Failed",
+            description: "There was an issue processing your video. Please try again.",
+            variant: "destructive"
+          });
         }
+      } else {
+        console.warn(`🎥 [POLL] No data returned for video ID ${outputId}`);
       }
     }, pollInterval);
+    
+    // Store the interval ID to clear it if the component unmounts
+    return () => clearInterval(intervalId);
   }
 
   // Add uploadProgress state
@@ -1889,10 +2297,10 @@ export default function CreateAd() {
             {/* Video Selection */}
             <div>
               <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-foreground">3. Select a Video</h2>
+                <h2 className="text-lg font-semibold text-foreground">3. Select an Influencer</h2>
               </div>
               <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-                {/* Video Grid */}
+                {/* Video Grid with Tabs */}
                 <div className="w-full lg:w-3/4">
                   <div className="mb-4">
                     <FilterTags 
@@ -1901,30 +2309,21 @@ export default function CreateAd() {
                       onChange={handleTagsChange} 
                     />
                   </div>
-                  {loadingInfluencerVideos ? (
-                    <div className="flex items-center justify-center h-40">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary/70" />
-                    </div>
-                  ) : filteredInfluencerVideos.length === 0 ? (
-                    <div className="text-center py-10 text-muted-foreground">
-                      <p>No videos match your selected filters</p>
-                      {selectedTags.length > 0 && (
-                        <button 
-                          onClick={() => setSelectedTags([])} 
-                          className="text-xs text-primary mt-2 hover:underline"
-                        >
-                          Clear all filters
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <VideoGrid 
-                      influencerVideos={paginatedInfluencerVideos}
-                      selectedVideo={selectedVideo}
-                      onVideoSelect={handleUGCVideoSelect}
-                    />
-                  )}
-                  {!loadingInfluencerVideos && filteredInfluencerVideos.length > 0 && (
+                  
+                  {/* Replace VideoGrid with InfluencerTabs */}
+                  <InfluencerTabs
+                    baseInfluencerVideos={paginatedInfluencerVideos}
+                    selectedVideo={selectedVideo}
+                    onVideoSelect={handleUGCVideoSelect}
+                    loading={loadingInfluencerVideos}
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                  />
+                  
+                  {/* Pagination Controls - Only show for Base Influencers tab */}
+                  {!loadingInfluencerVideos && 
+                   filteredInfluencerVideos.length > 0 && 
+                   activeTab === 'base' && (
                     <div className="flex justify-between mt-4">
                       <Button
                         variant="outline"
@@ -1961,6 +2360,18 @@ export default function CreateAd() {
                         <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
                           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
+                        {isCustomInfluencer ? (
+                          <Image
+                            src={selectedInfluencerVideo}
+                            alt="Custom influencer"
+                            fill
+                            className="object-cover relative z-20"
+                            onLoad={() => {
+                              const loader = document.querySelector('.loader-element');
+                              if (loader) loader.remove();
+                            }}
+                          />
+                        ) : (
                         <video
                           key={selectedVideo}
                           src={selectedInfluencerVideo}
@@ -1976,6 +2387,7 @@ export default function CreateAd() {
                             target.previousElementSibling?.remove();
                           }}
                         />
+                        )}
                         {hook && (
                           <div 
                             className={`absolute inset-x-0 z-30 p-3 lg:p-4 text-center ${
@@ -2173,7 +2585,7 @@ export default function CreateAd() {
         <div className="mt-8 lg:mt-12">
           <h2 className="text-lg font-semibold text-foreground mb-3 lg:mb-4">My Videos</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 lg:gap-4">
-            {loadingOutputs ? (
+            {loadingOutputVideos ? (
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             ) : outputVideos.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center col-span-full">No videos created yet. Create your first video above!</p>
