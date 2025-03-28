@@ -45,24 +45,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ViralFormatModal } from '@/components/ViralFormatModal'
 import { InfluencerTabs } from '@/components/InfluencerTabs'
 import Image from 'next/image'
-import { fal } from "@fal-ai/client";
+import { useSearchParams } from 'next/navigation'
 
 interface Hook {
   id: string
   hook_text: string
-}
-
-// Initialize fal client with proper key
-fal.config({
-  credentials: process.env.NEXT_PUBLIC_FAL_KEY || ''
-});
-
-// Log initialization status to help with debugging
-const falApiKey = process.env.NEXT_PUBLIC_FAL_KEY;
-console.log('🔍 [FAL-CONFIG] API key status:', falApiKey ? `Present (length: ${falApiKey.length})` : 'Missing');
-if (!falApiKey) {
-  console.error('🔍 [FAL-CONFIG] WARNING: Fal API key is missing or empty! Check your .env.local file.');
-  console.error('🔍 [FAL-CONFIG] Expected environment variable: NEXT_PUBLIC_FAL_KEY');
 }
 
 // Get UGC video URL (from Cloudflare R2)
@@ -113,205 +100,70 @@ const generateVideoPrompt = async (hook: string): Promise<string> => {
   }
 };
 
+import { createLogger } from '@/utils/logger'
+
+// Create loggers for different components
+const logVideo = createLogger('video-creation')
+const logInfluencer = createLogger('influencer')
+const logFal = createLogger('fal-client')
+
 // Generate a video from a static image using Fal AI
 const generateVideoFromImage = async (imageUrl: string, prompt: string): Promise<string> => {
   try {
-    console.log('🔍 [FAL-DEBUG] ======= STARTING FAL API VIDEO GENERATION =======');
-    console.log('🔍 [FAL-DEBUG] Starting video generation from static image');
-    console.log('🔍 [FAL-DEBUG] Full Image URL:', imageUrl);
-    console.log('🔍 [FAL-DEBUG] Animation prompt:', prompt);
+    logFal.debug('======= STARTING FAL API VIDEO GENERATION =======');
+    logFal.debug('Starting video generation from static image');
+    logFal.debug('Full Image URL:', imageUrl);
+    logFal.debug('Animation prompt:', prompt);
     
-    // Verify API key is present first
-    const apiKey = process.env.NEXT_PUBLIC_FAL_KEY;
-    if (!apiKey) {
-      throw new Error('Fal API key is missing. Please add NEXT_PUBLIC_FAL_KEY to your .env.local file.');
+    // Make request to our server-side API endpoint
+    const response = await fetch('/api/fal/video-generation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        imageUrl,
+        prompt
+      })
+    });
+    
+    // Check for errors
+    if (!response.ok) {
+      const errorData = await response.json();
+      logFal.error('API error response:', errorData);
+      throw new Error(errorData.error || `Server error: ${response.status}`);
     }
     
-    console.log('🔍 [FAL-DEBUG] Initializing Fal API call with image-to-video model');
-    console.log('🔍 [FAL-DEBUG] Request payload:', JSON.stringify({
-      input: {
-        prompt,
-        image_url: imageUrl
-      }
-    }, null, 2));
+    // Parse the response
+    const result = await response.json();
+    logFal.debug('Server response:', result);
     
-    // Start the request and get a requestId
-    console.log('🔍 [FAL-DEBUG] Submitting request to Fal API...');
+    if (!result.videoUrl) {
+      throw new Error('No video URL returned from server');
+    }
     
+    logFal.debug('Generated video URL:', result.videoUrl);
+    
+    // Validate the video URL by checking if it's accessible
+    logFal.debug('Validating video URL is accessible...');
     try {
-      const initialResponse = await fal.queue.submit("fal-ai/veo2/image-to-video", {
-        input: {
-          prompt,
-          image_url: imageUrl
-        }
-      });
-      
-      const requestId = initialResponse.request_id;
-      console.log('🔍 [FAL-DEBUG] Request submitted with ID:', requestId);
-      
-      // Poll for status until complete
-      let status = "PENDING";
-      let attempts = 0;
-      const maxAttempts = 30; // Limit the number of attempts
-      const pollingInterval = 2000; // 2 seconds between checks
-      
-      console.log('🔍 [FAL-DEBUG] Starting to poll for request status');
-      
-      while (status !== "COMPLETED" && status !== "FAILED" && attempts < maxAttempts) {
-        attempts++;
-        
-        // Wait for the polling interval
-        await new Promise(resolve => setTimeout(resolve, pollingInterval));
-        
-        // Check status
-        try {
-          const statusResponse = await fal.queue.status("fal-ai/veo2/image-to-video", {
-            requestId: requestId
-          });
-          
-          status = statusResponse.status;
-          console.log(`🔍 [FAL-DEBUG] Poll attempt ${attempts}/${maxAttempts}: Status: ${status}`);
-          console.log('🔍 [FAL-DEBUG] Status details:', JSON.stringify(statusResponse, null, 2));
-          
-          // If there are logs, print them (with type safety)
-          if (statusResponse && typeof statusResponse === 'object' && 'logs' in statusResponse && Array.isArray(statusResponse.logs)) {
-            statusResponse.logs.forEach((log: any) => {
-              if (log && typeof log === 'object' && 'message' in log) {
-                console.log(`🔍 [FAL-DEBUG] Processing log: ${log.message}`);
-              }
-            });
-          }
-        } catch (statusError) {
-          console.error('🔍 [FAL-DEBUG] Error checking status:', statusError);
-          // Continue polling despite status check error
-        }
+      const videoCheck = await fetch(result.videoUrl, { method: 'HEAD' });
+      logFal.debug(`Video URL validation status: ${videoCheck.status}`);
+      if (!videoCheck.ok) {
+        logFal.error(`Video URL validation failed: ${videoCheck.status}`);
+        throw new Error(`Video URL validation failed: ${videoCheck.status}`);
       }
-      
-      if (status !== "COMPLETED") {
-        console.error('🔍 [FAL-DEBUG] Request did not complete successfully:', status);
-        throw new Error(`Request did not complete successfully. Final status: ${status}`);
-      }
-      
-      // Fetch the final result using the requestId
-      console.log('🔍 [FAL-DEBUG] Request completed. Fetching final result...');
-      const result = await fal.queue.result("fal-ai/veo2/image-to-video", {
-        requestId: requestId
-      });
-      
-      // Access the result data and log it in full
-      console.log('🔍 [FAL-DEBUG] ======= FAL API RESPONSE RECEIVED =======');
-      console.log('🔍 [FAL-DEBUG] Full response data:', JSON.stringify(result.data, null, 2));
-      console.log('🔍 [FAL-DEBUG] Response request ID:', result.requestId);
-      
-      // Use type assertion to access the data structure
-      // This is necessary because the FAL AI types might not reflect the actual response
-      const responseData = result.data as any;
-      console.log('🔍 [FAL-DEBUG] Response data type:', typeof responseData);
-      console.log('🔍 [FAL-DEBUG] Response data keys:', Object.keys(responseData));
-      
-      let videoUrl = "";
-      
-      // Based on the observed response structure in the logs
-      // The video URL is in responseData.video.url
-      if (responseData.video && responseData.video.url) {
-        videoUrl = responseData.video.url;
-        console.log('🔍 [FAL-DEBUG] Found video URL in responseData.video.url:', videoUrl);
-      }
-      // Try additional paths based on the Fal AI documentation
-      else if (responseData.videos && responseData.videos.length > 0) {
-        videoUrl = responseData.videos[0];
-        console.log('🔍 [FAL-DEBUG] Found video URL in responseData.videos[0]:', videoUrl);
-      } else if (responseData.video_url) {
-        videoUrl = responseData.video_url;
-        console.log('🔍 [FAL-DEBUG] Found video URL in responseData.video_url:', videoUrl);
-      } else if (responseData.output && responseData.output.video) {
-        videoUrl = responseData.output.video;
-        console.log('🔍 [FAL-DEBUG] Found video URL in responseData.output.video:', videoUrl);
-      } else if (responseData.video_urls && responseData.video_urls.length > 0) {
-        videoUrl = responseData.video_urls[0];
-        console.log('🔍 [FAL-DEBUG] Found video URL in responseData.video_urls[0]:', videoUrl);
-      }
-      
-      if (!videoUrl) {
-        console.error('🔍 [FAL-DEBUG] No video URL found in the response:', responseData);
-        
-        // Try to extract deeper nested structures that might contain the URL
-        // This is a deeper inspection of the response object
-        if (typeof responseData === 'object') {
-          const flattenedPaths: Record<string, string> = {};
-          
-          // Function to recursively scan the object for potential URL paths
-          const findPaths = (obj: any, path: string = '') => {
-            if (!obj || typeof obj !== 'object') return;
-            
-            Object.entries(obj).forEach(([key, value]) => {
-              const currentPath = path ? `${path}.${key}` : key;
-              
-              // Check if this value looks like a URL
-              if (typeof value === 'string' && 
-                  (value.startsWith('http://') || value.startsWith('https://')) &&
-                  (value.endsWith('.mp4') || value.includes('video'))) {
-                flattenedPaths[currentPath] = value;
-                console.log(`🔍 [FAL-DEBUG] Found potential video URL at path ${currentPath}:`, value);
-              }
-              
-              // Recursively search nested objects
-              if (value && typeof value === 'object') {
-                findPaths(value, currentPath);
-              }
-            });
-          };
-          
-          // Scan the response for URLs
-          findPaths(responseData);
-          
-          // If we found any URLs, use the first one
-          const urlPaths = Object.keys(flattenedPaths);
-          if (urlPaths.length > 0) {
-            videoUrl = flattenedPaths[urlPaths[0]];
-            console.log(`🔍 [FAL-DEBUG] Using URL found at path ${urlPaths[0]}:`, videoUrl);
-          }
-        }
-        
-        // If we still don't have a URL, throw an error
-        if (!videoUrl) {
-          throw new Error('No video URL found in the response');
-        }
-      }
-      
-      console.log('🔍 [FAL-DEBUG] Generated video URL:', videoUrl);
-      
-      // Validate the video URL by checking if it's accessible
-      console.log('🔍 [FAL-DEBUG] Validating video URL is accessible...');
-      try {
-        const videoCheck = await fetch(videoUrl, { method: 'HEAD' });
-        console.log(`🔍 [FAL-DEBUG] Video URL validation status: ${videoCheck.status}`);
-        if (!videoCheck.ok) {
-          console.error(`🔍 [FAL-DEBUG] Video URL validation failed: ${videoCheck.status}`);
-          throw new Error(`Video URL validation failed: ${videoCheck.status}`);
-        }
-        console.log('🔍 [FAL-DEBUG] Video URL validated successfully');
-      } catch (validationError) {
-        console.error('🔍 [FAL-DEBUG] Error validating video URL:', validationError);
-        // Continue anyway, as some URLs might not support HEAD requests
-      }
-      
-      console.log('🔍 [FAL-DEBUG] ======= FAL API VIDEO GENERATION COMPLETED SUCCESSFULLY =======');
-      return videoUrl;
-    } catch (falApiError: any) {
-      // Handle Fal API specific errors
-      console.error('🔍 [FAL-DEBUG] Fal API error:', falApiError);
-      if (falApiError.status === 401) {
-        throw new Error('Authentication failed with Fal API. Please check your API key.');
-      } else if (falApiError.message) {
-        throw new Error(`Fal API error: ${falApiError.message}`);
-      } else {
-        throw falApiError; // Re-throw if we can't add any helpful context
-      }
+      logFal.debug('Video URL validated successfully');
+    } catch (validationError) {
+      logFal.error('Error validating video URL:', validationError);
+      // Continue anyway, as some URLs might not support HEAD requests
     }
+    
+    logFal.debug('======= FAL API VIDEO GENERATION COMPLETED SUCCESSFULLY =======');
+    return result.videoUrl;
   } catch (error: any) {
-    console.error('🔍 [FAL-DEBUG] ======= FAL API VIDEO GENERATION FAILED =======');
-    console.error('🔍 [FAL-DEBUG] Error generating video from image:', error);
+    logFal.error('======= FAL API VIDEO GENERATION FAILED =======');
+    logFal.error('Error generating video from image:', error);
     
     // Return a formatted error for better UX
     const errorMessage = error.message || 'Unknown error during video generation';
@@ -327,6 +179,7 @@ export default function CreateAd() {
   const { toast } = useToast()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [isViralFormatModalOpen, setIsViralFormatModalOpen] = useState(false)
+  const searchParams = useSearchParams()
 
   // State for app selection
   const [selectedAppId, setSelectedAppId] = useState<string>('')
@@ -453,20 +306,6 @@ export default function CreateAd() {
   // State for output videos
   const [outputVideos, setOutputVideos] = useState<OutputVideo[]>([])
   const [loadingOutputVideos, setLoadingOutputVideos] = useState(false)
-
-  // Check if Fal API key is configured on page load
-  useEffect(() => {
-    const falApiKey = process.env.NEXT_PUBLIC_FAL_KEY;
-    if (!falApiKey) {
-      console.error('🔍 [FAL-CONFIG] Fal API key missing - showing warning toast');
-      toast({
-        title: "Animation Service Unavailable",
-        description: "Custom influencer animation is disabled. Please check your API configuration.",
-        variant: "destructive",
-        duration: 6000,
-      });
-    }
-  }, [toast]);
 
   // Move randomization to a state that's set only once on mount
   const [allVideos, setAllVideos] = useState<number[]>([])
@@ -693,6 +532,9 @@ export default function CreateAd() {
 
   // Add real-time subscription for video status updates
   useEffect(() => {
+    console.log('🔄 [REALTIME] Setting up Supabase real-time subscription');
+    
+    // First, make sure we're subscribed to the right channel
     const channel = supabase
       .channel('output_content_changes')
       .on(
@@ -702,37 +544,88 @@ export default function CreateAd() {
           schema: 'public',
           table: 'output_content'
         },
-        (payload) => {
-          if (payload.eventType === 'UPDATE') {
-            setOutputVideos(currentVideos => 
-              currentVideos.map(video => {
-                if (video.id === payload.new.id) {
-                  const newVideo = payload.new;
-                  if (!newVideo.url) return { ...video, ...newVideo };
-                  try {
-                    const videoPath = newVideo.url.includes('output-content/')
-                      ? newVideo.url.split('output-content/')[1]
-                      : newVideo.url;
-                    const { data: { publicUrl } } = supabase
-                      .storage
-                      .from('output-content')
-                      .getPublicUrl(videoPath);
-                    return { ...video, ...newVideo, url: publicUrl };
-                  } catch (error) {
-                    console.error('Error processing updated video URL:', error);
-                    return { ...video, ...newVideo };
+        async (payload: any) => {
+          console.log('🔄 [REALTIME] Received database event:', payload.eventType, 'for record:', payload.new?.id);
+          console.log('🔄 [REALTIME] Full payload:', payload);
+          
+          if (payload.eventType === 'UPDATE' && payload.new && payload.new.id) {
+            console.log('🔄 [REALTIME] Processing UPDATE event for video:', payload.new.id);
+            console.log('🔄 [REALTIME] New status:', payload.new.status);
+            
+            // Force a refresh of all videos to ensure we have the latest data
+            if (payload.new.status === 'completed') {
+              console.log('🔄 [REALTIME] Video completed, refreshing all videos');
+              fetchOutputVideos();
+              
+              // Also show a toast notification
+              toast({
+                title: "Video Ready",
+                description: "Your video has been created successfully!",
+              });
+            } else {
+              // Update just this video in the state
+              setOutputVideos(currentVideos => 
+                currentVideos.map(video => {
+                  if (video.id === payload.new.id) {
+                    console.log('🔄 [REALTIME] Updating video in state:', video.id);
+                    console.log('🔄 [REALTIME] Old status:', video.status, '→ New status:', payload.new.status);
+                    
+                    // Create updated video object
+                    const updatedVideo = { ...video, ...payload.new };
+                    
+                    // Process URL if present
+                    if (payload.new.url) {
+                      try {
+                        const videoPath = payload.new.url.includes('output-content/')
+                          ? payload.new.url.split('output-content/')[1]
+                          : payload.new.url;
+                        
+                        const { data: { publicUrl } } = supabase
+                          .storage
+                          .from('output-content')
+                          .getPublicUrl(videoPath);
+                        
+                        console.log('🔄 [REALTIME] Generated public URL:', publicUrl);
+                        updatedVideo.url = publicUrl;
+                      } catch (error) {
+                        console.error('🔄 [REALTIME] Error processing URL:', error);
+                      }
+                    }
+                    
+                    return updatedVideo;
                   }
-                }
-                return video;
-              })
-            );
-          } else if (payload.eventType === 'INSERT') {
-            const newVideo = payload.new as OutputContent;
+                  return video;
+                })
+              );
+            }
+          } else if (payload.eventType === 'INSERT' && payload.new) {
+            console.log('🔄 [REALTIME] Processing INSERT event for new video:', payload.new.id);
+            console.log('🔄 [REALTIME] New video status:', payload.new.status);
+            
+            const newVideo: OutputContent = payload.new as OutputContent;
+            
+            // If the video is already completed, refresh all videos
+            if (newVideo.status === 'completed') {
+              console.log('🔄 [REALTIME] New video already completed, refreshing all videos');
+              fetchOutputVideos();
+              
+              // Also show a toast notification
+              toast({
+                title: "Video Ready",
+                description: "Your video has been created successfully!",
+              });
+              return;
+            }
+            
+            // Otherwise, add it to the state
             if (!newVideo.url) {
+              console.log('🔄 [REALTIME] Adding new video without URL to state');
               setOutputVideos(currentVideos => [newVideo, ...currentVideos]);
               return;
             }
+            
             try {
+              console.log('🔄 [REALTIME] Processing URL for new video:', newVideo.url);
               const videoPath = newVideo.url.includes('output-content/')
                 ? newVideo.url.split('output-content/')[1]
                 : newVideo.url;
@@ -740,12 +633,15 @@ export default function CreateAd() {
                 .storage
                 .from('output-content')
                 .getPublicUrl(videoPath);
+              
+              console.log('🔄 [REALTIME] Generated public URL for new video:', publicUrl);
               setOutputVideos(currentVideos => [{ ...newVideo, url: publicUrl }, ...currentVideos]);
             } catch (error) {
-              console.error('Error processing new video URL:', error);
+              console.error('🔄 [REALTIME] Error processing new video URL:', error);
               setOutputVideos(currentVideos => [newVideo, ...currentVideos]);
             }
-          } else if (payload.eventType === 'DELETE') {
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            console.log('🔄 [REALTIME] Processing DELETE event for video:', payload.old.id);
             setOutputVideos(currentVideos => 
               currentVideos.filter(video => video.id !== payload.old.id)
             );
@@ -1015,101 +911,48 @@ export default function CreateAd() {
         
         // If using custom influencer (static image), we need to generate a video
         if (isCustomInfluencer) {
-          // Check if Fal API is configured before attempting animation
-          const falApiKey = process.env.NEXT_PUBLIC_FAL_KEY;
-          
-          if (!falApiKey) {
-            // No API key - show error and use static image instead
-            console.error('🎬 [CUSTOM-INFLUENCER] Cannot animate - FAL API key is missing');
+          try {
+            console.log('🎬 [CUSTOM-INFLUENCER] Attempting to animate custom influencer image');
+            
+            // Generate a prompt for the animation
+            const videoPrompt = await generateVideoPrompt(hook);
+            console.log('🎬 [CUSTOM-INFLUENCER] Generated animation prompt:', videoPrompt);
+            
+            // Call the server-side API to animate the image
+            influencerVideoUrl = await generateVideoFromImage(selectedInfluencerVideo, videoPrompt);
+            console.log('🎬 [CUSTOM-INFLUENCER] Animation successful, video URL:', influencerVideoUrl);
+            animatedSuccess = true;
+            
             toast({
-              title: "Animation Not Available",
-              description: "Custom influencer animation is disabled due to missing API configuration.",
-              variant: "destructive"
+              title: "Animation Complete",
+              description: "Your custom influencer has been animated successfully!",
             });
+          } catch (falError: any) {
+            // Handle Fal API specific errors
+            console.error('🎬 [CUSTOM-INFLUENCER] Fal API error:', falError);
+            
+            if (falError.message && (
+              falError.message.includes('Unauthorized') || 
+              falError.message.includes('Authentication failed') ||
+              falError.message.includes('API key') ||
+              falError.message.includes('Missing FAL')
+            )) {
+              toast({
+                title: "Animation Not Available",
+                description: "Custom influencer animation is disabled. Please check your API configuration.",
+                variant: "destructive"
+              });
+            } else {
+              toast({
+                title: "Animation Failed",
+                description: `Could not animate image: ${falError.message}`,
+                variant: "destructive"
+              });
+            }
+            
             console.log('🎬 [CUSTOM-INFLUENCER] Using static image instead:', selectedInfluencerVideo);
             // Keep the static image URL
             influencerVideoUrl = selectedInfluencerVideo;
-          } else {
-            // Show a toast to inform user of the process
-            toast({
-              title: "Animating Custom Influencer",
-              description: "We're creating a video from your influencer image. This will take a moment.",
-            });
-            
-            console.log('🎬 [CUSTOM-INFLUENCER] Starting custom influencer animation process');
-            console.log('🎬 [CUSTOM-INFLUENCER] Is custom influencer:', isCustomInfluencer);
-            console.log('🎬 [CUSTOM-INFLUENCER] Static image URL:', selectedInfluencerVideo);
-            console.log('🎬 [CUSTOM-INFLUENCER] Hook text:', hook);
-            
-            try {
-              // 1. Generate a video prompt based on the hook using server action
-              console.log('🎬 [CUSTOM-INFLUENCER] Step 1: Generating video prompt from hook');
-              const { prompt: videoPrompt } = await generateVideoPromptServer(hook);
-              console.log('🎬 [CUSTOM-INFLUENCER] Prompt generation successful:', videoPrompt);
-              
-              // 2. Generate the video from the static image
-              console.log('🎬 [CUSTOM-INFLUENCER] Step 2: Generating video from static image');
-              console.log('🎬 [CUSTOM-INFLUENCER] Starting Fal API video generation - will wait for completion');
-              
-              try {
-                // This will now use the proper queue.submit/status/result pattern
-                influencerVideoUrl = await generateVideoFromImage(selectedInfluencerVideo, videoPrompt);
-                console.log('🎬 [CUSTOM-INFLUENCER] Video generation completed successfully');
-                console.log('🎬 [CUSTOM-INFLUENCER] Generated video URL:', influencerVideoUrl);
-                animatedSuccess = true;
-                
-                // Validate the generated URL to ensure it exists and is accessible
-                console.log('🎬 [CUSTOM-INFLUENCER] Validating generated video URL:', influencerVideoUrl);
-                const urlCheck = await fetch(influencerVideoUrl, { method: 'HEAD' });
-                if (!urlCheck.ok) {
-                  throw new Error(`Generated video URL is not accessible: ${urlCheck.status}`);
-                }
-                
-                // Let the user know the animation is complete
-                toast({
-                  title: "Animation Complete",
-                  description: "Your custom influencer has been animated successfully!",
-                });
-              } catch (falError: any) {
-                // Handle authentication/authorization errors specially
-                if (falError.message && (
-                  falError.message.includes('Unauthorized') || 
-                  falError.message.includes('Authentication failed') ||
-                  falError.message.includes('401')
-                )) {
-                  console.error('🎬 [CUSTOM-INFLUENCER] Authentication failed with Fal API:', falError);
-                  toast({
-                    title: "API Authentication Failed",
-                    description: "Could not authenticate with the animation service. Please check your API key.",
-                    variant: "destructive"
-                  });
-                  // Fall back to static image
-                  console.log('🎬 [CUSTOM-INFLUENCER] Falling back to static image due to authentication error');
-                } else {
-                  // Generic error, show toast but continue with static image
-                  console.error('🎬 [CUSTOM-INFLUENCER] Error in video generation:', falError);
-                  toast({
-                    title: "Animation Failed",
-                    description: "We couldn't animate your custom influencer. Using static image instead.",
-                    variant: "destructive"
-                  });
-                }
-                // Continue with the original image URL if video generation fails
-                influencerVideoUrl = selectedInfluencerVideo;
-                console.log('🎬 [CUSTOM-INFLUENCER] Falling back to static image URL:', influencerVideoUrl);
-              }
-            } catch (error) {
-              console.error('🎬 [CUSTOM-INFLUENCER] Error in custom influencer processing:', error);
-              toast({
-                title: "Animation Failed",
-                description: "We couldn't animate your custom influencer. Using static image instead.",
-                variant: "destructive"
-              });
-              
-              // Continue with the original image URL if video generation fails
-              influencerVideoUrl = selectedInfluencerVideo;
-              console.log('🎬 [CUSTOM-INFLUENCER] Falling back to static image URL:', influencerVideoUrl);
-            }
           }
         }
         
@@ -1224,14 +1067,23 @@ export default function CreateAd() {
                       ? { ...video, url: publicUrl, status: 'completed' }
                       : video
                   ));
-                } catch (error) {
-                  console.error('Error processing video URL:', error);
+                  
+                  console.log('DEBUG: Updated video state with URL');
+                  
+                  // Show a toast notification for the completion
+                  toast({
+                    title: "Video Ready",
+                    description: "Your video has been created successfully!",
+                  });
+                } catch (urlError) {
+                  console.error('DEBUG: Error processing video URL:', urlError);
                 }
               }
             }
             
-            // Still call fetchOutputVideos to ensure everything is up to date
-            fetchOutputVideos();
+            // Still call fetchOutputVideos as a backup to ensure everything is up to date
+            console.log('DEBUG: Refreshing video list after completion');
+            // fetchOutputVideos(); // <<< TEMPORARILY COMMENTING OUT THIS BACKUP CALL
           } else {
             // If not already completed, start polling for video completion
             console.log('DEBUG: Video not yet completed, starting polling');
@@ -1324,10 +1176,11 @@ export default function CreateAd() {
       }
 
       // Delete from database regardless of storage deletion result
+      console.log('Deleting database record for video:', id);
       const { error: dbError } = await supabase
         .from('output_content')
         .delete()
-        .eq('id', id)
+        .eq('id', id);
 
       if (dbError) {
         console.error('Error deleting from database:', dbError)
@@ -1353,7 +1206,7 @@ export default function CreateAd() {
         variant: "destructive"
       })
     }
-  }
+  };
 
   // Add state to track which demo is being deleted
   const [deletingDemoId, setDeletingDemoId] = useState<string | null>(null);
@@ -1509,28 +1362,27 @@ export default function CreateAd() {
               const videoPath = data.url.includes('output-content/')
                 ? data.url.split('output-content/')[1]
                 : data.url;
-              
               const { data: { publicUrl } } = supabase
                 .storage
                 .from('output-content')
                 .getPublicUrl(videoPath);
               
               console.log(`🎥 [POLL] Generated public URL: ${publicUrl}`);
-              
-              // Directly update the video in the state
-              setOutputVideos(prev => prev.map(video => 
-                video.id === outputId
-                  ? { ...video, url: publicUrl, status: 'completed' }
-                  : video
-              ));
-              
-              console.log(`🎥 [POLL] Updated video state with URL`);
-              
-              // Show a toast notification for the completion
-              toast({
-                title: "Video Ready",
-                description: "Your video has been created successfully!",
-              });
+              const existingVideo = outputVideos.find(v => v.id === outputId && v.status === 'completed');
+              if (existingVideo) {
+                console.log(`🎥 [POLL] Video already marked as completed in state, skipping update`);
+              } else {
+                setOutputVideos(prev => prev.map(video => 
+                  video.id === outputId
+                    ? { ...video, url: publicUrl, status: 'completed' }
+                    : video
+                ));
+                console.log(`🎥 [POLL] Updated video state with URL`);
+                toast({
+                  title: "Video Ready",
+                  description: "Your video has been created successfully!",
+                });
+              }
             } catch (urlError) {
               console.error(`🎥 [POLL] Error processing video URL:`, urlError);
             }
@@ -1538,7 +1390,7 @@ export default function CreateAd() {
           
           // Also call fetchOutputVideos as a backup to ensure everything is up to date
           console.log(`🎥 [POLL] Refreshing video list after completion`);
-          fetchOutputVideos();
+          // fetchOutputVideos(); // <<< TEMPORARILY COMMENTING OUT THIS BACKUP CALL
         } else if (data.status === 'failed') {
           clearInterval(intervalId);
           console.error(`🎥 [POLL] Video processing FAILED for output_id ${outputId}`);
@@ -2218,6 +2070,14 @@ export default function CreateAd() {
     fetchDemoVideos()
     fetchInfluencerVideos()
   }, [])
+
+  // Check URL parameters for tab selection
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'influencer') {
+      setActiveTab('your')
+    }
+  }, [searchParams])
 
   return (
     <div className="min-h-screen bg-background">
