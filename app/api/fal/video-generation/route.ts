@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { fal } from '@fal-ai/client';
+import { createLogger } from '@/utils/logger';
+
+// Create a logger for this module
+const log = createLogger('fal-api');
 
 // Schema for the request body
 interface VideoGenerationRequest {
@@ -30,20 +34,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as VideoGenerationRequest;
     const { imageUrl, prompt } = body;
 
-    console.log('🔍 [SERVER-FAL] Starting video generation from static image');
-    console.log('🔍 [SERVER-FAL] Full Image URL:', imageUrl);
-    console.log('🔍 [SERVER-FAL] Animation prompt:', prompt);
+    log.debug('🔍 [SERVER-FAL] Starting video generation from static image');
+    log.debug('🔍 [SERVER-FAL] Full Image URL:', imageUrl);
+    log.debug('🔍 [SERVER-FAL] Animation prompt:', prompt);
 
     // Initialize FAL client with server-side API key
-    // Try both environment variable names
-    const apiKey = process.env.FAL_KEY || process.env.NEXT_PUBLIC_FAL_KEY;
+    const apiKey = process.env.FAL_KEY;
     
-    console.log('🔍 [SERVER-FAL] API key status:', apiKey ? 'Present' : 'Missing');
-    console.log('🔍 [SERVER-FAL] Checked environment variables: FAL_KEY and NEXT_PUBLIC_FAL_KEY');
+    log.debug('🔍 [SERVER-FAL] API key status:', apiKey ? 'Present' : 'Missing');
     
     if (!apiKey) {
-      console.error('🔍 [SERVER-FAL] API key missing from environment variables');
-      console.error('🔍 [SERVER-FAL] Please set either FAL_KEY or NEXT_PUBLIC_FAL_KEY in your .env.local file');
+      log.error('🔍 [SERVER-FAL] API key missing from environment variables');
+      log.error('🔍 [SERVER-FAL] Please set FAL_KEY in your .env.local file');
       return NextResponse.json(
         { error: 'Server configuration error: Missing FAL API key' },
         { status: 500 }
@@ -56,7 +58,7 @@ export async function POST(request: NextRequest) {
     });
     
     // Submit request to FAL API
-    console.log('🔍 [SERVER-FAL] Submitting request to FAL API...');
+    log.debug('🔍 [SERVER-FAL] Submitting request to FAL API...');
     const initialResponse = await fal.queue.submit("fal-ai/veo2/image-to-video", {
       input: {
         prompt,
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
     });
     
     const requestId = initialResponse.request_id;
-    console.log('🔍 [SERVER-FAL] Request submitted with ID:', requestId);
+    log.debug('🔍 [SERVER-FAL] Request submitted with ID:', requestId);
     
     // Poll for status until complete
     let status = "PENDING";
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
     const maxAttempts = 30; // Limit the number of attempts
     const pollingInterval = 2000; // 2 seconds between checks
     
-    console.log('🔍 [SERVER-FAL] Starting to poll for request status');
+    log.debug('🔍 [SERVER-FAL] Starting to poll for request status');
     
     while (status !== "COMPLETED" && status !== "FAILED" && attempts < maxAttempts) {
       attempts++;
@@ -88,24 +90,24 @@ export async function POST(request: NextRequest) {
         });
         
         status = statusResponse.status;
-        console.log(`🔍 [SERVER-FAL] Poll attempt ${attempts}/${maxAttempts}: Status: ${status}`);
+        log.debug(`🔍 [SERVER-FAL] Poll attempt ${attempts}/${maxAttempts}: Status: ${status}`);
         
         // If there are logs, print them
         if (statusResponse && typeof statusResponse === 'object' && 'logs' in statusResponse && Array.isArray(statusResponse.logs)) {
           statusResponse.logs.forEach((log: any) => {
             if (log && typeof log === 'object' && 'message' in log) {
-              console.log(`🔍 [SERVER-FAL] Processing log: ${log.message}`);
+              log.debug(`🔍 [SERVER-FAL] Processing log: ${log.message}`);
             }
           });
         }
       } catch (statusError) {
-        console.error('🔍 [SERVER-FAL] Error checking status:', statusError);
+        log.error('🔍 [SERVER-FAL] Error checking status:', statusError);
         // Continue polling despite status check error
       }
     }
     
     if (status !== "COMPLETED") {
-      console.error('🔍 [SERVER-FAL] Request did not complete successfully:', status);
+      log.error('🔍 [SERVER-FAL] Request did not complete successfully:', status);
       return NextResponse.json(
         { error: `Video generation failed. Final status: ${status}` },
         { status: 500 }
@@ -113,13 +115,13 @@ export async function POST(request: NextRequest) {
     }
     
     // Fetch the final result
-    console.log('🔍 [SERVER-FAL] Request completed. Fetching final result...');
+    log.debug('🔍 [SERVER-FAL] Request completed. Fetching final result...');
     const result = await fal.queue.result("fal-ai/veo2/image-to-video", {
       requestId: requestId
     });
     
     // Parse the response data
-    console.log('🔍 [SERVER-FAL] Processing response data');
+    log.debug('🔍 [SERVER-FAL] Processing response data');
     const responseData = result.data as any;
     
     let videoUrl = "";
@@ -138,7 +140,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (!videoUrl) {
-      console.error('🔍 [SERVER-FAL] No video URL found in the response');
+      log.error('🔍 [SERVER-FAL] No video URL found in the response');
       
       // Try to extract deeper nested structures that might contain the URL
       if (typeof responseData === 'object') {
@@ -156,7 +158,7 @@ export async function POST(request: NextRequest) {
                 (value.startsWith('http://') || value.startsWith('https://')) &&
                 (value.endsWith('.mp4') || value.includes('video'))) {
               flattenedPaths[currentPath] = value;
-              console.log(`🔍 [SERVER-FAL] Found potential video URL at path ${currentPath}:`, value);
+              log.debug(`🔍 [SERVER-FAL] Found potential video URL at path ${currentPath}:`, value);
             }
             
             // Recursively search nested objects
@@ -173,7 +175,7 @@ export async function POST(request: NextRequest) {
         const urlPaths = Object.keys(flattenedPaths);
         if (urlPaths.length > 0) {
           videoUrl = flattenedPaths[urlPaths[0]];
-          console.log(`🔍 [SERVER-FAL] Using URL found at path ${urlPaths[0]}:`, videoUrl);
+          log.debug(`🔍 [SERVER-FAL] Using URL found at path ${urlPaths[0]}:`, videoUrl);
         }
       }
       
@@ -186,13 +188,13 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    console.log('🔍 [SERVER-FAL] Generated video URL:', videoUrl);
+    log.debug('🔍 [SERVER-FAL] Generated video URL:', videoUrl);
     
     // Return success response with the video URL
     return NextResponse.json({ videoUrl });
     
   } catch (error: any) {
-    console.error('🔍 [SERVER-FAL] Error during video generation:', error);
+    log.error('🔍 [SERVER-FAL] Error during video generation:', error);
     
     // Handle specific error cases
     if (error.status === 401) {

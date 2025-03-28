@@ -100,13 +100,20 @@ const generateVideoPrompt = async (hook: string): Promise<string> => {
   }
 };
 
+import { createLogger } from '@/utils/logger'
+
+// Create loggers for different components
+const logVideo = createLogger('video-creation')
+const logInfluencer = createLogger('influencer')
+const logFal = createLogger('fal-client')
+
 // Generate a video from a static image using Fal AI
 const generateVideoFromImage = async (imageUrl: string, prompt: string): Promise<string> => {
   try {
-    console.log('🔍 [CLIENT-DEBUG] ======= STARTING FAL API VIDEO GENERATION =======');
-    console.log('🔍 [CLIENT-DEBUG] Starting video generation from static image');
-    console.log('🔍 [CLIENT-DEBUG] Full Image URL:', imageUrl);
-    console.log('🔍 [CLIENT-DEBUG] Animation prompt:', prompt);
+    logFal.debug('======= STARTING FAL API VIDEO GENERATION =======');
+    logFal.debug('Starting video generation from static image');
+    logFal.debug('Full Image URL:', imageUrl);
+    logFal.debug('Animation prompt:', prompt);
     
     // Make request to our server-side API endpoint
     const response = await fetch('/api/fal/video-generation', {
@@ -123,40 +130,40 @@ const generateVideoFromImage = async (imageUrl: string, prompt: string): Promise
     // Check for errors
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('🔍 [CLIENT-DEBUG] API error response:', errorData);
+      logFal.error('API error response:', errorData);
       throw new Error(errorData.error || `Server error: ${response.status}`);
     }
     
     // Parse the response
     const result = await response.json();
-    console.log('🔍 [CLIENT-DEBUG] Server response:', result);
+    logFal.debug('Server response:', result);
     
     if (!result.videoUrl) {
       throw new Error('No video URL returned from server');
     }
     
-    console.log('🔍 [CLIENT-DEBUG] Generated video URL:', result.videoUrl);
+    logFal.debug('Generated video URL:', result.videoUrl);
     
     // Validate the video URL by checking if it's accessible
-    console.log('🔍 [CLIENT-DEBUG] Validating video URL is accessible...');
+    logFal.debug('Validating video URL is accessible...');
     try {
       const videoCheck = await fetch(result.videoUrl, { method: 'HEAD' });
-      console.log(`🔍 [CLIENT-DEBUG] Video URL validation status: ${videoCheck.status}`);
+      logFal.debug(`Video URL validation status: ${videoCheck.status}`);
       if (!videoCheck.ok) {
-        console.error(`🔍 [CLIENT-DEBUG] Video URL validation failed: ${videoCheck.status}`);
+        logFal.error(`Video URL validation failed: ${videoCheck.status}`);
         throw new Error(`Video URL validation failed: ${videoCheck.status}`);
       }
-      console.log('🔍 [CLIENT-DEBUG] Video URL validated successfully');
+      logFal.debug('Video URL validated successfully');
     } catch (validationError) {
-      console.error('🔍 [CLIENT-DEBUG] Error validating video URL:', validationError);
+      logFal.error('Error validating video URL:', validationError);
       // Continue anyway, as some URLs might not support HEAD requests
     }
     
-    console.log('🔍 [CLIENT-DEBUG] ======= FAL API VIDEO GENERATION COMPLETED SUCCESSFULLY =======');
+    logFal.debug('======= FAL API VIDEO GENERATION COMPLETED SUCCESSFULLY =======');
     return result.videoUrl;
   } catch (error: any) {
-    console.error('🔍 [CLIENT-DEBUG] ======= FAL API VIDEO GENERATION FAILED =======');
-    console.error('🔍 [CLIENT-DEBUG] Error generating video from image:', error);
+    logFal.error('======= FAL API VIDEO GENERATION FAILED =======');
+    logFal.error('Error generating video from image:', error);
     
     // Return a formatted error for better UX
     const errorMessage = error.message || 'Unknown error during video generation';
@@ -1199,7 +1206,7 @@ export default function CreateAd() {
         variant: "destructive"
       })
     }
-  }
+  };
 
   // Add state to track which demo is being deleted
   const [deletingDemoId, setDeletingDemoId] = useState<string | null>(null);
@@ -2837,4 +2844,5 @@ export default function CreateAd() {
         </Dialog>
       </div>
     </div>
-  )}
+  )
+}
