@@ -1136,14 +1136,14 @@ export default function CreateAd() {
         console.log('🔄 [VIDEO-CREATION] Hook text:', hook);
         console.log('🔄 [VIDEO-CREATION] Text position:', textPosition);
 
-        const payload = {
-          influencerVideoUrl,
-          demoFootageUrl: selectedDemoVideo,
-          captionText: hook,
-          captionPosition: textPosition,
-          userUuid: currentUser.id,
-          app_id: selectedAppId
-        };
+    const payload = {
+      influencerVideoUrl,
+      demoFootageUrl: selectedDemoVideo,
+      captionText: hook,
+      captionPosition: textPosition,
+      userUuid: currentUser.id,
+      app_id: selectedAppId
+    };
         console.log('🔄 [VIDEO-CREATION] Video creation request body:', JSON.stringify(payload));
 
         console.log('🔄 [VIDEO-CREATION] Calling createVideo API');
@@ -1235,7 +1235,7 @@ export default function CreateAd() {
           } else {
             // If not already completed, start polling for video completion
             console.log('DEBUG: Video not yet completed, starting polling');
-            pollForVideoCompletion(result.video.outputId);
+          pollForVideoCompletion(result.video.outputId);
           }
 
           toast({
@@ -1499,7 +1499,7 @@ export default function CreateAd() {
         });
         
         if (data.status === 'completed') {
-          clearInterval(intervalId);
+        clearInterval(intervalId);
           console.log(`🎥 [POLL] Video processing completed for output_id ${outputId}`);
           console.log(`🎥 [POLL] Final video URL: ${data.url}`);
           
@@ -2393,15 +2393,7 @@ export default function CreateAd() {
               <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
                 {/* Video Grid with Tabs */}
                 <div className="w-full lg:w-3/4">
-                  <div className="mb-4">
-                    <FilterTags 
-                      tags={uniqueTags} 
-                      selectedTags={selectedTags} 
-                      onChange={handleTagsChange} 
-                    />
-                  </div>
-                  
-                  {/* Replace VideoGrid with InfluencerTabs */}
+                  {/* InfluencerTabs with tabs and filter tags passed in */}
                   <InfluencerTabs
                     baseInfluencerVideos={paginatedInfluencerVideos}
                     selectedVideo={selectedVideo}
@@ -2409,7 +2401,27 @@ export default function CreateAd() {
                     loading={loadingInfluencerVideos}
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
+                    filterTagsComponent={
+                      activeTab === 'base' ? (
+                        <FilterTags 
+                          tags={uniqueTags} 
+                          selectedTags={selectedTags} 
+                          onChange={handleTagsChange} 
+                        />
+                      ) : null // Only show tags for Base Influencers tab
+                    }
                   />
+                  
+                  {/* Filter tags removed from here */}
+                  {/* 
+                  <div className="mt-3 mb-4">
+                    <FilterTags 
+                      tags={uniqueTags} 
+                      selectedTags={selectedTags} 
+                      onChange={handleTagsChange} 
+                    />
+                  </div>
+                  */}
                   
                   {/* Pagination Controls - Only show for Base Influencers tab */}
                   {!loadingInfluencerVideos && 

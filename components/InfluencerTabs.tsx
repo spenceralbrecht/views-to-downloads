@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Image from 'next/image';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { InfluencerVidWithTags } from '@/types/database';
+import React from 'react';
+import Link from 'next/link';
 
 interface InfluencerTabsProps {
   baseInfluencerVideos: InfluencerVidWithTags[];
@@ -13,6 +15,7 @@ interface InfluencerTabsProps {
   loading: boolean;
   activeTab: 'your' | 'base';
   setActiveTab: (tab: 'your' | 'base') => void;
+  filterTagsComponent?: React.ReactNode;
 }
 
 export function InfluencerTabs({
@@ -21,7 +24,8 @@ export function InfluencerTabs({
   onVideoSelect,
   loading,
   activeTab,
-  setActiveTab
+  setActiveTab,
+  filterTagsComponent
 }: InfluencerTabsProps) {
   const [userInfluencers, setUserInfluencers] = useState<any[]>([]);
   const [loadingUserInfluencers, setLoadingUserInfluencers] = useState(true);
@@ -66,42 +70,37 @@ export function InfluencerTabs({
 
   return (
     <div className="w-full">
-      {/* Tab navigation - styled to match the provided image */}
-      <div className="mb-6">
-        <div className="flex justify-center border-b border-gray-200">
-          <div className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab('your')}
-              className={`py-3 px-6 text-center relative ${
-                activeTab === 'your'
-                  ? 'text-blue-600 font-medium'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Your Influencers
-              {activeTab === 'your' && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600"></div>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('base')}
-              className={`py-3 px-6 text-center relative ${
-                activeTab === 'base'
-                  ? 'text-blue-600 font-medium'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Base Influencers
-              {activeTab === 'base' && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600"></div>
-              )}
-            </button>
-          </div>
+      {/* Tab navigation - redesigned for dark mode */}
+      <div className="mb-0">
+        <div className="flex space-x-1 p-1 bg-gray-800/40 rounded-lg">
+          <button
+            onClick={() => setActiveTab('base')}
+            className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all ${
+              activeTab === 'base'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
+            }`}
+          >
+            Base Influencers
+          </button>
+          <button
+            onClick={() => setActiveTab('your')}
+            className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all ${
+              activeTab === 'your'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
+            }`}
+          >
+            Your Influencers
+          </button>
         </div>
       </div>
 
+      {/* Render Filter Tags if provided */}
+      {filterTagsComponent && <div className="mt-3 mb-4">{filterTagsComponent}</div>}
+
       {/* Tab content */}
-      <div className="tab-content">
+      <div className="tab-content mt-4">
         {activeTab === 'your' && (
           <div>
             {loadingUserInfluencers ? (
@@ -124,10 +123,10 @@ export function InfluencerTabs({
                       // Format for compatibility with base influencer videos
                       onVideoSelect(influencer.id, influencer.image_url, true);
                     }}
-                    className={`relative flex-shrink-0 cursor-pointer group transition-all duration-200 rounded-lg overflow-hidden aspect-[9/16] ${
+                    className={`relative flex-shrink-0 cursor-pointer transition-all duration-200 rounded-lg overflow-hidden aspect-[9/16] ${
                       selectedVideo === influencer.id
-                        ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg'
-                        : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
+                        ? 'ring-2 ring-primary ring-offset-1 ring-offset-gray-900'
+                        : 'hover:ring-2 hover:ring-primary/70 hover:ring-offset-1 hover:ring-offset-gray-900'
                     }`}
                   >
                     <Image
@@ -137,11 +136,18 @@ export function InfluencerTabs({
                       className="object-cover"
                       sizes="(max-width: 768px) 25vw, 15vw"
                     />
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1">
-                      <p className="text-white text-xs truncate">{influencer.name}</p>
-                    </div>
                   </div>
                 ))}
+                
+                {/* Create New Custom Influencer Card */}
+                <Link href="/dashboard/influencers" passHref>
+                  <div className="relative flex-shrink-0 cursor-pointer transition-all duration-200 rounded-lg overflow-hidden aspect-[9/16] bg-gray-800/60 hover:bg-gray-800/80 border-2 border-dashed border-gray-600 hover:border-primary flex flex-col items-center justify-center text-center p-2">
+                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center mb-2">
+                      <Plus className="h-6 w-6 text-primary" />
+                    </div>
+                    <span className="text-xs text-gray-300">Create a new custom influencer</span>
+                  </div>
+                </Link>
               </div>
             )}
           </div>
@@ -166,10 +172,10 @@ export function InfluencerTabs({
                       console.log('Selected video:', video);
                       onVideoSelect(video.id, video.video_url, false);
                     }}
-                    className={`relative flex-shrink-0 cursor-pointer group transition-all duration-200 rounded-lg overflow-hidden aspect-[9/16] ${
+                    className={`relative flex-shrink-0 cursor-pointer transition-all duration-200 rounded-lg overflow-hidden aspect-[9/16] ${
                       selectedVideo === video.id
-                        ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg'
-                        : 'hover:ring-2 hover:ring-primary/50 hover:ring-offset-2 hover:ring-offset-background hover:shadow-md'
+                        ? 'ring-2 ring-primary ring-offset-1 ring-offset-gray-900'
+                        : 'hover:ring-2 hover:ring-primary/70 hover:ring-offset-1 hover:ring-offset-gray-900'
                     }`}
                   >
                     <img
@@ -186,4 +192,4 @@ export function InfluencerTabs({
       </div>
     </div>
   );
-} 
+}
