@@ -44,6 +44,12 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
   const [videoData, setVideoData] = useState(video)
   const supabase = createClientComponentClient()
 
+  // Synchronize videoData with video prop when it changes
+  useEffect(() => {
+    console.log(' [VIDEO-CARD] Video prop changed:', video.id, video.status, 'URL:', video.url?.substring(0, 60) + '...');
+    setVideoData(video);
+  }, [video.id, video.status, video.url]);
+
   // Function to refresh the video data after publishing
   const refreshVideo = async () => {
     try {

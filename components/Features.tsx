@@ -53,16 +53,13 @@ export default function Features() {
             <div className="rounded-full w-14 h-14 bg-purple-500/10 flex items-center justify-center mb-4 group-hover:bg-purple-500/20 transition-colors duration-300">
               <User className="h-7 w-7 text-purple-500" />
             </div>
-            <CardTitle className="text-xl font-bold text-foreground group-hover:text-purple-500 transition-colors duration-300">UGC Avatar Generator</CardTitle>
+            <CardTitle className="text-xl font-bold text-foreground group-hover:text-purple-500 transition-colors duration-300">UGC Influencer Generator</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-gray-600 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300">
               Create professional UGC avatars for your brand, complete with custom voices and personalized styles
             </p>
           </CardContent>
-          <div className="absolute top-4 right-4 px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-xs font-medium text-muted-foreground border border-gray-200 dark:border-gray-800">
-            Coming Soon
-          </div>
         </Card>
         
         <Card className="h-full transition-all duration-300 hover:shadow-xl dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 hover:border-amber-500/50 dark:hover:border-amber-500/50 group hover:translate-y-[-5px]">

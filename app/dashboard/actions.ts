@@ -448,7 +448,7 @@ export async function createVideo({
         success: true, 
         video: { 
           outputId: response.outputId || response.video_id || response.id || 'unknown', 
-          status: 'completed' 
+          status: response.status || 'processing' 
         } 
       };
       
