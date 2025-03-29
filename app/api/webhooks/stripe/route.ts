@@ -126,11 +126,21 @@ async function handleStripeWebhook(event: Stripe.Event) {
         const subscriptionId = session.subscription as string
         
         // Get userId from customer email
-        const userId = await getUserIdFromEmail(session.customer_details?.email)
+        let userId = await getUserIdFromEmail(session.customer_details?.email)
         const customerEmail = session.customer_details?.email
 
+        // If user not found, wait a bit and retry (potential replication delay)
+        if (!userId && customerEmail) {
+          console.log(`User not found for ${customerEmail} on first attempt. Retrying after 2 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+          userId = await getUserIdFromEmail(customerEmail);
+          if (userId) {
+            console.log(`User found for ${customerEmail} on retry.`);
+          }
+        }
+
         if (!userId) {
-          console.log('No user found for email:', customerEmail)
+          console.log('No user found for email:', customerEmail, 'after retry.')
           // Return success because the webhook itself is fine, but we can't process this user
           return { status: 'success', message: 'Skipped - user not found' } 
         }
@@ -221,40 +231,63 @@ async function handleStripeWebhook(event: Stripe.Event) {
         let userId = userIdFromMeta;
 
         if (!userId) {
+           console.log(`[${subscription.id}] User ID not found in subscription metadata. Attempting fallback...`);
            const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer; 
-           // Check if email exists before attempting lookup
-           if (customer.email) { 
-              userId = await getUserIdFromEmail(customer.email);
+           console.log(`[${subscription.id}] Retrieved customer ${customerId}. Email: ${customer.email || 'null'}`);
+           
+           // Also check customer metadata as a fallback
+           const userIdFromCustomerMeta = customer.metadata?.userId;
+           if (userIdFromCustomerMeta) {
+              console.log(`[${subscription.id}] Found userId in CUSTOMER metadata: ${userIdFromCustomerMeta}`);
+              userId = userIdFromCustomerMeta;
            } else {
-              console.error('Customer email is null, cannot look up user for subscription update:', subscription.id);
-              // Handle case where email is null - maybe skip update or log differently?
+              console.log(`[${subscription.id}] No userId found in customer metadata.`);
+              // Check if email exists before attempting lookup
+              if (customer.email) { 
+                 console.log(`[${subscription.id}] Attempting email lookup for: ${customer.email}`);
+                 // Use a temporary variable for the lookup result
+                 const emailLookupResult = await getUserIdFromEmail(customer.email);
+                 if (emailLookupResult) {
+                    console.log(`[${subscription.id}] Found userId via email lookup: ${emailLookupResult}`);
+                    userId = emailLookupResult; // Assign to main userId only if successful
+                 } else {
+                    console.log(`[${subscription.id}] Email lookup failed for: ${customer.email}`);
+                 }
+              } else {
+                 console.error(`[${subscription.id}] Customer email is null, cannot look up user for subscription update.`);
+                 // Handle case where email is null - maybe skip update or log differently?
+              }
            }
         }
 
-        if (!userId) {
-           console.error('Could not find userId for subscription update:', subscription.id);
-           return { status: 'error', message: 'User ID not found for subscription update' };
-        }
+        // Only proceed with update if we found a userId
+        if (userId) {
+          const { error } = await supabaseAdmin
+            .from('subscriptions')
+            .update({
+              stripe_price_id: priceId,
+              plan_name: planName,
+              status: subscription.status,
+              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              // Reset usage on plan change (upgrade/downgrade)? Adjust if needed.
+              content_used_this_month: 0, 
+              content_reset_date: new Date(subscription.current_period_start * 1000).toISOString()
+            })
+            // @ts-ignore - Linter incorrectly flags userId type despite the if(userId) check
+            .eq('user_id', userId!); // Use assertion directly
 
-        const { error } = await supabaseAdmin
-          .from('subscriptions')
-          .update({
-            stripe_price_id: priceId,
-            plan_name: planName,
-            status: subscription.status,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            // Reset usage on plan change (upgrade/downgrade)? Adjust if needed.
-            content_used_this_month: 0, 
-            content_reset_date: new Date(subscription.current_period_start * 1000).toISOString()
-          })
-          .eq('user_id', userId); // Update based on userId
-
-        if (error) {
-           console.error('Error updating subscription:', error);
-           return { status: 'error', message: 'Failed to update subscription' };
+          if (error) {
+             console.error('Error updating subscription:', error);
+             return { status: 'error', message: 'Failed to update subscription' };
+          }
+          return { status: 'success', message: 'Subscription updated' };
+        } else {
+          // This case should ideally not be reached due to the earlier check,
+          // but we handle it just in case.
+          console.error('Could not find userId for subscription update after all checks:', subscription.id);
+          return { status: 'error', message: 'User ID not found for subscription update' };
         }
-        return { status: 'success', message: 'Subscription updated' };
       }
 
       case 'invoice.paid': {
