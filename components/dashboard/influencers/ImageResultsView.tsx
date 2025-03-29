@@ -150,12 +150,12 @@ export function ImageResultsView({
   if (error) {
     return (
       <div className="text-center py-4">
-        <p className="text-red-500 mb-2">{error}</p>
+        <p className="text-danger mb-2">{error}</p>
         <Button 
           variant="outline" 
           size="sm" 
           onClick={() => setIsLoading(false)}
-          className="mt-2"
+          className="mt-2 border-border text-text"
         >
           Try Again
         </Button>
@@ -176,7 +176,7 @@ export function ImageResultsView({
             </div>
           ))}
         </div>
-        <div className="text-center text-sm text-muted-foreground mt-4">
+        <div className="text-center text-sm text-textMuted mt-4">
           <p>Generating influencer images...</p>
           <p className="text-xs mt-1">This may take up to 30 seconds</p>
         </div>
@@ -207,7 +207,7 @@ export function ImageResultsView({
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <Button 
                     onClick={() => handleSaveInfluencer(image.url)}
-                    className="bg-white text-black hover:bg-white/90 text-xs p-2 h-auto"
+                    className="btn-gradient text-xs p-2 h-auto"
                   >
                     Save this Influencer
                   </Button>
@@ -218,7 +218,7 @@ export function ImageResultsView({
         </div>
         
         {images.length > 0 && (
-          <div className="text-center text-sm text-muted-foreground mt-4">
+          <div className="text-center text-sm text-textMuted mt-4">
             <p>Generated {images.length} influencer images</p>
           </div>
         )}

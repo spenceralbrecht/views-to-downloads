@@ -21,7 +21,11 @@ body {
   }
   
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#8D69F5] to-[#FF5D9F];
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#A855F7] to-[#EE46EF];
+  }
+  
+  .hover-primary {
+    @apply hover:bg-primary/5 transition-colors duration-200;
   }
   
   /* Hide scrollbar for Chrome, Safari and Opera */
@@ -46,7 +50,7 @@ body {
     --popover-foreground: 0 0% 100%;
     --primary: 262 88% 69%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 330 100% 68%;
+    --secondary: 297 98% 61%;
     --secondary-foreground: 0 0% 100%;
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 80%;
@@ -61,7 +65,7 @@ body {
     
     /* Custom Colors */
     --purple: 262 88% 69%;
-    --pink: 330 100% 68%;
+    --pink: 297 98% 61%;
     --dark-bg: 0 0% 5%;
     --panel-bg: 0 0% 10%;
     --text-primary: 0 0% 100%;
@@ -77,7 +81,7 @@ body {
     --popover-foreground: 0 0% 100%;
     --primary: 262 88% 69%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 330 100% 68%;
+    --secondary: 297 98% 61%;
     --secondary-foreground: 0 0% 100%;
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 80%;
@@ -101,35 +105,35 @@ body {
 
 /* Global Styles */
 body {
-  @apply bg-background text-foreground;
+  @apply bg-background text-text;
 }
 
 /* Button Styles */
 .btn-gradient {
-  @apply bg-gradient-to-r from-[#8D69F5] to-[#FF5D9F] text-white font-semibold 
-         px-6 py-3 rounded-lg transition-all duration-200 hover:brightness-110 
+  @apply bg-gradient-to-r from-[#A855F7] to-[#EE46EF] text-white font-semibold 
+         px-6 py-3 rounded-md transition-all duration-200 hover:brightness-110 
          focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-background;
 }
 
 .btn-outline {
-  @apply border-2 border-[#8D69F5] text-white font-semibold px-6 py-3 rounded-lg 
-         transition-all duration-200 hover:bg-[#8D69F5] hover:bg-opacity-20 
+  @apply border-2 border-primary text-text font-semibold px-6 py-3 rounded-md 
+         transition-all duration-200 hover:bg-primary/5
          focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-background;
 }
 
 /* Card Styles */
 .card-dark {
-  @apply bg-card rounded-lg border border-border shadow-lg;
+  @apply bg-card rounded-md border border-border shadow-md;
 }
 
 /* Input Styles */
 .input-dark {
-  @apply bg-input border border-border rounded-md px-4 py-2 text-foreground 
-         placeholder:text-muted-foreground focus:ring-2 focus:ring-purple-500 
+  @apply bg-input border border-border rounded-md px-4 py-2 text-text 
+         placeholder:text-textMuted focus:ring-2 focus:ring-purple-500 
          focus:border-transparent transition-all duration-200;
 }
 
 /* Navigation Styles */
 .nav-link {
-  @apply text-muted-foreground hover:text-foreground transition-colors duration-200;
+  @apply text-textMuted hover:text-text transition-colors duration-200;
 }

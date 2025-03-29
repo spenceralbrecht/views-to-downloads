@@ -9,7 +9,7 @@ The model used should be `chatgpt-4o-latest`. When the server is running with `b
 
 This project is deployed in production to the url https://viewstodownloads.com.
 
-Do everything you can to avoid unnecessary complexity. Showing localhost notifications is not good UX.
+Do everything you can to avoid unnecessary complexity. Showing localhost notifications is not good UX. Always follow the tailwind theme so that colors and styling are kept across the application. Try to never use one-off colors and use variables as much as possible to maintain consistency.
 
 Keep the readme up to date with how this project works. 
 
