@@ -623,30 +623,6 @@ export function PublishToTikTokModal({
                               />
                             </div>
                           </div>
-                          
-                          <p className="text-sm text-muted-foreground pt-2">
-                            {(brandedContent && yourBrand) || brandedContent ? (
-                              <>
-                                By posting, you agree to TikTok's{' '}
-                                <a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                                  Branded Content Policy
-                                </a>{' '}
-                                and{' '}
-                                <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                                  Music Usage Confirmation
-                                </a>
-                                .
-                              </>
-                            ) : (
-                              <>
-                                By posting, you agree to TikTok's{' '}
-                                <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                                  Music Usage Confirmation
-                                </a>
-                                .
-                              </>
-                            )}
-                          </p>
                         </>
                       )}
                     </div>
@@ -702,46 +678,73 @@ export function PublishToTikTokModal({
         </div>
         
         <DialogFooter className="mt-2 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          {isTikTokEnabled() && !(published === 'tiktok' && publishedUrl) ? (
-            <Button
-              onClick={handlePublish}
-              disabled={
-                isPublishing || 
-                connectedAccounts.length === 0 || 
-                !selectedAccountId || 
-                !title.trim() || 
-                !privacyLevel
-              }
-            >
-              {isPublishing ? (
+          <div className="flex items-center justify-between w-full">
+            <p className="text-xs text-muted-foreground mr-6 max-w-[60%]">
+              {(brandedContent && yourBrand) || brandedContent ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Publishing...
+                  By posting, you agree to TikTok's{' '}
+                  <a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                    Branded Content Policy
+                  </a>{' '}
+                  and{' '}
+                  <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                    Music Usage Confirmation
+                  </a>
+                  .
                 </>
               ) : (
-                'Publish to TikTok'
+                <>
+                  By posting, you agree to TikTok's{' '}
+                  <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                    Music Usage Confirmation
+                  </a>
+                  .
+                </>
               )}
-            </Button>
-          ) : isTikTokEnabled() && published === 'tiktok' && publishedUrl ? (
-            <Button
-              onClick={() => onOpenChange(false)}
-            >
-              Close
-            </Button>
-          ) : (
-            <Button
-              disabled
-              className="opacity-70 cursor-not-allowed"
-            >
-              Coming Soon
-            </Button>
-          )}
+            </p>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              {isTikTokEnabled() && !(published === 'tiktok' && publishedUrl) ? (
+                <Button
+                  onClick={handlePublish}
+                  disabled={
+                    isPublishing || 
+                    connectedAccounts.length === 0 || 
+                    !selectedAccountId || 
+                    !title.trim() || 
+                    !privacyLevel
+                  }
+                >
+                  {isPublishing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    'Publish to TikTok'
+                  )}
+                </Button>
+              ) : isTikTokEnabled() && published === 'tiktok' && publishedUrl ? (
+                <Button
+                  onClick={() => onOpenChange(false)}
+                >
+                  Close
+                </Button>
+              ) : (
+                <Button
+                  disabled
+                  className="opacity-70 cursor-not-allowed"
+                >
+                  Coming Soon
+                </Button>
+              )}
+            </div>
+          </div>
         </DialogFooter>
       </DialogContent>
 
