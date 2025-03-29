@@ -101,77 +101,75 @@ export function ViralFormatModal({ open, onOpenChange }: ViralFormatModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="sticky top-0 bg-background z-50 pb-4 border-b flex-shrink-0 mt-3">
-          <div className="space-y-2 pr-6">
-            <DialogTitle className="text-2xl font-bold">{format.name}</DialogTitle>
-            <Badge variant={format.difficulty.toLowerCase() === "easy" ? "success" : "default"} className="text-sm">
-              {format.difficulty} Difficulty
-            </Badge>
-          </div>
-        </DialogHeader>
-
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col bg-background border-border">
         <div className="flex-1 overflow-y-auto scrollbar-hide">
-          <div className="space-y-6 py-4">
+          <div className="space-y-6 py-6 px-1.5">
+            <div>
+              <h2 className="text-3xl font-bold mb-2 text-text">{format.name}</h2>
+              <Badge variant="outline" className="bg-primary/70 text-white border-none py-1 px-4 rounded-full text-sm">
+                {format.difficulty} Difficulty
+              </Badge>
+            </div>
+
+            <div className="h-px bg-border w-full my-6"></div>
+
             {/* How it Works Section */}
             <div>
-              <h3 className="text-lg font-semibold mb-2">How it Works</h3>
-              <p className="text-muted-foreground">{format.how_it_works}</p>
+              <h3 className="text-2xl font-semibold mb-3 text-text">How it Works</h3>
+              <p className="text-textMuted">{format.how_it_works}</p>
             </div>
 
             {/* Requires Section */}
             <div>
-              <h3 className="text-lg font-semibold mb-2">Requires</h3>
-              <ul className="list-disc list-inside text-muted-foreground">
+              <h3 className="text-2xl font-semibold mb-3 text-text">Requires</h3>
+              <ul className="list-disc list-inside text-textMuted pl-1">
                 {format.requires.map((requirement, index) => (
-                  <li key={index} className="mb-1">{requirement}</li>
+                  <li key={index} className="mb-2">{requirement}</li>
                 ))}
               </ul>
             </div>
 
             {/* Viral Examples Section */}
             <div>
-              <h3 className="text-lg font-semibold mb-3">Viral Examples</h3>
-              <div className="flex gap-6 overflow-x-auto pb-4 -mx-6 px-6 snap-x snap-mandatory scrollbar-hide">
+              <h3 className="text-2xl font-semibold mb-4 text-text">Viral Examples</h3>
+              <div className="grid grid-cols-3 gap-4">
                 {format.examples.map((example, index) => (
                   <div 
                     key={index}
-                    className="group relative w-[244px] flex-shrink-0 snap-center"
+                    className="group relative"
                   >
-                    <Card className="overflow-hidden">
-                      <div 
-                        className="aspect-[9/16] relative h-[431px]"
-                        onMouseEnter={(e) => {
-                          const video = e.currentTarget.querySelector('video')
-                          if (video) handleVideoHover(video)
-                        }}
-                        onMouseLeave={(e) => {
-                          const video = e.currentTarget.querySelector('video')
-                          if (video) handleVideoLeave(video)
-                        }}
-                      >
-                        <div className="absolute top-3 left-3 flex items-center gap-1.5 text-white text-base z-30">
-                          <Eye className="w-4 h-4" />
-                          <span>{formatViewCount(example.views)}</span>
-                        </div>
-                        <video
-                          src={example.view_url}
-                          className="w-full h-full object-cover"
-                          loop
-                          playsInline
-                          muted
-                          preload="metadata"
-                        />
-                        <a 
-                          href={example.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
-                        >
-                          <span className="text-white text-sm font-medium">Watch on {example.platform === "tiktok" ? "TikTok" : "Instagram"}</span>
-                        </a>
+                    <div 
+                      className="aspect-[9/16] rounded-lg overflow-hidden relative"
+                      onMouseEnter={(e) => {
+                        const video = e.currentTarget.querySelector('video')
+                        if (video) handleVideoHover(video)
+                      }}
+                      onMouseLeave={(e) => {
+                        const video = e.currentTarget.querySelector('video')
+                        if (video) handleVideoLeave(video)
+                      }}
+                    >
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5 text-white text-sm z-30 bg-black/50 px-2 rounded-md">
+                        <Eye className="w-4 h-4" />
+                        <span>{formatViewCount(example.views)}</span>
                       </div>
-                    </Card>
+                      <video
+                        src={example.view_url}
+                        className="w-full h-full object-cover"
+                        loop
+                        playsInline
+                        muted
+                        preload="metadata"
+                      />
+                      <a 
+                        href={example.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+                      >
+                        <span className="text-white text-sm font-medium">Watch on {example.platform === "tiktok" ? "TikTok" : "Instagram"}</span>
+                      </a>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -179,14 +177,14 @@ export function ViralFormatModal({ open, onOpenChange }: ViralFormatModalProps) 
           </div>
         </div>
 
-        <DialogFooter className="flex-shrink-0 bg-background pt-4 border-t -mx-6 px-6">
+        <div className="flex justify-center py-6 border-t border-border">
           <Button 
             onClick={handleUseFormat}
-            className="bg-primary hover:bg-primary/90 text-white"
+            className="btn-gradient py-3 px-8 rounded-full text-base font-medium"
           >
             Use This Format
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   )
