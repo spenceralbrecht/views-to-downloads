@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Loader2, Plus, CheckCircle, XCircle, Trash2 } from 'lucide-react'
+import { Loader2, Plus, CheckCircle, XCircle, Trash2, Plug } from 'lucide-react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { accountService } from '@/utils/accountService'
 import { tiktokService } from '@/utils/tiktokService'
@@ -147,46 +147,54 @@ export default function ConnectedAccounts() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-semibold text-foreground">Connected Accounts</h1>
-        {isTikTokEnabled() ? (
-          <Button 
-            onClick={() => connectTikTok()}
-            className="btn-gradient"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Connect Account
-          </Button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Coming Soon</span>
+      <div className="mb-10 pb-6 border-b border-border">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold mb-2 gradient-text">Connected Accounts</h1>
+            <p className="text-textMuted max-w-2xl">
+              Connect your social media accounts to enhance your content creation workflow.
+            </p>
+          </div>
+          
+          {isTikTokEnabled() ? (
             <Button 
-              disabled={true}
-              className="opacity-70 cursor-not-allowed"
+              onClick={() => connectTikTok()}
+              className="btn-gradient"
             >
               <Plus className="w-4 h-4 mr-2" />
               Connect Account
             </Button>
-          </div>
-        )}
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-textMuted">Coming Soon</span>
+              <Button 
+                disabled={true}
+                className="opacity-70 cursor-not-allowed"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Connect Account
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Success and Error Alerts */}
       {successMessage && (
-        <Alert className="mb-6 bg-green-50 border-green-200">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertTitle className="text-green-800">Success</AlertTitle>
-          <AlertDescription className="text-green-700">
+        <Alert className="mb-6 bg-primary/5 border-primary/20">
+          <CheckCircle className="h-4 w-4 text-primary" />
+          <AlertTitle className="text-text">Success</AlertTitle>
+          <AlertDescription className="text-textMuted">
             {successMessage}
           </AlertDescription>
         </Alert>
       )}
 
       {error && (
-        <Alert className="mb-6 bg-red-50 border-red-200">
-          <XCircle className="h-4 w-4 text-red-600" />
-          <AlertTitle className="text-red-800">Error</AlertTitle>
-          <AlertDescription className="text-red-700">
+        <Alert className="mb-6 bg-danger/5 border-danger/20">
+          <XCircle className="h-4 w-4 text-danger" />
+          <AlertTitle className="text-text">Error</AlertTitle>
+          <AlertDescription className="text-textMuted">
             {error}
           </AlertDescription>
         </Alert>
@@ -195,20 +203,26 @@ export default function ConnectedAccounts() {
       {connectedAccounts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {connectedAccounts.map((account) => (
-            <Card key={account.id} className="overflow-hidden">
+            <Card key={account.id} className="overflow-hidden border-border bg-card hover-primary">
               <CardContent className="p-0">
                 <div className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
-                    <div className="relative h-12 w-12 rounded-full overflow-hidden">
-                      <img 
-                        src={account.profile_picture || 'https://placehold.co/100x100'} 
-                        alt={account.display_name || account.username}
-                        className="object-cover h-12 w-12"
-                      />
+                    <div className="relative h-12 w-12 rounded-full overflow-hidden border border-border bg-sidebar flex items-center justify-center">
+                      {account.profile_picture ? (
+                        <img 
+                          src={account.profile_picture} 
+                          alt={account.display_name || account.username}
+                          className="object-cover h-12 w-12"
+                        />
+                      ) : (
+                        <div className="text-primary text-xl font-bold">
+                          {(account.display_name || account.username || 'User').charAt(0).toUpperCase()}
+                        </div>
+                      )}
                     </div>
                     <div>
-                      <p className="font-medium">{account.display_name || account.username}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="font-medium text-text">{account.display_name || account.username}</p>
+                      <p className="text-sm text-textMuted">
                         {account.provider.charAt(0).toUpperCase() + account.provider.slice(1)}
                       </p>
                     </div>
@@ -216,18 +230,22 @@ export default function ConnectedAccounts() {
                   
                   <div className="space-y-2">
                     <p className="text-sm">
-                      <span className="text-muted-foreground">Connected on:</span> {new Date(account.created_at).toLocaleDateString()}
+                      <span className="text-textMuted">Connected on:</span> <span className="text-text">{new Date(account.created_at).toLocaleDateString()}</span>
+                    </p>
+                    <p className="text-sm">
+                      <span className="text-textMuted">Status:</span> <span className="inline-flex items-center text-primary"><CheckCircle className="w-3 h-3 mr-1" /> Active</span>
                     </p>
                   </div>
                 </div>
                 
-                <div className="border-t p-4 bg-muted/20">
+                <div className="border-t border-border p-4 bg-sidebar">
                   <Button 
                     variant="outline" 
                     size="sm"
                     onClick={() => disconnectAccount(account.id)}
-                    className="w-full"
+                    className="w-full text-textMuted hover:text-danger hover:border-danger/50"
                   >
+                    <Trash2 className="w-4 h-4 mr-2" />
                     Disconnect
                   </Button>
                 </div>
@@ -236,15 +254,29 @@ export default function ConnectedAccounts() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 border rounded-lg bg-muted/10">
-          <img src="/plug.svg" alt="Plug" className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground mb-4">No accounts connected yet</p>
-          <p className="text-sm text-muted-foreground mb-6">Connect your TikTok account to enhance your content creation workflow.</p>
-          {isTikTokEnabled() ? (
-            <Button onClick={() => connectTikTok()}>Connect Account</Button>
-          ) : (
-            <Button disabled className="opacity-70 cursor-not-allowed">TikTok Integration Coming Soon</Button>
-          )}
+        <div className="text-center py-16 border border-border rounded-lg bg-card">
+          <div className="bg-primary/10 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+            <Plug className="h-10 w-10 text-primary opacity-60" />
+          </div>
+          <h3 className="text-xl font-semibold text-text mb-2">No accounts connected yet</h3>
+          <p className="text-textMuted mb-8 max-w-md mx-auto">
+            Connect your TikTok account to unlock powerful features for content creation and distribution.
+          </p>
+          <div className="max-w-xs mx-auto">
+            {isTikTokEnabled() ? (
+              <Button onClick={() => connectTikTok()} className="btn-gradient w-full">
+                <Plus className="w-4 h-4 mr-2" />
+                Connect TikTok Account
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <Button disabled className="w-full opacity-60 cursor-not-allowed">
+                  TikTok Integration Coming Soon
+                </Button>
+                <p className="text-xs text-textMuted">We're working on adding TikTok integration. Check back soon!</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

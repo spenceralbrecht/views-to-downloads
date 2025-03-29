@@ -21,11 +21,11 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-background">
       <Sidebar user={session.user} />
-      <div className="lg:pl-64 min-h-screen pb-16 lg:pb-0">
+      <main className="pt-4 lg:pl-64">
         <CheckoutSuccessWrapper>
           {children}
         </CheckoutSuccessWrapper>
-      </div>
+      </main>
     </div>
   )
 }

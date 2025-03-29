@@ -59,16 +59,16 @@ export function InfluencerGallery() {
   }, [supabaseClient])
 
   if (loading) {
-    return <div className="flex justify-center p-6">Loading influencers...</div>
+    return <div className="flex justify-center p-6 text-textMuted">Loading influencers...</div>
   }
 
   if (influencers.length === 0) {
-    return <div className="text-center py-6 text-muted-foreground">No influencers saved yet. Generate some images above and save them to see them here!</div>
+    return <div className="text-center py-6 text-textMuted">No influencers saved yet. Generate some images above and save them to see them here!</div>
   }
 
   return (
     <div className="py-2">
-      <h2 className="text-xl font-bold mb-4">My Saved Influencers</h2>
+      <h2 className="text-xl font-bold mb-4 text-text">My Saved Influencers</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {influencers.map((influencer) => (
           <div 

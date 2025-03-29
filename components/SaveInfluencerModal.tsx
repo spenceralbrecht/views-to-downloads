@@ -110,14 +110,14 @@ export function SaveInfluencerModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-gray-700">
+      <DialogContent className="border-border bg-card">
         <DialogHeader>
-          <DialogTitle>Save Influencer</DialogTitle>
+          <DialogTitle className="text-text">Save Influencer</DialogTitle>
         </DialogHeader>
         
         <div className="grid gap-6 py-4">
           <div className="flex justify-center">
-            <div className="relative aspect-[9/16] w-[200px] rounded-lg overflow-hidden">
+            <div className="relative aspect-[9/16] w-[200px] rounded-lg overflow-hidden border border-border">
               <Image
                 src={imageUrl}
                 alt="Influencer preview"
@@ -128,7 +128,7 @@ export function SaveInfluencerModal({
           </div>
           
           <div className="grid items-center gap-2">
-            <Label htmlFor="name">
+            <Label htmlFor="name" className="text-text">
               Name
             </Label>
             <Input
@@ -137,12 +137,13 @@ export function SaveInfluencerModal({
               onChange={(e) => setName(e.target.value)}
               required
               placeholder="Enter influencer name"
+              className="bg-background border-border text-text"
             />
           </div>
         </div>
         
         {error && (
-          <p className="text-sm text-red-500">{error}</p>
+          <p className="text-sm text-danger">{error}</p>
         )}
         
         <DialogFooter>
@@ -150,12 +151,13 @@ export function SaveInfluencerModal({
             type="button" 
             variant="outline" 
             onClick={() => onOpenChange(false)}
+            className="border-border text-text"
           >
             Cancel
           </Button>
           <Button 
             onClick={saveInfluencer}
-            className="bg-[#4287f5]"
+            className="btn-gradient"
             disabled={isPending}
           >
             {isPending ? 'Saving...' : 'Save Influencer'}

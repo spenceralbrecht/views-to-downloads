@@ -80,23 +80,23 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
   // Show failed state
   if (videoData.status === 'failed') {
     return (
-      <Card className="relative bg-card shadow-sm hover:shadow-md transition-shadow duration-200 w-full">
-        <div className="aspect-[9/16] flex items-center justify-center bg-muted">
+      <Card className="relative bg-card border border-border shadow-sm hover:shadow-md transition-shadow duration-200 w-full overflow-hidden">
+        <div className="aspect-[9/16] flex items-center justify-center bg-sidebar">
           <div className="text-center">
-            <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Video processing failed</p>
+            <AlertTriangle className="w-8 h-8 text-danger mx-auto mb-2" />
+            <p className="text-sm text-textMuted">Video processing failed</p>
           </div>
         </div>
-        <div className="p-4">
+        <div className="p-4 border-t border-border">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-textMuted">
               {new Date(videoData.created_at).toLocaleDateString()}
             </span>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => onDelete(videoData.id)}
-              className="text-destructive hover:text-destructive/90"
+              className="text-danger hover:text-danger/90 hover:bg-danger/10"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -140,21 +140,21 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
   }
 
   return (
-    <Card className="relative overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow duration-200">
+    <Card className="relative overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow duration-200 rounded-md">
       <div
         className="relative group"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         {playError ? (
-          <div className="aspect-[9/16] flex items-center justify-center bg-muted p-4 text-center">
-            <div className="text-sm text-muted-foreground">
+          <div className="aspect-[9/16] flex items-center justify-center bg-sidebar p-4 text-center">
+            <div className="text-sm text-textMuted">
               Error loading video
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setPlayError(false)}
-                className="block mx-auto mt-2"
+                className="block mx-auto mt-2 hover:bg-primary/10"
               >
                 Retry
               </Button>
@@ -163,8 +163,8 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
         ) : (
           <>
             {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <div className="absolute inset-0 flex items-center justify-center bg-sidebar z-10">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             )}
             <div className="aspect-[9/16]">
@@ -221,7 +221,7 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                className="bg-danger hover:bg-danger/90 text-white"
                 onClick={handleDelete}
               >
                 Delete
@@ -239,7 +239,7 @@ export function VideoCard({ video, isPending, onDelete }: VideoCardProps) {
           <Button
             variant="secondary"
             size="icon"
-            className="bg-background/50 hover:bg-background/70 text-foreground"
+            className="bg-background/50 hover:bg-background/70 text-text"
             onClick={handleDownload}
             disabled={isDownloading}
           >

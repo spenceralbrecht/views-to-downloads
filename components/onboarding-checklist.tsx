@@ -36,14 +36,14 @@ export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, has
           }} 
           className={!hasSubscription ? 'cursor-pointer' : 'cursor-default'}
         >
-          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors ${!hasSubscription ? 'hover:bg-accent/50' : ''}`}>
+          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors ${!hasSubscription ? 'hover:bg-primary/5' : ''}`}>
             <div className="flex items-center gap-4">
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasSubscription ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasSubscription ? 'bg-primary/20 text-primary' : 'bg-muted text-textMuted'}`}>
                 <CreditCard className="h-4 w-4" />
               </div>
               <div>
                 <h3 className="font-medium">Subscription required</h3>
-                <p className="text-sm text-muted-foreground">Estimated 2-3 minutes</p>
+                <p className="text-sm text-textMuted">Estimated 2-3 minutes</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -61,14 +61,14 @@ export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, has
         </div>
 
         <Link href={'/dashboard/apps'} className={'cursor-pointer'}>
-          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors hover:bg-accent/50`}>
+          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors hover:bg-primary/5`}>
             <div className="flex items-center gap-4">
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasApp ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasApp ? 'bg-primary/20 text-primary' : 'bg-muted text-textMuted'}`}>
                 <Smartphone className="h-4 w-4" />
               </div>
               <div>
                 <h3 className="font-medium">Add your first app</h3>
-                <p className="text-sm text-muted-foreground">Estimated 30 seconds</p>
+                <p className="text-sm text-textMuted">Estimated 30 seconds</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -86,14 +86,14 @@ export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, has
         </Link>
 
         <Link href={'/dashboard/hooks'} className={'cursor-pointer'}>
-          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors hover:bg-accent/50`}>
+          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors hover:bg-primary/5`}>
             <div className="flex items-center gap-4">
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasHooks ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasHooks ? 'bg-primary/20 text-primary' : 'bg-muted text-textMuted'}`}>
                 <Anchor className="h-4 w-4" />
               </div>
               <div>
                 <h3 className="font-medium">Generate viral hooks</h3>
-                <p className="text-sm text-muted-foreground">Estimated 30 seconds</p>
+                <p className="text-sm text-textMuted">Estimated 30 seconds</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -111,14 +111,14 @@ export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, has
         </Link>
 
         <Link href={'/dashboard/create'} className={'cursor-pointer'}>
-          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors hover:bg-accent/50`}>
+          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors hover:bg-primary/5`}>
             <div className="flex items-center gap-4">
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasDemoVideo ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasDemoVideo ? 'bg-primary/20 text-primary' : 'bg-muted text-textMuted'}`}>
                 <Video className="h-4 w-4" />
               </div>
               <div>
                 <h3 className="font-medium">Create your first video</h3>
-                <p className="text-sm text-muted-foreground">Estimated 1 minute</p>
+                <p className="text-sm text-textMuted">Estimated 1 minute</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

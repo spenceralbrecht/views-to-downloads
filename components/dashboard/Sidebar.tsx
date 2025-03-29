@@ -92,7 +92,7 @@ export function Sidebar({ user }: SidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex h-screen w-64 flex-col fixed left-0 top-0 border-r border-border bg-card">
+      <div className="hidden lg:flex h-screen w-64 flex-col fixed left-0 top-0 border-r border-border bg-sidebar">
         <div className="flex h-14 items-center border-b border-border px-4">
           <Link href="/dashboard" className="flex items-center space-x-2">
             <Download className="h-6 w-6 text-primary" />
@@ -122,12 +122,12 @@ export function Sidebar({ user }: SidebarProps) {
                   className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
                     isActive
                       ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      : 'text-textMuted hover:bg-primary/5 hover:text-text'
                   }`}
                 >
                   <item.icon
                     className={`mr-3 h-5 w-5 ${
-                      isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+                      isActive ? 'text-primary' : 'text-textMuted group-hover:text-text'
                     }`}
                     aria-hidden="true"
                   />
@@ -141,22 +141,24 @@ export function Sidebar({ user }: SidebarProps) {
             <div className="px-4 mt-6">
               {subscription ? (
                 <>
-                  <div className="rounded-md bg-muted p-4">
+                  <div className="rounded-md bg-card p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-muted-foreground">Content Usage</span>
+                      <span className="text-sm font-medium text-text">Content Usage</span>
                       <span className="text-sm font-medium text-primary">
                         {contentUsed}/{contentLimit}
                       </span>
                     </div>
-                    <Progress 
-                      value={progressPercentage} 
-                      className="bg-background"
-                    />
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
+                    <div className="h-2 w-full bg-background rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary rounded-full" 
+                        style={{ width: `${(contentUsed / contentLimit) * 100}%` }}
+                      ></div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-sm text-textMuted">
                         {(planName.charAt(0).toUpperCase() + planName.slice(1)) + ' Plan'}
                       </span>
-                      <Badge className="bg-primary/20 text-primary hover:bg-primary/30">
+                      <Badge className="bg-primary/20 text-primary hover:bg-primary/30 rounded-full font-normal">
                         Active
                       </Badge>
                     </div>
@@ -194,7 +196,7 @@ export function Sidebar({ user }: SidebarProps) {
           )}
         </div>
 
-        <div className="border-t border-border bg-card">
+        <div className="border-t border-border bg-sidebar">
           <nav className="space-y-1 px-2 py-4">
             {bottomNav.map((item) => {
               const isActive = pathname === item.href
@@ -209,14 +211,14 @@ export function Sidebar({ user }: SidebarProps) {
                 className: `flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
                   isActive
                     ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                    : 'text-textMuted hover:bg-primary/5 hover:text-text'
                 }`
               }
               return (
                 <Link key={item.name} {...linkProps}>
                   <item.icon
                     className={`mr-3 h-5 w-5 ${
-                      isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+                      isActive ? 'text-primary' : 'text-textMuted group-hover:text-text'
                     }`}
                     aria-hidden="true"
                   />
@@ -229,14 +231,14 @@ export function Sidebar({ user }: SidebarProps) {
           <div className="px-4 py-4 border-t border-border">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <UserIcon className="h-8 w-8 text-muted-foreground" />
+                <UserIcon className="h-8 w-8 text-textMuted" />
               </div>
               <div className="ml-3 overflow-hidden">
-                <p className="text-sm font-medium text-foreground truncate">{user?.email}</p>
+                <p className="text-sm font-medium text-text truncate">{user?.email}</p>
                 <form action={signOut}>
                   <button
                     type="submit"
-                    className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-xs font-medium text-textMuted hover:text-text transition-colors"
                   >
                     Sign out
                   </button>
@@ -248,7 +250,7 @@ export function Sidebar({ user }: SidebarProps) {
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-10 bg-sidebar border-t border-border">
         <nav className="flex justify-around items-center h-16">
           {navigation.slice(0, 5).map((item) => {
             const isActive = pathname === item.href
@@ -259,12 +261,12 @@ export function Sidebar({ user }: SidebarProps) {
                 className={`flex flex-col items-center justify-center px-3 py-2 text-xs font-medium transition-all duration-200 ${
                   isActive
                     ? 'text-primary'
-                    : 'text-muted-foreground'
+                    : 'text-textMuted'
                 }`}
               >
                 <item.icon
                   className={`h-5 w-5 mb-1 ${
-                    isActive ? 'text-primary' : 'text-muted-foreground'
+                    isActive ? 'text-primary' : 'text-textMuted'
                   }`}
                   aria-hidden="true"
                 />
@@ -274,7 +276,7 @@ export function Sidebar({ user }: SidebarProps) {
           })}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
-            className="flex flex-col items-center justify-center px-3 py-2 text-xs font-medium text-muted-foreground"
+            className="flex flex-col items-center justify-center px-3 py-2 text-xs font-medium text-textMuted"
           >
             <Menu className="h-5 w-5 mb-1" />
             More
@@ -282,92 +284,146 @@ export function Sidebar({ user }: SidebarProps) {
         </nav>
       </div>
 
-      {/* Mobile Menu Dialog */}
-      <Dialog open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Menu</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            {!loading && (
-              <div className="mb-6">
-                {subscription ? (
-                  <div className="rounded-md bg-muted p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-muted-foreground">Content Usage</span>
-                      <span className="text-sm font-medium text-primary">
-                        {contentUsed}/{contentLimit}
-                      </span>
-                    </div>
-                    <Progress 
-                      value={(contentUsed / contentLimit) * 100} 
-                      className="bg-background"
-                    />
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        {(planName.charAt(0).toUpperCase() + planName.slice(1)) + ' Plan'}
-                      </span>
-                      <Badge className="bg-primary/20 text-primary hover:bg-primary/30">
-                        Active
-                      </Badge>
-                    </div>
-                  </div>
-                ) : (
-                  <Button 
-                    className="w-full btn-gradient" 
-                    size="sm"
-                    onClick={() => handleUpgradeClick(true)}
-                  >
-                    Upgrade
-                  </Button>
-                )}
-              </div>
-            )}
-            
-            <div className="space-y-4">
-              {/* Additional navigation items for mobile menu */}
-              {navigation.slice(5).map((item) => (
-                <Link 
-                  key={item.name}
-                  href={item.href}
-                  className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-foreground hover:bg-accent"
-                  onClick={() => setIsMobileMenuOpen(false)}
+      {/* Mobile Menu Drawer */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-20 flex">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-60"
+            onClick={() => setIsMobileMenuOpen(false)}
+          ></div>
+          
+          {/* Sidebar */}
+          <div className="relative flex-1 flex flex-col w-3/4 max-w-xs bg-sidebar shadow-xl">
+            <div className="flex h-14 items-center border-b border-border px-4">
+              <Link href="/dashboard" className="flex items-center space-x-2">
+                <Download className="h-6 w-6 text-primary" />
+                <span className="font-semibold gradient-text">Views to Downloads</span>
+              </Link>
+            </div>
+
+            <div className="flex-1 overflow-auto py-4">
+              <div className="px-4 mb-4">
+                <Button 
+                  className="w-full btn-gradient" 
+                  asChild
                 >
-                  <item.icon className="mr-3 h-5 w-5 text-muted-foreground" />
-                  {item.name}
-                </Link>
-              ))}
-              
-              {bottomNav.map((item) => {
-                const linkProps = {
-                  href: item.href,
-                  ...(item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
-                  ...(item.onClick ? { onClick: item.onClick } : {}),
-                  ...(item.name === 'Support' ? {
-                    'data-feedback-fish': true,
-                    'data-feedback-fish-userid': user?.email,
-                  } : {}),
-                  className: "flex items-center px-3 py-2 text-sm font-medium rounded-md text-foreground hover:bg-accent"
-                }
-                return (
-                  <Link key={item.name} {...linkProps}>
-                    <item.icon className="mr-3 h-5 w-5 text-muted-foreground" />
-                    {item.name}
+                  <Link href="/dashboard/create">
+                    + Create Content
                   </Link>
-                )
-              })}
-              
-              <div className="pt-4 border-t border-border">
-                <div className="flex items-center px-3 py-2">
+                </Button>
+              </div>
+
+              <nav className="space-y-1 px-2">
+                {navigation.map((item) => {
+                  const isActive = pathname === item.href
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                        isActive
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-textMuted hover:bg-primary/5 hover:text-text'
+                      }`}
+                    >
+                      <item.icon
+                        className={`mr-3 h-5 w-5 ${
+                          isActive ? 'text-primary' : 'text-textMuted group-hover:text-text'
+                        }`}
+                        aria-hidden="true"
+                      />
+                      {item.name}
+                    </Link>
+                  )
+                })}
+              </nav>
+
+              {!loading && (
+                <div className="px-4 mt-6">
+                  {subscription ? (
+                    <>
+                      <div className="rounded-md bg-card p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-text">Content Usage</span>
+                          <span className="text-sm font-medium text-primary">
+                            {contentUsed}/{contentLimit}
+                          </span>
+                        </div>
+                        <div className="h-2 w-full bg-background rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary rounded-full" 
+                            style={{ width: `${(contentUsed / contentLimit) * 100}%` }}
+                          ></div>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between">
+                          <span className="text-sm text-textMuted">
+                            {(planName.charAt(0).toUpperCase() + planName.slice(1)) + ' Plan'}
+                          </span>
+                          <Badge className="bg-primary/20 text-primary hover:bg-primary/30 rounded-full font-normal">
+                            Active
+                          </Badge>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Button 
+                        className="w-full btn-gradient" 
+                        size="sm"
+                        onClick={() => handleUpgradeClick(true)}
+                      >
+                        Upgrade
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-border bg-sidebar">
+              <nav className="space-y-1 px-2 py-4">
+                {bottomNav.map((item) => {
+                  const isActive = pathname === item.href
+                  const linkProps = {
+                    href: item.href,
+                    ...(item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
+                    ...(item.onClick ? { onClick: item.onClick } : {}),
+                    ...(item.name === 'Support' ? {
+                      'data-feedback-fish': true,
+                      'data-feedback-fish-userid': user?.email,
+                    } : {}),
+                    className: `flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-textMuted hover:bg-primary/5 hover:text-text'
+                    }`
+                  }
+                  return (
+                    <Link key={item.name} {...linkProps}>
+                      <item.icon
+                        className={`mr-3 h-5 w-5 ${
+                          isActive ? 'text-primary' : 'text-textMuted group-hover:text-text'
+                        }`}
+                        aria-hidden="true"
+                      />
+                      {item.name}
+                    </Link>
+                  )
+                })}
+              </nav>
+
+              <div className="px-4 py-4 border-t border-border">
+                <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <UserIcon className="h-8 w-8 text-muted-foreground" />
+                    <UserIcon className="h-8 w-8 text-textMuted" />
                   </div>
                   <div className="ml-3 overflow-hidden">
-                    <p className="text-sm font-medium text-foreground truncate">{user?.email}</p>
+                    <p className="text-sm font-medium text-text truncate">{user?.email}</p>
                     <form action={signOut}>
                       <button
                         type="submit"
-                        className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-xs font-medium text-textMuted hover:text-text transition-colors"
                       >
                         Sign out
                       </button>
@@ -377,8 +433,8 @@ export function Sidebar({ user }: SidebarProps) {
               </div>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
 
       <PricingModal 
         isOpen={showPricingModal} 

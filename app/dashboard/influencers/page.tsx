@@ -34,17 +34,20 @@ export default function InfluencersPage() {
 
   return (
     <div className="flex-1 space-y-6 p-6 pt-6">
-      <div className="flex items-center justify-between">
-        <Heading title="Influencers" description="Create custom influencers for your app" />
+      <div className="flex items-center justify-between mb-10 pb-6 border-b border-border">
+        <div>
+          <h1 className="text-3xl font-bold mb-2 gradient-text">Influencers</h1>
+          <p className="text-textMuted max-w-2xl">Create custom influencers for your app videos</p>
+        </div>
       </div>
 
-      <Card className="overflow-hidden border-border">
+      <Card className="overflow-hidden border-border bg-card">
         <CardContent className="p-6">
           <InfluencerPrompt onSaveSuccess={refreshGallery} />
         </CardContent>
       </Card>
       
-      <Card className="overflow-hidden border-border">
+      <Card className="overflow-hidden border-border bg-card">
         <CardContent className="p-6">
           <InfluencerGallery key={galleryRefreshKey} />
         </CardContent>

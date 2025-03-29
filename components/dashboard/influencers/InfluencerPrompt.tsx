@@ -56,7 +56,9 @@ export function InfluencerPrompt({ onSaveSuccess }: InfluencerPromptProps) {
   ]
 
   const emotionOptions = [
+    { label: 'Neutral', value: 'neutral' },
     { label: 'Happy', value: 'happy' },
+    { label: 'Shocked', value: 'shocked' },
     { label: 'Excited', value: 'excited' },
     { label: 'Calm', value: 'calm' },
     { label: 'Sad', value: 'sad' },
@@ -123,7 +125,7 @@ export function InfluencerPrompt({ onSaveSuccess }: InfluencerPromptProps) {
           <div className="pt-4">
             <Button 
               type="submit" 
-              className="w-full md:w-auto bg-[#4287f5]"
+              className="w-full md:w-auto btn-gradient rounded-md"
               disabled={!age || !gender || !ethnicity || !emotion || isLoading}
             >
               {isLoading ? 'Generating...' : 'Create'}
@@ -134,12 +136,16 @@ export function InfluencerPrompt({ onSaveSuccess }: InfluencerPromptProps) {
 
       <div className="w-full md:w-2/3 mt-8 md:mt-0">
         {!promptData && !isLoading ? (
-          <div className="grid grid-cols-4 gap-3">
-            {[...Array(4)].map((_, index) => (
-              <div key={index} className="relative aspect-[9/16] overflow-hidden rounded-md border-border border">
-                <Skeleton className="h-full w-full" />
-              </div>
-            ))}
+          <div className="flex flex-col items-center justify-center h-full min-h-[400px] border border-border rounded-lg bg-card/50 p-6">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-text mb-3">No influencers generated</h3>
+            <p className="text-textMuted text-center max-w-sm">
+              Select options and click Create to generate custom influencer images for your videos.
+            </p>
           </div>
         ) : (
           <ImageResultsView 
