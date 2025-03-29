@@ -60,8 +60,8 @@ export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, has
           </div>
         </div>
 
-        <Link href={hasApp ? '#' : '/dashboard/apps'} className={!hasApp ? 'cursor-pointer' : 'cursor-default'}>
-          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors ${!hasApp ? 'hover:bg-accent/50' : ''}`}>
+        <Link href={'/dashboard/apps'} className={'cursor-pointer'}>
+          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors hover:bg-accent/50`}>
             <div className="flex items-center gap-4">
               <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasApp ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
                 <Smartphone className="h-4 w-4" />
@@ -85,8 +85,8 @@ export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, has
           </div>
         </Link>
 
-        <Link href={hasHooks ? '#' : '/dashboard/hooks'} className={!hasHooks ? 'cursor-pointer' : 'cursor-default'}>
-          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors ${!hasHooks ? 'hover:bg-accent/50' : ''}`}>
+        <Link href={'/dashboard/hooks'} className={'cursor-pointer'}>
+          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors hover:bg-accent/50`}>
             <div className="flex items-center gap-4">
               <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasHooks ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
                 <Anchor className="h-4 w-4" />
@@ -110,8 +110,8 @@ export function OnboardingChecklist({ hasSubscription, hasApp, hasDemoVideo, has
           </div>
         </Link>
 
-        <Link href={hasDemoVideo ? '#' : '/dashboard/create#upload-demo'} className={!hasDemoVideo ? 'cursor-pointer' : 'cursor-default'}>
-          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors ${!hasDemoVideo ? 'hover:bg-accent/50' : ''}`}>
+        <Link href={'/dashboard/create'} className={'cursor-pointer'}>
+          <div className={`flex items-center justify-between p-4 bg-card border border-border rounded-lg transition-colors hover:bg-accent/50`}>
             <div className="flex items-center gap-4">
               <div className={`h-8 w-8 rounded-full flex items-center justify-center ${hasDemoVideo ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
                 <Video className="h-4 w-4" />

@@ -90,8 +90,8 @@ export function AddAppModal({
               <p className="text-sm text-red-500">{error}</p>
             )}
             
-            <DialogFooter className="relative pt-4">
-              <div className="absolute left-0 bottom-2">
+            <DialogFooter className="relative pt-4 sm:flex sm:justify-between">
+              <div className="absolute left-0 bottom-2 sm:static sm:bottom-auto sm:mr-4">
                 <button
                   type="button"
                   onClick={handleManualAdd}
@@ -100,20 +100,22 @@ export function AddAppModal({
                   Add manually
                 </button>
               </div>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                className="bg-[#4287f5]"
-                disabled={isPending}
-              >
-                {isPending ? 'Adding...' : 'Add App'}
-              </Button>
+              <div className="flex justify-end space-x-2"> 
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => onOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  className="bg-[#4287f5] hover:bg-[#3a7be0]"
+                  disabled={isPending}
+                >
+                  {isPending ? 'Adding...' : 'Add App'}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>

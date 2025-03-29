@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useState, useEffect } from 'react'
 import { ImagePlus } from 'lucide-react'
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 type ManualAppModalProps = {
   open: boolean
@@ -114,127 +115,122 @@ export function ManualAppModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
+      <DialogContent className="w-full max-w-lg max-h-[85vh] flex flex-col border-gray-500 overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Add App Manually</DialogTitle>
           <DialogDescription>
             Fill in your app details to get started
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-5">
-            <div className="space-y-2.5">
-              <label htmlFor="app-name" className="text-sm font-medium">
-                App Name <span className="text-red-500">*</span>
-              </label>
-              <Input
-                id="app-name"
-                placeholder="Enter your app name"
-                value={appName}
-                onChange={(e) => setAppName(e.target.value)}
-                required
-              />
-            </div>
+        <ScrollArea className="flex-1 overflow-y-auto max-h-[calc(85vh-180px)]" style={{ scrollbarColor: 'rgba(100, 116, 139, 0.5) transparent' }}>
+          <form onSubmit={handleSubmit} className="space-y-6 py-4 px-4 md:px-6">
+            <div className="space-y-5">
+              <div className="space-y-2.5">
+                <label htmlFor="app-name" className="text-sm font-medium">
+                  App Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="app-name"
+                  placeholder="Enter your app name"
+                  value={appName}
+                  onChange={(e) => setAppName(e.target.value)}
+                  required
+                  className="w-full md:w-[95%]"
+                />
+              </div>
 
-            <div className="space-y-2.5">
-              <label htmlFor="main-problem" className="text-sm font-medium">
-                Main Problem Solved <span className="text-red-500">*</span>
-              </label>
-              <Textarea
-                id="main-problem"
-                placeholder="What is the main problem your app solves for users?"
-                value={mainProblem}
-                onChange={(e) => setMainProblem(e.target.value)}
-                required
-                className="min-h-[80px]"
-              />
-            </div>
+              <div className="space-y-2.5">
+                <label htmlFor="main-problem" className="text-sm font-medium">
+                  Main Problem Solved <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  id="main-problem"
+                  placeholder="What is the main problem your app solves for users?"
+                  value={mainProblem}
+                  onChange={(e) => setMainProblem(e.target.value)}
+                  required
+                  className="min-h-[80px] w-full md:w-[95%]"
+                />
+              </div>
 
-            <div className="space-y-2.5">
-              <label htmlFor="features" className="text-sm font-medium">
-                Key Features <span className="text-red-500">*</span>
-              </label>
-              <Textarea
-                id="features"
-                placeholder="List your app's main features"
-                value={features}
-                onChange={(e) => setFeatures(e.target.value)}
-                required
-                className="min-h-[100px]"
-              />
-            </div>
+              <div className="space-y-2.5">
+                <label htmlFor="features" className="text-sm font-medium">
+                  Key Features <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  id="features"
+                  placeholder="List your app's main features"
+                  value={features}
+                  onChange={(e) => setFeatures(e.target.value)}
+                  required
+                  className="min-h-[80px] w-full md:w-[95%]"
+                />
+              </div>
 
-            <div className="space-y-2.5">
-              <label htmlFor="icp" className="text-sm font-medium">
-                Ideal Customer Profile (ICP) <span className="text-red-500">*</span>
-              </label>
-              <Textarea
-                id="icp"
-                placeholder="e.g. 24-34 year old women in America who like to shop for clothes on their phones"
-                value={icp}
-                onChange={(e) => setIcp(e.target.value)}
-                required
-                className="min-h-[80px]"
-              />
-            </div>
+              <div className="space-y-2.5">
+                <label htmlFor="icp" className="text-sm font-medium">
+                  Ideal Customer Profile (ICP) <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  id="icp"
+                  placeholder="e.g. 24-34 year old women in America who like to shop for clothes on their phones"
+                  value={icp}
+                  onChange={(e) => setIcp(e.target.value)}
+                  required
+                  className="min-h-[80px] w-full md:w-[95%]"
+                />
+              </div>
 
-            <div className="space-y-2.5">
-              <label htmlFor="app-icon" className="text-sm font-medium">
-                App Icon
-              </label>
-              <div className="mt-1.5">
-                <div className="flex items-center gap-4">
-                  {previewUrl && (
-                    <div className="w-16 h-16 relative border rounded-lg overflow-hidden bg-gray-50">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={previewUrl}
-                        alt="App icon preview"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <label className="flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <ImagePlus className="w-5 h-5" />
-                    <span className="text-sm">Upload Icon</span>
-                    <input
-                      type="file"
-                      id="app-icon"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                    />
+              <div className="space-y-2.5">
+                <label htmlFor="app-icon" className="text-sm font-medium">
+                  App Icon
+                </label>
+                <div className="flex items-center space-x-4">
+                  <Input
+                    id="app-icon"
+                    type="file"
+                    onChange={handleImageChange}
+                    accept="image/*"
+                    className="hidden" // Hide default input
+                  />
+                  <label 
+                    htmlFor="app-icon" 
+                    className="cursor-pointer border rounded-md p-2 hover:bg-accent inline-flex items-center"
+                  >
+                    <ImagePlus className="mr-2 h-4 w-4" />
+                    {imageFile ? imageFile.name : 'Choose Image'}
                   </label>
+                  {previewUrl && (
+                    <img src={previewUrl} alt="Preview" className="h-12 w-12 rounded-md object-cover" />
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1.5">
-                  PNG, JPG, GIF up to 10MB
-                </p>
+                <p className="text-xs text-muted-foreground">Max 10MB. Recommended: Square aspect ratio.</p>
               </div>
             </div>
-          </div>
-          
-          {error && (
-            <p className="text-sm text-red-500">{error}</p>
-          )}
-          
-          <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              className="bg-[#4287f5]"
-              disabled={isPending}
-            >
-              {isPending ? 'Adding...' : 'Add App'}
-            </Button>
-          </DialogFooter>
-        </form>
+
+            {error && (
+              <p className="text-sm text-red-500 pt-2">{error}</p>
+            )}
+          </form>
+        </ScrollArea>
+
+        <DialogFooter className="p-6 pt-4 border-t flex-shrink-0 mt-2">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            className="bg-[#4287f5]"
+            disabled={isPending}
+          >
+            {isPending ? 'Adding...' : 'Add App'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
