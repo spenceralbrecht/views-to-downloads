@@ -373,17 +373,20 @@ export async function POST(req: Request) {
     console.log('Webhook event constructed successfully:', event.type); // Log success
   } catch (err: any) {
     console.error(`Webhook signature verification failed: ${err.message}`)
+    // Still return 400 for signature verification failures as these are client errors
+    // Stripe should retry with the correct signature
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 })
   }
 
   // Process the event
   const result = await handleStripeWebhook(event);
 
-  // Return appropriate response based on processing outcome
+  // Always return 200 to acknowledge receipt of the webhook
+  // Include appropriate information in the response body
   if (result.status === 'error') {
-     console.error(`Webhook handler failed for event ${event.id}: ${result.message}`);
-     // Return 500 to indicate failure, Stripe might retry
-     return NextResponse.json({ error: result.message }, { status: 500 }); 
+    console.error(`Webhook handler encountered an error for event ${event.id}: ${result.message}`);
+    // Return 200 with error information to prevent Stripe from retrying
+    return NextResponse.json({ received: true, error: result.message }, { status: 200 }); 
   }
 
   // Return 200 for success (including skipped or unhandled events)
