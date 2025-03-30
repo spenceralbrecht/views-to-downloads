@@ -74,8 +74,8 @@ function PricingModal({ isOpen, onClose }: PricingModalProps) {
   const [prices, setPrices] = useState<Price[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const user = useUser();
   const supabase = createClientComponentClient();
+  const user = useUser();
   
 
   useEffect(() => {
@@ -111,18 +111,53 @@ function PricingModal({ isOpen, onClose }: PricingModalProps) {
     try {
       console.log('handlePurchaseClick called for tier:', tier.name);
       
-      // Get user email directly from Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
-      const userEmail = session?.user?.email || user?.email;
+      // Get user email AND ID directly from Supabase session for freshness
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      console.log('User email from session:', userEmail);
+      if (sessionError) {
+        console.error('Error fetching Supabase session:', sessionError);
+        setError('Could not verify user session. Please try logging in again.');
+        return;
+      }
+
+      if (!session?.user) {
+        console.error('No active Supabase session found.');
+        setError('You need to be logged in to make a purchase.');
+        // Potentially redirect to login or show login prompt
+        return;
+      }
       
-      const link = tier.getLink(userEmail);
-      console.log('Generated link:', link);
+      const userEmail = session.user.email; // Use email from the fresh session
+      const userId = session.user.id; // Get user ID from the fresh session
+      
+      console.log('User details from session: Email:', userEmail, 'ID:', userId);
+      
+      if (!userEmail || !userId) {
+         console.error('Missing email or ID in user session.');
+         setError('Could not retrieve necessary user details. Please try again.');
+         return;
+      }
+      
+      // Pass BOTH email and userId to getStripeConfig
+      const config = getStripeConfig(userEmail, userId);
+      
+      // Get the correct link from the generated config based on tier name
+      let link: string | undefined;
+      const tierKey = tier.name.toLowerCase() as keyof typeof config.checkoutLinks;
+      if (config.checkoutLinks.hasOwnProperty(tierKey)) {
+        link = config.checkoutLinks[tierKey];
+        console.log(`Selected checkout link for ${tier.name} (${tierKey}):`, link);
+      } else {
+        console.error(`Could not find matching checkout link key for tier name: ${tier.name}`);
+        setError(`Configuration error for ${tier.name} plan. Please contact support.`);
+        return;
+      }
+
+      console.log('Generated link with params:', link);
       
       if (!link) {
-        console.error(`Checkout link not found for ${tier.name} plan`)
-        setError(`Unable to process ${tier.name} plan purchase. Please try again later.`)
+        console.error(`Checkout link not found or failed to generate for ${tier.name} plan`);
+        setError(`Unable to process ${tier.name} plan purchase. Please ensure configuration is correct.`)
         return
       }
       
@@ -132,8 +167,8 @@ function PricingModal({ isOpen, onClose }: PricingModalProps) {
       // Open Stripe checkout in a new tab
       window.open(link, '_blank', 'noopener,noreferrer');
     } catch (error) {
-      console.error('Error handling purchase:', error)
-      setError('Unable to process purchase. Please try again later.')
+      console.error('Error handling purchase click:', error)
+      setError('An unexpected error occurred while trying to process the purchase. Please try again later.')
     }
   }
 

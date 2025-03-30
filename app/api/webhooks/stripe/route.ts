@@ -68,35 +68,51 @@ function getPriceIds() {
 }
 
 async function getUserIdFromEmail(email: string | null | undefined): Promise<string | null> {
-  if (!email) return null;
+  if (!email) {
+     console.log('getUserIdFromEmail: No email provided.');
+     return null;
+  }
 
   const normalizedEmail = email.trim().toLowerCase(); // Normalize email
+  console.log(`getUserIdFromEmail: Searching for normalized email: ${normalizedEmail}`);
 
   try {
-    // Efficiently query for the user by normalized email
-    // NOTE: This assumes a 'users' view/table accessible by the service role key.
-    // If this doesn't exist, revert to the listUsers method below.
-    const { data, error } = await supabaseAdmin
-      .from('users') // Check if this view/table exists and mirrors auth.users
-      .select('id')
-      .ilike('email', normalizedEmail) // Case-insensitive search
-      .single(); // Expect only one user
+    // Use listUsers from the admin API as there is no separate 'users' table/view
+    console.log('getUserIdFromEmail: Attempting lookup via supabaseAdmin.auth.admin.listUsers()');
+    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+      // Consider pagination if you have a very large number of users (>1000 typically)
+      // page: 1, 
+      // perPage: 1000 
+    });
 
-    /* --- Fallback using listUsers (less efficient) ---
-    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-    if (listError || !users) {
-      console.error('Error listing users:', listError);
+    if (listError) {
+      console.error('getUserIdFromEmail: Error listing users:', listError);
       return null;
     }
+    
+    if (!users || users.length === 0) {
+      console.log('getUserIdFromEmail: No users found in listUsers response.');
+      return null;
+    }
+
+    // Find the user with the matching normalized email
     const user = users.find(u => u.email?.trim().toLowerCase() === normalizedEmail);
+
     if (!user) {
-       console.log('No user found for normalized email:', normalizedEmail);
+       console.log('getUserIdFromEmail: No user found matching normalized email:', normalizedEmail);
        return null;
     }
-    return user.id;
-    */
 
-    // Handle potential query errors (PGRST116 means 'not found', which is okay)
+    console.log('getUserIdFromEmail: Found user ID:', user.id);
+    return user.id;
+
+    /* --- Old code attempting to query 'users' table (incorrect for this setup) ---
+    const { data, error } = await supabaseAdmin
+      .from('users') 
+      .select('id')
+      .ilike('email', normalizedEmail) 
+      .single();
+
     if (error && error.code !== 'PGRST116') { 
       console.error('Error finding user by email:', error);
       return null;
@@ -108,8 +124,10 @@ async function getUserIdFromEmail(email: string | null | undefined): Promise<str
     }
 
     return data.id;
+    */
+
   } catch (error) {
-    console.error('Exception finding user by email:', error);
+    console.error('getUserIdFromEmail: Exception during user lookup:', error);
     return null;
   }
 }
@@ -124,37 +142,89 @@ async function handleStripeWebhook(event: Stripe.Event) {
         const session = event.data.object as Stripe.Checkout.Session
         const customerId = session.customer as string
         const subscriptionId = session.subscription as string
-        
-        // Get userId from customer email
-        let userId = await getUserIdFromEmail(session.customer_details?.email)
-        const customerEmail = session.customer_details?.email
+        const clientReferenceId = session.client_reference_id // Get client_reference_id
+        const customerEmail = session.customer_details?.email // Get email for fallback/metadata
 
-        // If user not found, wait a bit and retry (potential replication delay)
-        if (!userId && customerEmail) {
-          console.log(`User not found for ${customerEmail} on first attempt. Retrying after 2 seconds...`);
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-          userId = await getUserIdFromEmail(customerEmail);
-          if (userId) {
-            console.log(`User found for ${customerEmail} on retry.`);
+        let userId: string | null = null;
+        let userLookupMethod: string = 'unknown'; // For logging
+
+        console.log(`Processing checkout.session.completed for session ${session.id}. Client Ref ID: ${clientReferenceId}, Email: ${customerEmail}`);
+
+        // 1. Try using client_reference_id (should be the Supabase User UUID)
+        if (clientReferenceId) {
+          console.log(`Attempting user lookup using client_reference_id: ${clientReferenceId}`);
+          // Directly query auth.users using the admin client
+          // Note: Assumes clientReferenceId IS the UUID. Add validation if needed.
+          try {
+             const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(clientReferenceId);
+             
+             if (userError) {
+                console.warn(`Error looking up user by client_reference_id (${clientReferenceId}):`, userError.message);
+                // Don't assign userId, let it fall through to email lookup
+             } else if (userData?.user) {
+                userId = userData.user.id;
+                userLookupMethod = 'client_reference_id';
+                console.log(`User found via client_reference_id: ${userId}`);
+             } else {
+                console.warn(`User not found for client_reference_id: ${clientReferenceId}. Potential mismatch or delay.`);
+                // Fall through to email lookup
+             }
+          } catch (catchError) {
+              console.error(`Exception during getUserById lookup for client_reference_id ${clientReferenceId}:`, catchError);
+              // Fall through to email lookup
           }
         }
 
-        if (!userId) {
-          console.log('No user found for email:', customerEmail, 'after retry.')
-          // Return success because the webhook itself is fine, but we can't process this user
-          return { status: 'success', message: 'Skipped - user not found' } 
+        // 2. Fallback: Try using email if lookup by ID failed or wasn't possible
+        if (!userId && customerEmail) {
+          console.log(`User not found via client_reference_id or ID was missing. Attempting lookup via email: ${customerEmail}`);
+          userId = await getUserIdFromEmail(customerEmail); // Use existing function
+          if (userId) {
+            userLookupMethod = 'email_initial';
+            console.log(`User found via initial email lookup: ${userId}`);
+          } else {
+            // Retry email lookup after delay (existing logic)
+            console.log(`User not found for ${customerEmail} on first email attempt. Retrying after 2 seconds...`);
+            await new Promise(resolve => setTimeout(resolve, 2000)); 
+            userId = await getUserIdFromEmail(customerEmail);
+            if (userId) {
+              userLookupMethod = 'email_retry';
+              console.log(`User found for ${customerEmail} on email retry: ${userId}`);
+            }
+          }
         }
 
-        // Store userId in customer and subscription metadata for future reference
-        await Promise.all([
-          stripe.customers.update(customerId, {
-            metadata: { userId }
-          }),
-          stripe.subscriptions.update(subscriptionId, {
-            metadata: { userId }
-          })
-        ])
+        // 3. Check if user was found by any method
+        if (!userId) {
+          console.log('User could not be found via client_reference_id or email after retry.', 
+                      { clientReferenceId, customerEmail });
+          // Return success to Stripe, but log that we skipped processing
+          return { status: 'success', message: 'Skipped - user not found via ID or email' } 
+        }
 
+        console.log(`Successfully identified userId: ${userId} via method: ${userLookupMethod}`);
+
+        // 4. Store userId in customer and subscription metadata (existing logic)
+        try {
+           console.log(`Updating Stripe customer ${customerId} and subscription ${subscriptionId} metadata with userId: ${userId}`);
+           await Promise.all([
+             stripe.customers.update(customerId, {
+               metadata: { userId } // Store Supabase UUID
+             }),
+             stripe.subscriptions.update(subscriptionId, {
+               metadata: { userId } // Store Supabase UUID
+             })
+           ]);
+           console.log(`Successfully updated metadata for customer ${customerId} and subscription ${subscriptionId}`);
+        } catch (metaError) {
+            console.error(`Error updating Stripe metadata for customer ${customerId} or subscription ${subscriptionId}:`, metaError);
+            // Decide if this is fatal. If subsequent webhooks rely on this metadata,
+            // it might be better to return an error here to force a retry.
+            // For now, we'll log the error and continue, but this could cause issues later.
+            // return { status: 'error', message: 'Failed to update Stripe metadata' };
+        }
+
+        // 5. Retrieve subscription details and upsert to Supabase (existing logic)
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
         const priceId = subscription.items.data[0].price.id
         const price = subscription.items.data[0].price.unit_amount || 0
