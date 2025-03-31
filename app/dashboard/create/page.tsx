@@ -1542,15 +1542,9 @@ export default function CreateAd() {
       const filePath = `${userId}/${timestamp}_${file.name}`;
       console.log('File will be uploaded to path:', filePath);
 
-      // For larger files (>6MB), use TUS resumable uploads
-      // For smaller files, continue using the API route to maintain consistency
-      if (file.size > 6 * 1024 * 1024) {
-        console.log('Using TUS resumable upload for large file:', (file.size / (1024 * 1024)).toFixed(2) + 'MB');
-        handleDirectUpload(file, filePath, appIdForUpload, tempId);
-      } else {
-        console.log('Using API route for smaller file:', (file.size / (1024 * 1024)).toFixed(2) + 'MB');
-        handleApiRouteUpload(file, appIdForUpload, tempId);
-      }
+      // Always use TUS resumable uploads for reliability and to avoid function payload limits
+      console.log('Using TUS resumable upload for file:', (file.size / (1024 * 1024)).toFixed(2) + 'MB');
+      handleDirectUpload(file, filePath, appIdForUpload, tempId);
     }
   };
 
