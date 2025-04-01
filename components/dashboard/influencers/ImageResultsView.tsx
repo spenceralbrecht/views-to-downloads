@@ -178,7 +178,7 @@ export function ImageResultsView({
         </div>
         <div className="text-center text-sm text-textMuted mt-4">
           <p>Generating influencer images...</p>
-          <p className="text-xs mt-1">This may take up to 30 seconds</p>
+          <p className="text-xs mt-1">This may take up to 5 minutes</p>
         </div>
       </div>
     )
