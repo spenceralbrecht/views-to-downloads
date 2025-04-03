@@ -29,6 +29,12 @@ import { Switch } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface PublishToTikTokModalProps {
   open: boolean
@@ -259,6 +265,16 @@ export function PublishToTikTokModal({
       return
     }
     
+    // Additional validation for disclosure
+    if (isDisclosureEnabled && !yourBrand && !brandedContent) {
+      toast({
+        title: "Disclosure Required",
+        description: "You must select at least one option (promoting yourself or a third party) when disclosure is enabled.",
+        variant: "destructive"
+      })
+      return
+    }
+    
     // Prepare post info according to TikTok API requirements
     const postInfo: PostInfo = {
       title: title.trim(),
@@ -366,6 +382,20 @@ export function PublishToTikTokModal({
     return null;
   }
   
+  // Helper variables for button state and tooltip
+  const isDisclosureIncomplete = isDisclosureEnabled && !yourBrand && !brandedContent;
+  const isPublishDisabled = 
+    isPublishing || 
+    isLoading || 
+    !selectedAccountId || 
+    !title.trim() || 
+    !privacyLevel || 
+    isDisclosureIncomplete;
+
+  const tooltipMessage = isDisclosureIncomplete 
+    ? "You need to indicate if your content promotes either yourself, a third party, or both." 
+    : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
@@ -488,7 +518,7 @@ export function PublishToTikTokModal({
                         <SelectTrigger id="privacy">
                           <SelectValue placeholder="Select privacy setting" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-background text-foreground border border-border shadow-md">
                           {renderPrivacyOptions()}
                         </SelectContent>
                       </Select>
@@ -710,25 +740,38 @@ export function PublishToTikTokModal({
                 Cancel
               </Button>
               {isTikTokEnabled() && !(published === 'tiktok' && publishedUrl) ? (
-                <Button
-                  onClick={handlePublish}
-                  disabled={
-                    isPublishing || 
-                    connectedAccounts.length === 0 || 
-                    !selectedAccountId || 
-                    !title.trim() || 
-                    !privacyLevel
-                  }
-                >
-                  {isPublishing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Publishing...
-                    </>
-                  ) : (
-                    'Publish to TikTok'
-                  )}
-                </Button>
+                <TooltipProvider>
+                  <Tooltip delayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <div className={cn({"cursor-not-allowed": isPublishDisabled})}>
+                        <Button 
+                          onClick={handlePublish} 
+                          disabled={isPublishDisabled}
+                          className={cn(
+                            "w-full",
+                            {"opacity-50 cursor-not-allowed": isPublishDisabled}
+                          )}
+                        >
+                          {isPublishing ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...
+                            </>
+                          ) : (
+                            "Publish to TikTok"
+                          )}
+                        </Button>
+                      </div>
+                    </TooltipTrigger>
+                    {tooltipMessage && (
+                      <TooltipContent 
+                        side="top" 
+                        className="bg-background text-foreground border border-border shadow-md p-2 max-w-[220px] text-wrap text-sm" 
+                      >
+                        <p>{tooltipMessage}</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
               ) : isTikTokEnabled() && published === 'tiktok' && publishedUrl ? (
                 <Button
                   onClick={() => onOpenChange(false)}
