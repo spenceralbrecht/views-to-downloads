@@ -59,6 +59,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/blogs/reelfarm-review" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  Comparison to Other Tools
+                </Link>
+              </li>
+              <li>
                 <Link href="mailto:support@viewstodownloads.com" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                   Contact Support
                 </Link>
