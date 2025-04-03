@@ -4,6 +4,8 @@ import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { VideoThumbnail } from "@/components/VideoThumbnail"
 import Features from '@/components/Features'
+import ViralHooksFeature from '@/components/ViralHooksFeature'
+import CustomInfluencersFeature from '@/components/CustomInfluencersFeature'
 import Pricing from '@/components/Pricing'
 import Alternatives from '@/components/Alternatives'
 import FAQ from '@/components/FAQ'
@@ -120,7 +122,7 @@ export default function LandingPage({
                 Automate Viral App Content
               </h1>
               <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-10 max-w-3xl mx-auto">
-                Turn viral trends into downloads with AI content
+                Drive views, downloads, and revenue with a content automation system that helps you scale your reach
               </p>
               
               <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-16">
@@ -176,6 +178,8 @@ export default function LandingPage({
           {/* Value Propositions and Features */}
           <Alternatives />
           <Features />
+          <CustomInfluencersFeature />
+          <ViralHooksFeature />
           <Pricing />
           <div className="mb-24">
             <FAQ />

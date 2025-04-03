@@ -1,3 +1,5 @@
+"use client"
+
 import {
   Accordion,
   AccordionContent,
@@ -14,7 +16,7 @@ const faqs = [
   },
   {
     question: "What type of content can I create?",
-    answer: "Right now you can create hook + app demo videos, which are the one of the highest performing content formats for driving downloads in 2023. We're constantly adding new formats and templates based on what's working on social platforms."
+    answer: "Right now you can create hook + app demo videos, which are the one of the highest performing content formats for driving downloads in 2025. We're constantly adding new formats and templates based on what's working on social platforms."
   },
   {
     question: "How many videos can I create?",

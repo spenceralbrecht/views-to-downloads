@@ -57,7 +57,7 @@ export default function Features() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-600 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300">
-              Create professional UGC avatars for your brand, complete with custom voices and personalized styles
+              Create custom AI influencers that match your target customer
             </p>
           </CardContent>
         </Card>
