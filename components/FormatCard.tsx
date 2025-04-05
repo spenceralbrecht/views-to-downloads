@@ -53,19 +53,19 @@ export function FormatCard({ format, onClick }: FormatCardProps) {
       {/* Subtle gradient overlay that becomes more visible on hover */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-purple-600/5 group-hover:from-blue-600/20 group-hover:to-purple-600/20 transition-opacity duration-300 pointer-events-none"></div>
       
-      <CardHeader className="relative z-10">
-        <CardTitle className="text-lg lg:text-xl text-white group-hover:text-white/95">{format.name}</CardTitle>
+      <CardHeader className="relative z-10 px-4 sm:px-6">
+        <CardTitle className="text-lg lg:text-xl text-white group-hover:text-white/95 line-clamp-1">{format.name}</CardTitle>
         <CardDescription className="text-gray-400 group-hover:text-purple-300 transition-colors duration-300">
           {format.difficulty}
         </CardDescription>
       </CardHeader>
-      <CardContent className="relative z-10">
-        <p className="text-sm lg:text-base text-gray-300 group-hover:text-gray-200 transition-colors duration-300 mb-4">{format.description}</p>
+      <CardContent className="relative z-10 px-4 sm:px-6">
+        <p className="text-sm lg:text-base text-gray-300 group-hover:text-gray-200 transition-colors duration-300 mb-4 line-clamp-2">{format.description}</p>
         
         {parsedExamples.length > 0 && (
-          <div className="grid grid-cols-3 gap-2 mt-3">
+          <div className="grid grid-cols-3 gap-1 sm:gap-2 mt-3 w-full max-w-full">
             {parsedExamples.map((example, index) => (
-              <div key={index} className="relative aspect-[9/16] rounded-md overflow-hidden border border-gray-800">
+              <div key={index} className="relative aspect-[9/16] rounded-md overflow-hidden border border-gray-800 w-full">
                 <div className="w-full h-full">
                   <video
                     src={example.view_url}

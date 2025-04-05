@@ -119,7 +119,7 @@ export default function ProvenFormatsPage() {
               <p>No formats found.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
               {formats.map((format) => (
                 <FormatCard 
                   key={format.id} 
@@ -134,16 +134,16 @@ export default function ProvenFormatsPage() {
         {/* Final CTA Section - Replicated from landing page structure */}
         <div className="max-w-4xl mx-auto text-center py-16 mb-16 relative px-4">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl z-0 mx-4"></div>
-          <div className="relative z-10 p-8">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Create High-Converting Content?</h2>
-            <p className="text-xl text-gray-700 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+          <div className="relative z-10 p-4 sm:p-8">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6">Ready to Create High-Converting Content?</h2>
+            <p className="text-base sm:text-xl text-gray-700 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
               Use these proven formats with our AI tools to generate engaging videos in minutes.
             </p>
             <Button 
               onClick={handleGoogleSignIn}
               disabled={isCtaLoading}
               size="lg" 
-              className="rounded-full px-8 py-6 text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all"
+              className="rounded-full px-6 py-5 sm:px-8 sm:py-6 text-base sm:text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all"
             >
               {isCtaLoading ? "Connecting..." : "Try the Video Generator Now"} <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
