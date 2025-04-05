@@ -49,6 +49,11 @@ export function Footer() {
             <h5 className="font-semibold mb-4">Resources</h5>
             <ul className="space-y-3">
               <li>
+                <Link href="/proven-formats" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  Proven Formats
+                </Link>
+              </li>
+              <li>
                 <Link href="/privacy-policy" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                   Privacy Policy
                 </Link>
