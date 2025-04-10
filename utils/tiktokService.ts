@@ -161,31 +161,30 @@ export class TikTokService {
    * This would be implemented in a real app to fetch videos from TikTok API
    */
   async getVideos(accountId: string): Promise<any[]> {
-    // In a real implementation, you would:
-    // 1. Get the account from the database
-    // 2. Use the access token to call the TikTok API
-    // 3. Return the videos
+    // Placeholder implementation
+    console.warn('TikTokService.getVideos is not implemented')
+    // In a real app, you'd use the account's access token to call the TikTok API
+    // Example endpoint: /v2/video/list/?fields=id,title,create_time,duration,cover_image_url
     
-    // For now, we'll just return a mock response
+    // Get account details (including access token) from Supabase
+    const { data: account, error } = await this.supabase
+      .from('connected_accounts')
+      .select('access_token, token_expires_at') // Select only needed fields
+      .eq('id', accountId)
+      .single()
+
+    if (error || !account) {
+      console.error('Could not find account or token to fetch videos:', error)
+      throw new Error('TikTok account not found or token missing.')
+    }
+
+    // TODO: Check if token needs refreshing before making the API call
+    // const accessToken = await this.ensureValidToken(account.access_token, account.token_expires_at, account.refresh_token, accountId);
+
+    // Mock response for now
     return [
-      {
-        id: 'video1',
-        title: 'My first TikTok video',
-        thumbnail: 'https://placehold.co/300x500',
-        views: 1000,
-        likes: 500,
-        comments: 50,
-        shares: 20
-      },
-      {
-        id: 'video2',
-        title: 'My second TikTok video',
-        thumbnail: 'https://placehold.co/300x500',
-        views: 2000,
-        likes: 1000,
-        comments: 100,
-        shares: 40
-      }
+      { id: '123', title: 'Mock Video 1' },
+      { id: '456', title: 'Mock Video 2' },
     ]
   }
 
@@ -194,42 +193,37 @@ export class TikTokService {
    * This is used to determine available privacy options and interaction settings
    */
   async getCreatorInfo(accountId: string): Promise<any> {
-    try {
-      const { data, error } = await this.supabase
-        .from('connected_accounts')
-        .select('*')
-        .eq('id', accountId)
-        .single()
-      
-      if (error) {
-        throw new Error(error.message)
-      }
-      
-      if (!data || !data.access_token) {
-        throw new Error('Account not found or missing access token')
-      }
-      
-      // Call our server-side API endpoint that proxies to TikTok API
-      const response = await fetch('/api/tiktok/creator-info', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          accountId
-        })
-      })
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to get creator info')
-      }
-      
-      const creatorInfo = await response.json()
-      return creatorInfo.data
-    } catch (error) {
-      console.error('Error getting creator info:', error)
-      throw error
+    // Placeholder implementation
+    console.warn('TikTokService.getCreatorInfo is not implemented')
+    // In a real app, you'd use the account's access token to call the TikTok API
+    // Example endpoint: /v2/user/info/?fields=open_id,union_id,avatar_url,display_name,bio_description,profile_deep_link,is_verified,follower_count,following_count,likes_count,video_count
+    // We also need creator-specific info if available, potentially from a different endpoint or scope
+
+    // Get account details (including access token) from Supabase
+    const { data: account, error } = await this.supabase
+      .from('connected_accounts')
+      .select('access_token, token_expires_at, username') // Fetch username too
+      .eq('id', accountId)
+      .single()
+
+    if (error || !account) {
+      console.error('Could not find account or token to fetch creator info:', error)
+      throw new Error('TikTok account not found or token missing.')
+    }
+
+    // TODO: Implement token refresh logic
+    // TODO: Make actual API call to TikTok's user info endpoint
+
+    // Mock response based on common defaults and account username
+    return {
+      creator_username: account.username || 'UnknownUser',
+      creator_nickname: account.username || 'Unknown User',
+      privacy_level_options: ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY'],
+      comment_disabled: false, // TikTok defaults generally allow comments
+      duet_disabled: false,    // TikTok defaults generally allow duets
+      stitch_disabled: false,  // TikTok defaults generally allow stitches
+      max_video_post_duration_sec: 600 // Example limit (10 minutes), check API docs for actual
+      // posting_unavailability_reason: null // Example if posting is available
     }
   }
 }
