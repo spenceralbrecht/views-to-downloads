@@ -97,6 +97,18 @@ export function PublishToTikTokModal({
   const [yourBrand, setYourBrand] = useState(false)
   const [brandedContent, setBrandedContent] = useState(false)
   
+  // Prevent private visibility when branded content is selected
+  useEffect(() => {
+    if (brandedContent && privacyLevel === 'SELF_ONLY') {
+      setPrivacyLevel("")
+      toast({
+        title: "Visibility Adjusted",
+        description: "Private visibility is not allowed for branded content. Please select a different privacy level.",
+        variant: "destructive"
+      })
+    }
+  }, [brandedContent, privacyLevel])
+
   // Creator info state
   const [creatorInfo, setCreatorInfo] = useState<CreatorInfo | null>(null)
   const [isLoadingCreatorInfo, setIsLoadingCreatorInfo] = useState(false)
@@ -363,6 +375,23 @@ export function PublishToTikTokModal({
       else if (option === 'MUTUAL_FOLLOW_FRIENDS') displayName = 'Friends';
       else if (option === 'SELF_ONLY') displayName = 'Private';
       else if (option === 'FOLLOWER_OF_CREATOR') displayName = 'Followers';
+      
+      if (option === 'SELF_ONLY' && brandedContent) {
+        return (
+          <TooltipProvider key={option}>
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <SelectItem value={option} disabled className="opacity-50 cursor-not-allowed">
+                  {displayName}
+                </SelectItem>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-background text-foreground border border-border shadow-md p-2 max-w-[220px] text-wrap text-sm">
+                Branded content visibility cannot be set to private.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )
+      }
       
       return (
         <SelectItem key={option} value={option}>{displayName}</SelectItem>
