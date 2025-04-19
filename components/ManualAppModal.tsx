@@ -124,7 +124,7 @@ export function ManualAppModal({
         </DialogHeader>
         
         <ScrollArea className="flex-1 overflow-y-auto max-h-[calc(85vh-180px)]" style={{ scrollbarColor: 'rgba(100, 116, 139, 0.5) transparent' }}>
-          <form onSubmit={handleSubmit} className="space-y-6 py-4 px-4 md:px-6">
+          <form id="manual-app-form" onSubmit={handleSubmit} className="space-y-6 py-4 px-4 md:px-6">
             <div className="space-y-5">
               <div className="space-y-2.5">
                 <label htmlFor="app-name" className="text-sm font-medium">
@@ -225,6 +225,7 @@ export function ManualAppModal({
           </Button>
           <Button 
             type="submit" 
+            form="manual-app-form"
             className="bg-[#4287f5]"
             disabled={isPending}
           >
