@@ -1439,23 +1439,29 @@ export default function CreateAd() {
       console.log('File selected for upload:', file.name, 'size:', file.size, 'MB:', (file.size / (1024 * 1024)).toFixed(2));
       
       // Check file size (max 100MB)
-      const fileSizeMB = file.size / (1024 * 1024);
-      if (file.size > 100 * 1024 * 1024) {
-        console.error(`File too large: ${fileSizeMB.toFixed(2)}MB exceeds 100MB limit`);
-        
-        // Set error information for the dialog
-        setUploadError(`File size exceeds 100MB limit. Your file is ${fileSizeMB.toFixed(2)}MB.`);
+      const maxSize = 100 * 1024 * 1024 // 100MB
+      if (file.size > maxSize) {
+        console.log(`[File Size Check] File size: ${file.size}, Max size: ${maxSize} - Exceeds limit.`);
+        // Combine error message and details into one state
+        const errorTitle = 'File size exceeds limit';
+        const errorDetails = `Your video is too large. Maximum size: ${maxSize / 1024 / 1024}MB\n\nCurrent size: ${(file.size / 1024 / 1024).toFixed(2)} MB\n\nTry these solutions:\n\nCompress your video\nReduce the resolution or length\nTry a different, smaller file`;
+        setUploadError(`${errorTitle}\n\n${errorDetails}`); // Use existing setUploadError
         setUploadDebugInfo({
+          appId: selectedAppId ?? 'N/A',
           fileName: file.name,
-          fileSize: `${fileSizeMB.toFixed(2)}MB`,
+          fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
           fileType: file.type,
-          maxSize: '100MB'
+          error: errorTitle, // Use the title here
+          details: `Your video is too large (maximum ${maxSize / 1024 / 1024}MB).`, // Keep concise details for debug info
+          category: 'file-size', // Keep category if used elsewhere, otherwise might remove
+          timestamp: new Date().toISOString(),
         });
-        setIsErrorDialogOpen(true);
-        
-        // Reset the file input
-        e.target.value = '';
-        return;
+        setIsErrorDialogOpen(true)
+        setIsUploading(false) // Corrected setter name
+        setPending(false)    // Corrected setter name (assuming useTransition)
+        return
+      } else {
+        console.log(`[File Size Check] File size: ${file.size}, Max size: ${maxSize} - Within limit.`);
       }
       
       // Check file type
@@ -1465,8 +1471,9 @@ export default function CreateAd() {
         // Set error information for the dialog
         setUploadError(`Only MP4 video files are allowed. Your file is ${file.type || 'unknown type'}.`);
         setUploadDebugInfo({
+          appId: selectedAppId ?? 'N/A',
           fileName: file.name,
-          fileSize: `${fileSizeMB.toFixed(2)}MB`,
+          fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
           fileType: file.type || 'unknown',
           supportedType: 'video/mp4'
         });
@@ -1481,8 +1488,9 @@ export default function CreateAd() {
         console.error('No app selected for upload');
         setUploadError('Please select an app before uploading a demo video.');
         setUploadDebugInfo({
+          appId: selectedAppId ?? 'N/A',
           fileName: file.name,
-          fileSize: `${fileSizeMB.toFixed(2)}MB`,
+          fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
           fileType: file.type
         });
         setIsErrorDialogOpen(true);
@@ -1858,15 +1866,15 @@ export default function CreateAd() {
     const fileSizeDisplay = parseFloat(fileSizeMB) > 0.1 ? `${fileSizeMB} MB` : `${(file.size / 1024).toFixed(2)} KB`;
     
     // Set error information for the dialog
-    setUploadError(errorMessage);
+    setUploadError(`${errorMessage}\n\n${errorDetails}`); // Combine error message and details
     setUploadDebugInfo({
       appId: selectedAppId,
       fileName: file.name,
       fileSize: fileSizeDisplay,
       fileType: file.type || 'unknown',
-      error: errorMessage,
-      details: errorDetails,
-      category: errorCategory,
+      error: errorMessage, // Use the title here
+      details: errorDetails, // Keep concise details for debug info
+      category: errorCategory, // Keep category if used elsewhere, otherwise might remove
       timestamp: new Date().toISOString()
     });
     
@@ -2753,7 +2761,7 @@ export default function CreateAd() {
                       <summary className="font-medium text-gray-700 dark:text-gray-300 cursor-pointer hover:text-gray-900 dark:hover:text-gray-100">
                         Technical Details
                       </summary>
-                      <pre className="mt-2 overflow-auto max-h-36 p-3 bg-gray-100 dark:bg-gray-800 rounded text-gray-800 dark:text-gray-200 text-xs">
+                      <pre className="mt-2 overflow-x-auto max-h-36 p-3 bg-gray-100 dark:bg-gray-800 rounded text-gray-800 dark:text-gray-200 text-xs w-full">
                         {JSON.stringify(uploadDebugInfo, null, 2)}
                       </pre>
                     </details>
