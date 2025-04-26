@@ -109,6 +109,21 @@ export function PublishToTikTokModal({
     }
   }, [brandedContent, privacyLevel])
 
+  // Add logic to handle privacy level changes affecting branded content
+  useEffect(() => {
+    // If privacy is set to Private, ensure Branded Content is unchecked and notify user
+    if (privacyLevel === 'SELF_ONLY') {
+      if (brandedContent) {
+        setBrandedContent(false)
+        toast({
+          title: "Branded Content Disabled",
+          description: "Branded content cannot be selected when visibility is set to Private.",
+          variant: "destructive" // Use destructive variant for warnings
+        })
+      }
+    }
+  }, [privacyLevel, brandedContent])
+
   // Creator info state
   const [creatorInfo, setCreatorInfo] = useState<CreatorInfo | null>(null)
   const [isLoadingCreatorInfo, setIsLoadingCreatorInfo] = useState(false)
@@ -668,19 +683,43 @@ export function PublishToTikTokModal({
                               />
                             </div>
                             
-                            <div className="flex items-center justify-between py-3 border-b">
-                              <div>
-                                <h3 className="text-sm font-medium">Branded content</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  You are promoting another brand or a third party. This video will be classified as Branded Content.
-                                </p>
-                              </div>
-                              <Switch 
-                                id="branded-content" 
-                                checked={brandedContent} 
-                                onCheckedChange={(checked) => setBrandedContent(!!checked)}
-                              />
-                            </div>
+                            <TooltipProvider delayDuration={0}>
+                              <Tooltip>
+                                <div className="flex items-center justify-between py-3 border-b">
+                                  <Label 
+                                    htmlFor="branded-content" 
+                                    className={cn("flex flex-col space-y-1", {
+                                      "text-muted-foreground cursor-not-allowed": yourBrand || privacyLevel === 'SELF_ONLY'
+                                    })}
+                                  >
+                                    <span>Branded content</span>
+                                    <span className={cn("font-normal leading-snug", {
+                                      "text-muted-foreground": yourBrand || privacyLevel === 'SELF_ONLY'
+                                    })}>
+                                      Promoting another business.
+                                    </span>
+                                  </Label>
+                                  <TooltipTrigger asChild>
+                                    {/* Wrap Switch in a div for TooltipTrigger when disabled */}
+                                    <div className={cn({ "cursor-not-allowed": privacyLevel === 'SELF_ONLY' })}>
+                                      <Switch 
+                                        id="branded-content" 
+                                        checked={brandedContent} 
+                                        onCheckedChange={setBrandedContent} 
+                                        disabled={yourBrand || privacyLevel === 'SELF_ONLY'}
+                                        className={cn({ "opacity-50": yourBrand || privacyLevel === 'SELF_ONLY' })}
+                                      />
+                                    </div>
+                                  </TooltipTrigger>
+                                </div>
+                                {/* Show tooltip only when disabled specifically due to privacy level */}
+                                {privacyLevel === 'SELF_ONLY' && (
+                                  <TooltipContent side="top">
+                                    <p>Branded content visibility cannot be set to private.</p>
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </TooltipProvider>
                           </div>
                         </>
                       )}
