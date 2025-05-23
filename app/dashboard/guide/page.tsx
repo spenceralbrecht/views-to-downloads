@@ -35,6 +35,9 @@ export default function GuidePage() {
               <li>
                 <span className="text-text font-semibold">Warm up new accounts properly:</span> For the first 48 hours, don't post anything. Instead, scroll, interact, and behave like a genuine user interested in your niche. Start posting slowly after this period—begin with 1 post daily for the first week.
               </li>
+              <li>
+                <span className="text-text font-semibold">Limit accounts per device:</span> Never manage more than 3 accounts on a single phone. Platforms can detect when multiple accounts are being operated from the same device, which triggers bot detection algorithms and can result in all associated accounts being penalized.
+              </li>
             </ul>
             <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
               <p className="text-sm text-textMuted">
