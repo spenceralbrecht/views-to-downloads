@@ -11,29 +11,44 @@ export default function GuidePage() {
       </div>
 
       <div className="space-y-8">
-        <Card className="border-border bg-card hover-primary">
+        <Card className="border-border bg-card hover-primary border-red-500/30">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">1</div>
-              <CardTitle>Warming Up Your Account</CardTitle>
+              <div className="h-8 w-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 font-semibold">!</div>
+              <CardTitle>Avoiding Bot-Like Behavior</CardTitle>
+              <span className="px-2 py-1 text-xs font-semibold bg-red-500/20 text-red-500 rounded">CRITICAL</span>
             </div>
-            <CardDescription>Building a strong foundation for your content</CardDescription>
+            <CardDescription>Essential practices to maintain reach and avoid algorithmic penalties</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p>Start with consistent, quality content to establish your account's credibility:</p>
-            <ul className="list-disc pl-6 space-y-2 text-textMuted">
-              <li><span className="text-text">Post 1-3 times daily</span> for at least 2-3 days</li>
-              <li><span className="text-text">Engage with similar content</span> in your niche</li>
-              <li><span className="text-text">Maintain high completion rates</span> by keeping videos under 30 seconds</li>
-              <li><span className="text-text">Use trending sounds and music</span> in your niche</li>
+            <p>Social media algorithms are sophisticated at detecting inauthentic behavior. Follow these critical guidelines:</p>
+            <ul className="list-disc pl-6 space-y-3 text-textMuted">
+              <li>
+                <span className="text-text font-semibold">Never post duplicate content:</span> Platforms can detect identical videos, even across accounts. Always create unique content or significantly modify existing videos by changing metadata, file names, and re-exporting. This is especially crucial on Instagram and TikTok.
+              </li>
+              <li>
+                <span className="text-text font-semibold">Post strategically, not excessively:</span> Limit posts to 1-4 times daily with at least 3+ hours between uploads. Accounts that only post without genuine platform engagement appear bot-like.
+              </li>
+              <li>
+                <span className="text-text font-semibold">Engage authentically:</span> Like, save, and comment on content related to your target audience. This helps algorithms understand your niche and proves you're a real user, not a bot.
+              </li>
+              <li>
+                <span className="text-text font-semibold">Warm up new accounts properly:</span> For the first 48 hours, don't post anything. Instead, scroll, interact, and behave like a genuine user interested in your niche. Start posting slowly after this period—begin with 1 post daily for the first week.
+              </li>
             </ul>
+            <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <p className="text-sm text-textMuted">
+                <strong className="text-red-500">Warning:</strong> Violating these guidelines can result in severe reach suppression or shadowbanning. 
+                Algorithm trust is hard to regain once lost, especially on TikTok where audience targeting becomes nearly impossible to change.
+              </p>
+            </div>
           </CardContent>
         </Card>
 
         <Card className="border-border bg-card hover-primary">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">2</div>
+              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">1</div>
               <CardTitle>Identify Winning Formats</CardTitle>
             </div>
             <CardDescription>Understanding what works in your niche</CardDescription>
@@ -52,7 +67,7 @@ export default function GuidePage() {
         <Card className="border-border bg-card hover-primary">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">3</div>
+              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">2</div>
               <CardTitle>Post, Post, Post</CardTitle>
             </div>
             <CardDescription>Maintaining consistency and volume</CardDescription>
@@ -85,7 +100,7 @@ export default function GuidePage() {
         <Card className="border-border bg-card hover-primary">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">4</div>
+              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">3</div>
               <CardTitle>Analyze and Iterate</CardTitle>
             </div>
             <CardDescription>Learning from your data</CardDescription>
