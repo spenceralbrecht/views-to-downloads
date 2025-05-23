@@ -63,6 +63,7 @@ export default function GuidePage() {
               <li><span className="text-text">Note common hooks, transitions,</span> and storytelling patterns</li>
               <li><span className="text-text">Analyze video length, style,</span> and editing techniques</li>
               <li><span className="text-text">Save successful videos</span> for reference and inspiration</li>
+              <li><span className="text-text">Use platform-native sounds and music if you can:</span> Selecting audio directly from Instagram or TikTok's library rather than uploading external music groups your content algorithmically with other videos using the same trending sounds, increasing your chances of discovery</li>
             </ul>
           </CardContent>
         </Card>
