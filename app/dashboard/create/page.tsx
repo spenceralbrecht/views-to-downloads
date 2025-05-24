@@ -1458,24 +1458,42 @@ export default function CreateAd() {
         });
         setIsErrorDialogOpen(true)
         setIsUploading(false) // Corrected setter name
-        setPending(false)    // Corrected setter name (assuming useTransition)
         return
       } else {
         console.log(`[File Size Check] File size: ${file.size}, Max size: ${maxSize} - Within limit.`);
       }
       
-      // Check file type
-      if (!file.type.includes('mp4')) {
-        console.error(`Invalid file type: ${file.type}. Only MP4 is supported.`);
+      // Check file type - support multiple video formats
+      const supportedVideoTypes = [
+        'video/mp4',
+        'video/quicktime',     // MOV files
+        'video/x-msvideo',     // AVI files
+        'video/x-matroska',    // MKV files
+        'video/webm',          // WebM files
+        'video/x-ms-wmv',      // WMV files
+        'video/x-flv'          // FLV files
+      ];
+      
+      const supportedExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.flv'];
+      
+      // Check MIME type first
+      const isValidMimeType = supportedVideoTypes.includes(file.type);
+      
+      // Fallback: check file extension if MIME type detection fails
+      const fileName = file.name.toLowerCase();
+      const hasValidExtension = supportedExtensions.some(ext => fileName.endsWith(ext));
+      
+      if (!isValidMimeType && !hasValidExtension) {
+        console.error(`Invalid file type: ${file.type}. Supported formats: MP4, MOV, AVI, MKV, WebM, WMV, FLV`);
         
         // Set error information for the dialog
-        setUploadError(`Only MP4 video files are allowed. Your file is ${file.type || 'unknown type'}.`);
+        setUploadError(`Unsupported file format. Supported formats: MP4, MOV, AVI, MKV, WebM, WMV, FLV\n\nYour file: ${file.type || 'unknown type'}`);
         setUploadDebugInfo({
           appId: selectedAppId ?? 'N/A',
           fileName: file.name,
           fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
           fileType: file.type || 'unknown',
-          supportedType: 'video/mp4'
+          supportedTypes: supportedVideoTypes.join(', ')
         });
         setIsErrorDialogOpen(true);
         
@@ -1836,11 +1854,11 @@ export default function CreateAd() {
       errorMessage.includes('MP4') ||
       errorMessage.includes('video files') ||
       errorMessage.includes('unsupported') ||
-      (file.type !== 'video/mp4' && file.type !== '')
+      errorMessage.includes('Unsupported file format')
     ) {
       errorCategory = 'file-format';
       errorMessage = 'Unsupported file format';
-      errorDetails = 'Only MP4 video files are supported.';
+      errorDetails = 'Supported formats: MP4, MOV, AVI, MKV, WebM, WMV, FLV';
     } else if (
       errorMessage.includes('network') ||
       errorMessage.includes('connection') ||
@@ -2434,7 +2452,7 @@ export default function CreateAd() {
                     <div className="relative aspect-[9/16] rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors">
                       <input
                         type="file"
-                        accept="video/*"
+                        accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm,video/x-ms-wmv,video/x-flv,.mp4,.mov,.avi,.mkv,.webm,.wmv,.flv"
                         onChange={handleDemoUpload}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
                       />
@@ -2443,7 +2461,7 @@ export default function CreateAd() {
                         <p className="text-xs text-center text-muted-foreground">Upload Demo</p>
                         <p className="text-xs text-center font-semibold text-primary mt-1">Max 100MB</p>
                         <div className="mt-2 px-2 py-1 bg-primary/10 rounded-md">
-                          <p className="text-[10px] text-center text-primary">MP4 format recommended</p>
+                          <p className="text-[10px] text-center text-primary">Multiple formats supported</p>
                         </div>
                       </div>
                     </div>
@@ -2590,7 +2608,7 @@ export default function CreateAd() {
                     ? "Upload Error"
                     : uploadError?.includes("File size exceeds")
                       ? "File Too Large"
-                      : uploadError?.includes("MP4 video files")
+                      : uploadError?.includes("Unsupported file format")
                         ? "Unsupported File Format"
                         : "Upload Failed"}
               </DialogTitle>
@@ -2601,7 +2619,7 @@ export default function CreateAd() {
                     ? "There was a problem uploading your video."
                     : uploadError?.includes("File size exceeds")
                       ? "The video file you selected is too large."
-                      : uploadError?.includes("MP4 video files")
+                      : uploadError?.includes("Unsupported file format")
                         ? "The file format you selected is not supported."
                         : "There was a problem uploading your demo video."}
               </DialogDescription>
@@ -2699,7 +2717,7 @@ export default function CreateAd() {
                       </div>
                     </div>
                   </div>
-                ) : uploadError?.includes("MP4 video files") ? (
+                ) : uploadError?.includes("Unsupported file format") ? (
                   <div className="space-y-3">
                     <div className="flex items-start">
                       <div className="flex-shrink-0 h-6 w-6 text-amber-500">
@@ -2710,14 +2728,14 @@ export default function CreateAd() {
                       <div className="ml-3">
                         <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">Unsupported File Format</h3>
                         <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                          <p>Only MP4 video files are supported.</p>
+                          <p>Supported video formats: MP4, MOV, AVI, MKV, WebM, WMV, FLV</p>
                           <p>Current format: {uploadDebugInfo?.fileType || 'unknown'}</p>
                           <p className="font-medium mt-2">Try these solutions:</p>
                           <ul className="list-disc space-y-1 pl-5 mt-1">
-                            <li>Convert your video to MP4 format</li>
+                            <li>Convert your video to a supported format</li>
                             <li>
                               <a 
-                                href="https://www.freeconvert.com/mp4-converter" 
+                                href="https://www.freeconvert.com/video-converter" 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="text-blue-600 hover:text-blue-800 underline"
@@ -2820,7 +2838,7 @@ export default function CreateAd() {
                 >
                   Refresh Page
                 </Button>
-              ) : uploadError?.includes("File size exceeds") || uploadError?.includes("MP4 video files") ? (
+              ) : uploadError?.includes("File size exceeds") || uploadError?.includes("Unsupported file format") ? (
                 <Button
                   variant="default"
                   onClick={() => {
