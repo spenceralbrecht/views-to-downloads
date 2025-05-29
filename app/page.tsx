@@ -34,44 +34,45 @@ export default function LandingPage({
   useEffect(() => {
     if (searchParams.tiktok_data) {
       try {
-        // Sanitize the data before storing it
-        // First try to decode and validate it's proper JSON
         const rawData = searchParams.tiktok_data;
         const decoded = Buffer.from(rawData, 'base64').toString('utf-8');
-        
-        // Try to parse it to ensure it's valid JSON
         const parsed = JSON.parse(decoded);
-        
-        // If we got here, it's valid JSON, so we can safely store it
         console.log('Storing valid TikTok data in localStorage');
         localStorage.setItem('tiktok_pending_data', rawData);
       } catch (error) {
         console.error('Error processing TikTok data from URL:', error);
-        // Don't store invalid data
       }
-      
-      // Check if the user is already logged in
+
       const checkSession = async () => {
         const { data: { session } } = await supabase.auth.getSession();
-        
         if (session) {
-          // User is logged in, redirect to dashboard
           console.log('User is logged in, redirecting to dashboard');
           window.location.href = '/dashboard/connected-accounts';
         } else {
-          // Show login prompt
-          console.log('User needs to log in first');
-          // We'll rely on the sign-in button being visible
+          console.log('User session not yet available, waiting for auth state change');
         }
       };
-      
+
       checkSession();
-      
+
+      // Listen for auth state changes in case the session cookie arrives shortly after page load
+      const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        if (newSession) {
+          console.log('Auth state changed – session detected, redirecting');
+          window.location.href = '/dashboard/connected-accounts';
+        }
+      });
+
       // Clean up URL to prevent repeated processing
       const url = new URL(window.location.href);
       url.searchParams.delete('tiktok_data');
       url.searchParams.delete('tiktok_success');
       window.history.replaceState({}, '', url.toString());
+
+      // Clean up listener on unmount
+      return () => {
+        listener?.subscription?.unsubscribe();
+      };
     }
   }, [searchParams.tiktok_data, supabase.auth]);
 

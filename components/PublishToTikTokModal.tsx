@@ -97,32 +97,33 @@ export function PublishToTikTokModal({
   const [yourBrand, setYourBrand] = useState(false)
   const [brandedContent, setBrandedContent] = useState(false)
   
-  // Prevent private visibility when branded content is selected
+  // Prevent private visibility when any disclosure content is selected
   useEffect(() => {
-    if (brandedContent && privacyLevel === 'SELF_ONLY') {
+    if ((brandedContent || yourBrand) && privacyLevel === 'SELF_ONLY') {
       setPrivacyLevel("")
       toast({
         title: "Visibility Adjusted",
-        description: "Private visibility is not allowed for branded content. Please select a different privacy level.",
+        description: "Private visibility is not allowed for disclosed content. Please select a different privacy level.",
         variant: "destructive"
       })
     }
-  }, [brandedContent, privacyLevel])
+  }, [brandedContent, yourBrand, privacyLevel])
 
-  // Add logic to handle privacy level changes affecting branded content
+  // Add logic to handle privacy level changes affecting disclosure options
   useEffect(() => {
-    // If privacy is set to Private, ensure Branded Content is unchecked and notify user
+    // If privacy is set to Private, ensure all disclosure options are unchecked and notify user
     if (privacyLevel === 'SELF_ONLY') {
-      if (brandedContent) {
+      if (brandedContent || yourBrand) {
         setBrandedContent(false)
+        setYourBrand(false)
         toast({
-          title: "Branded Content Disabled",
-          description: "Branded content cannot be selected when visibility is set to Private.",
+          title: "Disclosure Options Disabled",
+          description: "Content disclosure cannot be used when visibility is set to Private.",
           variant: "destructive" // Use destructive variant for warnings
         })
       }
     }
-  }, [privacyLevel, brandedContent])
+  }, [privacyLevel, brandedContent, yourBrand])
 
   // Creator info state
   const [creatorInfo, setCreatorInfo] = useState<CreatorInfo | null>(null)
@@ -391,7 +392,7 @@ export function PublishToTikTokModal({
       else if (option === 'SELF_ONLY') displayName = 'Private';
       else if (option === 'FOLLOWER_OF_CREATOR') displayName = 'Followers';
       
-      if (option === 'SELF_ONLY' && brandedContent) {
+      if (option === 'SELF_ONLY' && (brandedContent || yourBrand)) {
         return (
           <TooltipProvider key={option}>
             <Tooltip delayDuration={0}>
@@ -401,7 +402,7 @@ export function PublishToTikTokModal({
                 </SelectItem>
               </TooltipTrigger>
               <TooltipContent side="top" className="bg-background text-foreground border border-border shadow-md p-2 max-w-[220px] text-wrap text-sm">
-                Branded content visibility cannot be set to private.
+                Private visibility cannot be used with content disclosure.
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -416,12 +417,13 @@ export function PublishToTikTokModal({
   
   // Function to get disclosure message based on selected options
   const getDisclosureMessage = () => {
+    const contentType = isPhoto ? "photo" : "video";
     if (yourBrand && brandedContent) {
-      return "Your video will be labeled as \"Paid partnership\".";
+      return `Your ${contentType} will be labeled as "Paid partnership".`;
     } else if (yourBrand) {
-      return "Your video will be labeled as \"Promotional content\".";
+      return `Your ${contentType} will be labeled as "Promotional content".`;
     } else if (brandedContent) {
-      return "Your video will be labeled as \"Paid partnership\".";
+      return `Your ${contentType} will be labeled as "Paid partnership".`;
     }
     return null;
   }
@@ -437,7 +439,7 @@ export function PublishToTikTokModal({
     isDisclosureIncomplete;
 
   const tooltipMessage = isDisclosureIncomplete 
-    ? "You need to indicate if your content promotes either yourself, a third party, or both." 
+    ? "You need to indicate if your content promotes yourself, a third party, or both." 
     : null;
 
   return (
@@ -525,10 +527,7 @@ export function PublishToTikTokModal({
                         )}
                         <div className="flex-grow">
                           <div className="font-medium">
-                            {account.display_name || account.username}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            @{account.username || account.provider_account_id}
+                            {account.display_name || account.username || "TikTok Account"}
                           </div>
                         </div>
                         {selectedAccountId === account.id && (
@@ -648,12 +647,19 @@ export function PublishToTikTokModal({
                         <Switch 
                           id="disclosure" 
                           checked={isDisclosureEnabled} 
-                          onCheckedChange={(checked) => setIsDisclosureEnabled(!!checked)}
+                          onCheckedChange={(checked) => {
+                            setIsDisclosureEnabled(!!checked)
+                            // Reset disclosure options when toggle is turned off
+                            if (!checked) {
+                              setYourBrand(false)
+                              setBrandedContent(false)
+                            }
+                          }}
                         />
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Turn on to disclose that this video promotes goods or services in exchange for something of value. 
-                        {isDisclosureEnabled ? " Your video could promote yourself, a third party, or both." : ""}
+                        Turn on to disclose that this {isPhoto ? "photo" : "video"} promotes goods or services in exchange for something of value. 
+                        {isDisclosureEnabled ? " Your content could promote yourself, a third party, or both." : ""}
                       </p>
                       
                       {isDisclosureEnabled && (
@@ -673,14 +679,29 @@ export function PublishToTikTokModal({
                               <div>
                                 <h3 className="text-sm font-medium">Your brand</h3>
                                 <p className="text-sm text-muted-foreground">
-                                  You are promoting yourself or your own business. This video will be classified as Brand Organic.
+                                  You are promoting yourself or your own business. This content will be classified as Brand Organic.
                                 </p>
                               </div>
-                              <Switch 
-                                id="your-brand" 
-                                checked={yourBrand} 
-                                onCheckedChange={(checked) => setYourBrand(!!checked)}
-                              />
+                              <TooltipProvider delayDuration={0}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className={cn({ "cursor-not-allowed": privacyLevel === 'SELF_ONLY' })}>
+                                      <Switch 
+                                        id="your-brand" 
+                                        checked={yourBrand} 
+                                        onCheckedChange={(checked) => setYourBrand(!!checked)}
+                                        disabled={privacyLevel === 'SELF_ONLY'}
+                                        className={cn({ "opacity-50": privacyLevel === 'SELF_ONLY' })}
+                                      />
+                                    </div>
+                                  </TooltipTrigger>
+                                  {privacyLevel === 'SELF_ONLY' && (
+                                    <TooltipContent side="top">
+                                      <p>Content disclosure cannot be used when visibility is set to Private.</p>
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
+                              </TooltipProvider>
                             </div>
                             
                             <TooltipProvider delayDuration={0}>
@@ -689,14 +710,14 @@ export function PublishToTikTokModal({
                                   <Label 
                                     htmlFor="branded-content" 
                                     className={cn("flex flex-col space-y-1", {
-                                      "text-muted-foreground cursor-not-allowed": yourBrand || privacyLevel === 'SELF_ONLY'
+                                      "text-muted-foreground cursor-not-allowed": privacyLevel === 'SELF_ONLY'
                                     })}
                                   >
                                     <span>Branded content</span>
                                     <span className={cn("font-normal leading-snug", {
-                                      "text-muted-foreground": yourBrand || privacyLevel === 'SELF_ONLY'
+                                      "text-muted-foreground": privacyLevel === 'SELF_ONLY'
                                     })}>
-                                      Promoting another business.
+                                      You are promoting another brand or a third party. This content will be classified as Branded Content.
                                     </span>
                                   </Label>
                                   <TooltipTrigger asChild>
@@ -706,8 +727,8 @@ export function PublishToTikTokModal({
                                         id="branded-content" 
                                         checked={brandedContent} 
                                         onCheckedChange={setBrandedContent} 
-                                        disabled={yourBrand || privacyLevel === 'SELF_ONLY'}
-                                        className={cn({ "opacity-50": yourBrand || privacyLevel === 'SELF_ONLY' })}
+                                        disabled={privacyLevel === 'SELF_ONLY'}
+                                        className={cn({ "opacity-50": privacyLevel === 'SELF_ONLY' })}
                                       />
                                     </div>
                                   </TooltipTrigger>
@@ -715,7 +736,7 @@ export function PublishToTikTokModal({
                                 {/* Show tooltip only when disabled specifically due to privacy level */}
                                 {privacyLevel === 'SELF_ONLY' && (
                                   <TooltipContent side="top">
-                                    <p>Branded content visibility cannot be set to private.</p>
+                                    <p>Content disclosure cannot be used when visibility is set to Private.</p>
                                   </TooltipContent>
                                 )}
                               </Tooltip>
@@ -778,7 +799,7 @@ export function PublishToTikTokModal({
         <DialogFooter className="mt-2 pt-4 border-t">
           <div className="flex items-center justify-between w-full">
             <p className="text-xs text-muted-foreground mr-6 max-w-[60%]">
-              {(brandedContent && yourBrand) || brandedContent ? (
+              {brandedContent ? (
                 <>
                   By posting, you agree to TikTok's{' '}
                   <a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">

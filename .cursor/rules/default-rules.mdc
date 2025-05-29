@@ -7,6 +7,8 @@ This project uses Bun and not npm. We are using this version (2024-12-18.acacia)
 
 The model used should be `chatgpt-4o-latest`. When the server is running with `bun run dev` it auto refreshes.
 
+Never overwrite a file without checking if you should just add to it first.
+
 This project is deployed in production to the url https://viewstodownloads.com.
 
 Do everything you can to avoid unnecessary complexity. Showing localhost notifications is not good UX. Always follow the tailwind theme so that colors and styling are kept across the application. Try to never use one-off colors and use variables as much as possible to maintain consistency.

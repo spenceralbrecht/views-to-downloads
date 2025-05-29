@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
     let codeVerifier: string | null = null;
     
     // First try to get the code verifier from the cookie (fallback)
-    codeVerifier = request.cookies.get('tiktok_code_verifier')?.value || null;
-    let csrfState = request.cookies.get('tiktok_csrf_state')?.value || null;
+    codeVerifier = request.cookies.get('ttver')?.value || null;
+    let csrfState = request.cookies.get('ttcsrf')?.value || null;
     
     console.log('From cookies - Code verifier:', codeVerifier ? codeVerifier.substring(0, 10) + '...' : 'missing');
     console.log('From cookies - CSRF state:', csrfState ? csrfState : 'missing');
@@ -181,10 +181,17 @@ export async function GET(request: NextRequest) {
         .replace(/\//g, '_')
         .replace(/=+$/, '');
       
-      // Check if the user is authenticated by looking for the auth token cookie
-      const authCookie = request.cookies.get('sb-zxwbqdkqgxhtdnvmukll-auth-token');
+      // Check if the user is authenticated using proper Supabase session check
+      const supabase = createRouteHandlerClient({ cookies });
+      const { data: { session }, error } = await supabase.auth.getSession();
       
-      if (authCookie) {
+      console.log('Session check result:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        error: error?.message
+      });
+      
+      if (session) {
         // User is authenticated, redirect directly to the connected accounts page
         console.log('User is authenticated, redirecting to connected accounts page');
         return NextResponse.redirect(buildRedirectUrl(`/dashboard/connected-accounts?tiktok_success=true&tiktok_data=${encodedData}`));

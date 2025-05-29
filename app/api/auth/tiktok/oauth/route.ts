@@ -74,7 +74,8 @@ export async function GET(request: NextRequest) {
     const cookieStore = cookies()
     
     // Set cookies with appropriate options to ensure they are included in the redirect
-    cookieStore.set('tiktok_csrf_state', csrfState, {
+    // Use very short cookie names to prevent collision with Supabase's long auth cookie name
+    cookieStore.set('ttcsrf', csrfState, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 10, // 10 minutes
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
       sameSite: 'lax'
     })
     
-    cookieStore.set('tiktok_code_verifier', codeVerifier, {
+    cookieStore.set('ttver', codeVerifier, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 10, // 10 minutes
@@ -93,8 +94,8 @@ export async function GET(request: NextRequest) {
     // Verify cookies were set
     const cookies_after = cookieStore.getAll();
     console.log('Cookies after setting:', cookies_after.map(c => c.name));
-    console.log('Code verifier cookie present:', cookies_after.some(c => c.name === 'tiktok_code_verifier'));
-    console.log('CSRF state cookie present:', cookies_after.some(c => c.name === 'tiktok_csrf_state'));
+    console.log('Code verifier cookie present:', cookies_after.some(c => c.name === 'ttver'));
+    console.log('CSRF state cookie present:', cookies_after.some(c => c.name === 'ttcsrf'));
     
     // Log for debugging
     console.log('OAuth route - Setting code verifier cookie:', codeVerifier.substring(0, 10) + '...')

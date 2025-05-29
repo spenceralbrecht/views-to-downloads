@@ -9,6 +9,15 @@ interface RequestBody {
   accountId: string
   videoId: string
   videoUrl: string
+  postInfo: {
+    title: string
+    privacy_level: string
+    disable_comment: boolean
+    disable_duet: boolean
+    disable_stitch: boolean
+    is_branded_content: boolean
+    is_brand_organic: boolean
+  }
 }
 
 // Response interface
@@ -120,8 +129,31 @@ async function downloadFile(url: string): Promise<ArrayBuffer> {
 /**
  * Upload a video to TikTok using the FILE_UPLOAD method
  */
-async function uploadVideoToTikTok(accessToken: string, videoBuffer: ArrayBuffer, username: string) {
+async function uploadVideoToTikTok(
+  accessToken: string, 
+  videoBuffer: ArrayBuffer, 
+  username: string, 
+  postInfo: {
+    title: string
+    privacy_level: string
+    disable_comment: boolean
+    disable_duet: boolean
+    disable_stitch: boolean
+    is_branded_content: boolean
+    is_brand_organic: boolean
+  }
+) {
   console.log('Initiating TikTok direct post with FILE_UPLOAD method')
+  
+  console.log('Post info being sent to TikTok:', JSON.stringify({
+    title: postInfo.title,
+    privacy_level: postInfo.privacy_level,
+    disable_duet: postInfo.disable_duet,
+    disable_comment: postInfo.disable_comment,
+    disable_stitch: postInfo.disable_stitch,
+    is_branded_content: postInfo.is_branded_content,
+    is_brand_organic: postInfo.is_brand_organic
+  }, null, 2))
   
   // Step 1: Get creator info (recommended in docs)
   const creatorInfoResponse = await fetch('https://open.tiktokapis.com/v2/post/publish/creator_info/query/', {
@@ -164,11 +196,13 @@ async function uploadVideoToTikTok(accessToken: string, videoBuffer: ArrayBuffer
     },
     body: JSON.stringify({
       post_info: {
-        title: 'Created with Views to Downloads',
-        privacy_level: 'PUBLIC_TO_EVERYONE',
-        disable_duet: false,
-        disable_comment: false,
-        disable_stitch: false
+        title: postInfo.title,
+        privacy_level: postInfo.privacy_level,
+        disable_duet: postInfo.disable_duet,
+        disable_comment: postInfo.disable_comment,
+        disable_stitch: postInfo.disable_stitch,
+        is_branded_content: postInfo.is_branded_content,
+        is_brand_organic: postInfo.is_brand_organic
       },
       source_info: {
         source: 'FILE_UPLOAD',
@@ -324,15 +358,15 @@ serve(async (req) => {
   try {
     // Parse the request body
     const body: RequestBody = await req.json()
-    const { accountId, videoId, videoUrl } = body
+    const { accountId, videoId, videoUrl, postInfo } = body
     
-    console.log('Publishing request received:', { accountId, videoId, videoUrl })
+    console.log('Publishing request received:', { accountId, videoId, videoUrl, postInfo })
     
-    if (!accountId || !videoId || !videoUrl) {
+    if (!accountId || !videoId || !videoUrl || !postInfo) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Missing required parameters' 
+          error: 'Missing required parameters (accountId, videoId, videoUrl, or postInfo)' 
         }),
         { 
           status: 400, 
@@ -340,6 +374,34 @@ serve(async (req) => {
         }
       )
     }
+    
+    // Validate postInfo fields
+    if (!postInfo.title || !postInfo.privacy_level) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Missing required postInfo fields: title and privacy_level are required' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...headers, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+    
+    // Check for unaudited app restrictions
+    if (postInfo.privacy_level !== 'SELF_ONLY') {
+      console.warn('WARNING: Posting with public privacy level. If app is unaudited, this will fail with "integration guidelines" error.')
+      console.log('Recommendation: Use SELF_ONLY privacy level for unaudited apps')
+    }
+    
+    console.log('Using user post settings:', {
+      title: postInfo.title,
+      privacy_level: postInfo.privacy_level,
+      disable_comment: postInfo.disable_comment,
+      disable_duet: postInfo.disable_duet,
+      disable_stitch: postInfo.disable_stitch
+    })
     
     // Get the TikTok account details from Supabase
     const { data: account, error: accountError } = await supabaseClient
@@ -393,7 +455,7 @@ serve(async (req) => {
       const videoBuffer = await downloadFile(videoUrl)
       
       // Upload to TikTok using FILE_UPLOAD method
-      publishedUrl = await uploadVideoToTikTok(accessToken, videoBuffer, username)
+      publishedUrl = await uploadVideoToTikTok(accessToken, videoBuffer, username, postInfo)
       
       // Update the output_content record with the published URL
       await updateOutputContent(supabaseClient, videoId, publishedUrl)

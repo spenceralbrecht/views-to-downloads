@@ -1,0 +1,136 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Project Structure Guide
+
+This Next.js application follows a standard App Router structure with additional custom organization. Here's how the project is organized:
+
+## Root Level Files
+- `package.json` - Uses Bun as package manager, includes all dependencies
+- `next.config.mjs` - Next.js configuration with custom webpack settings
+- `tailwind.config.ts` - Tailwind CSS configuration with custom theme
+- `middleware.ts` - Next.js middleware for auth and routing protection
+- `README.md` - Comprehensive project documentation
+- `vitest.config.ts` - Testing configuration
+
+## Core Directories
+
+### `/app` - Next.js App Router
+**Main application routes and layouts**
+- `layout.tsx` - Root layout with providers and global styles
+- `page.tsx` - Landing page component
+- `globals.css` - Global CSS styles and Tailwind imports
+- `types.ts` - Shared TypeScript type definitions
+
+**Route Directories:**
+- `/api` - API routes for backend functionality
+  - `/auth` - Authentication endpoints
+  - `/stripe` - Payment processing
+  - `/tiktok` - TikTok integration
+  - `/create-video` - Video processing endpoints
+  - `/webhooks` - External service webhooks
+- `/dashboard` - Protected dashboard routes
+- `/auth` - Authentication pages
+- `/privacy-policy` & `/terms-of-service` - Legal pages
+- `/proven-formats` - Content format pages
+- `/blogs` - Blog/content pages
+
+### `/components` - React Components
+**Organized by functionality:**
+- Root level: Main application components (Header, Footer, Features, etc.)
+- `/ui` - Reusable UI components (buttons, forms, etc.)
+- `/dashboard` - Dashboard-specific components
+- `/providers` - React context providers
+- `/subscription` - Subscription-related components
+
+**Key Component Types:**
+- Modal components (AddAppModal, PricingModal, etc.)
+- Feature components (InfluencerGallery, VideoCard, etc.)
+- Skeleton components for loading states
+- Auth and subscription management components
+
+### `/lib` - Utilities and Configuration
+- Supabase client configuration
+- Utility functions
+- External service integrations
+
+### `/hooks` - Custom React Hooks
+- Reusable state management and API logic
+
+### `/utils` - Helper Functions
+- Pure utility functions
+- Data transformation helpers
+
+### `/types` - TypeScript Definitions
+- Shared type definitions
+- API response types
+
+### `/constants` - Application Constants
+- Configuration constants
+- Static data
+
+### `/config` - Configuration Files
+- Environment-specific settings
+- Service configurations
+
+### `/supabase` - Database Related
+- Migration files
+- Database schema definitions
+- Supabase-specific configurations
+
+### `/scripts` - Build and Deployment Scripts
+- Automation scripts
+- Development helpers
+
+### `/styles` - Additional Styling
+- Component-specific styles
+- CSS modules
+
+### `/public` - Static Assets
+- Images, icons, and other static files
+- Favicon and metadata images
+
+### `/__tests__` - Test Files
+- Unit and integration tests
+- Test utilities
+
+## Key Architectural Patterns
+
+### Database Integration
+- Uses Supabase for PostgreSQL database
+- Row Level Security (RLS) policies
+- Real-time subscriptions where needed
+
+### Authentication
+- Supabase Auth with multiple providers
+- Middleware-based route protection
+- Session management
+
+### Payment Processing
+- Stripe integration for subscriptions
+- Webhook handling for payment events
+- Usage-based billing
+
+### Video Processing
+- External API for video creation and processing
+- File upload and storage management
+- Progress tracking for long-running operations
+
+### State Management
+- React Context for global state
+- Custom hooks for complex state logic
+- Local state with React hooks
+
+## Development Workflow
+- Uses Bun for package management (`bun install`, `bun run dev`)
+- Hot reload with Next.js development server
+- TypeScript for type safety
+- Tailwind CSS for styling
+- Vitest for testing
+
+## Deployment
+- Production URL: https://viewstodownloads.com
+- Configured for Vercel deployment
+- Environment variables managed through platform
